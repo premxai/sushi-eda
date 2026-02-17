@@ -85,42 +85,52 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
     
     logger.info(f"File upload request: {file.filename}")
     
-    # Read file contents for hashing
-    contents = file.file.read()
-    file_hash = get_file_hash(contents)
-    
-    # Check cache
-    if file_hash in _analysis_cache:
-        logger.info(f"Cache hit for file: {file.filename}")
-        _current_df = _analysis_cache[file_hash]["df"]
-        return _analysis_cache[file_hash]["report"]
-    
-    # Reset file pointer for parsing
-    file.file.seek(0)
-    
     try:
+        # Read file contents for hashing
+        contents = file.file.read()
+        file_hash = get_file_hash(contents)
+        
+        # Check cache
+        if file_hash in _analysis_cache:
+            logger.info(f"Cache hit for file: {file.filename}")
+            _current_df = _analysis_cache[file_hash]["df"]
+            return _analysis_cache[file_hash]["report"]
+        
+        # Reset file pointer for parsing
+        file.file.seek(0)
+        
+        # Parse file
         df = read_upload(file)
         logger.info(f"Successfully parsed file: {file.filename}, shape: {df.shape}")
+        
+        # Limit rows for large datasets to prevent timeout
+        if len(df) > 10000:
+            logger.warning(f"Large dataset detected ({len(df)} rows), sampling to 10000 rows")
+            df = df.sample(n=10000, random_state=42)
+        
+        _current_df = df
+
+        # Run analysis
+        logger.info(f"Starting analysis for {file.filename}")
+        analyzer = EDAAnalyzer(df)
+        report = analyzer.generate_full_report()
+        logger.info(f"Analysis complete for {file.filename}")
+
+        # Include a data preview (first 50 rows)
+        preview = df.head(50).fillna("").to_dict(orient="records")
+        report["preview"] = preview
+        
+        # Cache the result
+        _analysis_cache[file_hash] = {"df": df, "report": report}
+        logger.info(f"Cached result for {file.filename} with hash {file_hash[:8]}")
+
+        return report
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to parse file {file.filename}: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
-
-    _current_df = df
-
-    analyzer = EDAAnalyzer(df)
-    report = analyzer.generate_full_report()
-
-    # Include a data preview (first 50 rows)
-    preview = df.head(50).fillna("").to_dict(orient="records")
-    report["preview"] = preview
-    
-    # Cache the result
-    _analysis_cache[file_hash] = {"df": df, "report": report}
-    logger.info(f"Analysis complete for {file.filename}, cached with hash {file_hash[:8]}")
-
-    return report
+        logger.error(f"Error processing file {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
 @app.post("/analyze")
