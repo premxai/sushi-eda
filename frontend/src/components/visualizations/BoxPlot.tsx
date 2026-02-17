@@ -42,10 +42,13 @@ export function BoxPlot({ outliers, preview }: BoxPlotProps) {
       boxpoints: "outliers" as const,
       line: { color: "#4f46e5" },
       fillcolor: "rgba(79, 70, 229, 0.1)",
-      hovertemplate: `<b>${o.column}</b><br>` +
-        `Value: %{y}<br>` +
-        `IQR: [${o.q1}, ${o.q3}]<br>` +
-        `Bounds: [${o.lower_bound}, ${o.upper_bound}]` +
+      hovertemplate: 
+        `<b>${o.column}</b><br>` +
+        `Value: %{y:.2f}<br>` +
+        `Q1: ${o.q1.toFixed(2)}<br>` +
+        `Q3: ${o.q3.toFixed(2)}<br>` +
+        `Min: ${o.lower_bound.toFixed(2)}<br>` +
+        `Max: ${o.upper_bound.toFixed(2)}` +
         `<extra></extra>`,
     };
   });
