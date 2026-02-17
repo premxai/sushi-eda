@@ -104,9 +104,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         logger.info(f"Successfully parsed file: {file.filename}, shape: {df.shape}")
         
         # Limit rows for large datasets to prevent timeout
-        if len(df) > 10000:
-            logger.warning(f"Large dataset detected ({len(df)} rows), sampling to 10000 rows")
-            df = df.sample(n=10000, random_state=42)
+        if len(df) > 5000:
+            logger.warning(f"Large dataset detected ({len(df)} rows), sampling to 5000 rows")
+            df = df.sample(n=5000, random_state=42)
         
         _current_df = df
 
