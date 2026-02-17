@@ -1,0 +1,21 @@
+id,name,email,age,salary,department,hire_date,is_active,performance_score,city
+1,Alice Johnson,alice@example.com,28,75000.50,Engineering,2022-03-15,true,4.5,New York
+2,Bob Smith,bob@example.com,35,85000.00,Marketing,2021-07-22,true,4.2,San Francisco
+3,Carol White,carol@example.com,42,95000.75,Engineering,2020-01-10,true,4.8,Seattle
+4,David Brown,david@example.com,31,68000.00,Sales,2023-05-18,true,3.9,Boston
+5,Eve Davis,eve@example.com,29,72000.25,Engineering,2022-11-03,false,4.1,Austin
+6,Frank Miller,frank@example.com,45,105000.00,Management,2019-08-14,true,4.7,Chicago
+7,Grace Lee,grace@example.com,33,78000.50,Marketing,2021-12-01,true,4.3,Denver
+8,Henry Wilson,henry@example.com,27,65000.00,Sales,2023-02-28,true,3.8,Miami
+9,Iris Taylor,iris@example.com,38,88000.75,Engineering,2020-09-20,true,4.6,Portland
+10,Jack Anderson,jack@example.com,41,92000.00,Management,2019-11-05,true,4.4,Seattle
+11,Kate Thomas,,36,79000.50,Marketing,2021-06-12,true,4.0,New York
+12,Leo Martinez,leo@example.com,30,,Engineering,2022-08-25,false,4.2,Austin
+13,Mia Garcia,mia@example.com,34,81000.00,Sales,2021-03-17,true,,Los Angeles
+14,Noah Rodriguez,noah@example.com,39,89000.25,Engineering,,true,4.5,San Francisco
+15,Olivia Hernandez,olivia@example.com,26,63000.00,Marketing,2023-07-09,true,3.7,Boston
+16,Paul Lopez,paul@example.com,44,98000.50,Management,2019-12-22,true,4.9,Chicago
+17,Quinn Gonzalez,quinn@example.com,32,76000.00,Engineering,2022-04-30,false,4.1,Denver
+18,Rachel Perez,rachel@example.com,37,84000.75,Sales,2020-10-15,true,4.3,Miami
+19,Sam Wilson,sam@example.com,29,71000.00,Marketing,2023-01-20,true,3.9,Portland
+20,Tina Moore,tina@example.com,40,91000.50,Engineering,2020-05-08,true,4.6,Seattle

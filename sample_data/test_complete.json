@@ -1,0 +1,87 @@
+[
+  {
+    "id": 1,
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "age": 28,
+    "salary": 75000.50,
+    "department": "Engineering",
+    "hire_date": "2022-03-15",
+    "is_active": true,
+    "performance_score": 4.5,
+    "city": "New York",
+    "skills": ["Python", "JavaScript", "SQL"],
+    "address": {
+      "street": "123 Main St",
+      "zip": "10001"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Bob Smith",
+    "email": "bob@example.com",
+    "age": 35,
+    "salary": 85000.00,
+    "department": "Marketing",
+    "hire_date": "2021-07-22",
+    "is_active": true,
+    "performance_score": 4.2,
+    "city": "San Francisco",
+    "skills": ["SEO", "Content Marketing", "Analytics"],
+    "address": {
+      "street": "456 Oak Ave",
+      "zip": "94102"
+    }
+  },
+  {
+    "id": 3,
+    "name": "Carol White",
+    "email": "carol@example.com",
+    "age": 42,
+    "salary": 95000.75,
+    "department": "Engineering",
+    "hire_date": "2020-01-10",
+    "is_active": true,
+    "performance_score": 4.8,
+    "city": "Seattle",
+    "skills": ["Java", "Kubernetes", "AWS"],
+    "address": {
+      "street": "789 Pine Rd",
+      "zip": "98101"
+    }
+  },
+  {
+    "id": 4,
+    "name": "David Brown",
+    "email": "david@example.com",
+    "age": 31,
+    "salary": 68000.00,
+    "department": "Sales",
+    "hire_date": "2023-05-18",
+    "is_active": true,
+    "performance_score": 3.9,
+    "city": "Boston",
+    "skills": ["CRM", "Negotiation", "Presentations"],
+    "address": {
+      "street": "321 Elm St",
+      "zip": "02101"
+    }
+  },
+  {
+    "id": 5,
+    "name": "Eve Davis",
+    "email": "eve@example.com",
+    "age": 29,
+    "salary": 72000.25,
+    "department": "Engineering",
+    "hire_date": "2022-11-03",
+    "is_active": false,
+    "performance_score": 4.1,
+    "city": "Austin",
+    "skills": ["React", "Node.js", "MongoDB"],
+    "address": {
+      "street": "654 Maple Dr",
+      "zip": "78701"
+    }
+  }
+]

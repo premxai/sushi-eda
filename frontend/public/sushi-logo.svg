@@ -1,0 +1,19 @@
+<svg width="800" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark outer circle (sushi roll) -->
+  <circle cx="200" cy="200" r="120" fill="#2d3e50" stroke="#2d3e50" stroke-width="20"/>
+  
+  <!-- White inner circle (rice) -->
+  <circle cx="200" cy="200" r="100" fill="#ffffff"/>
+  
+  <!-- Data visualization inside -->
+  <!-- Pie chart segments -->
+  <path d="M 200 200 L 200 100 A 100 100 0 0 1 270 130 Z" fill="#ff9999"/>
+  <path d="M 200 200 L 270 130 A 100 100 0 0 1 270 270 Z" fill="#ff6b6b"/>
+  <path d="M 200 200 L 270 270 A 100 100 0 0 1 130 270 Z" fill="#a8d5a8"/>
+  <path d="M 200 200 L 130 270 A 100 100 0 0 1 200 100 Z" fill="#ff4757"/>
+  
+  <!-- Bar chart overlay -->
+  <rect x="160" y="180" width="15" height="40" fill="#ff6b6b" opacity="0.8"/>
+  <rect x="180" y="160" width="15" height="60" fill="#ff9999" opacity="0.8"/>
+  <rect x="200" y="140" width="15" height="80" fill="#a8d5a8" opacity="0.8"/>
+</svg>

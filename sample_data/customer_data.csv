@@ -1,0 +1,11 @@
+customer_id,name,email,age,signup_date,country,subscription_type,total_purchases,last_purchase_date
+1001,John Smith,john.smith@email.com,34,2023-05-12,USA,Premium,15,2024-01-28
+1002,Emma Johnson,emma.j@email.com,28,2023-06-20,UK,Basic,8,2024-01-15
+1003,Michael Brown,m.brown@email.com,45,2023-04-08,Canada,Premium,22,2024-02-01
+1004,Sarah Davis,sarah.d@email.com,31,2023-07-15,USA,Basic,5,2024-01-20
+1005,James Wilson,j.wilson@email.com,52,2023-03-22,Australia,Enterprise,35,2024-02-03
+1006,Lisa Anderson,lisa.a@email.com,29,2023-08-10,UK,Premium,12,2024-01-25
+1007,Robert Taylor,r.taylor@email.com,38,2023-05-30,USA,Basic,7,2024-01-18
+1008,Jennifer Martinez,jen.m@email.com,42,2023-06-05,Canada,Premium,18,2024-01-30
+1009,William Garcia,w.garcia@email.com,36,2023-07-22,USA,Enterprise,28,2024-02-02
+1010,Mary Rodriguez,mary.r@email.com,33,2023-04-18,UK,Basic,9,2024-01-22
