@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
@@ -14,9 +13,8 @@ import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
 import { uploadFile } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { Activity, Rows3, Columns3, HardDrive, CopyMinus, GitCompare } from "lucide-react";
+import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
