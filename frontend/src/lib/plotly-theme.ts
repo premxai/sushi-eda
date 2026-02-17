@@ -1,8 +1,10 @@
 import type { Layout, Config } from "plotly.js";
 
 export const plotlyConfig: Partial<Config> = {
-  displayModeBar: false,
+  displayModeBar: 'hover',
   responsive: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d', 'autoScale2d'],
 };
 
 export const plotlyLayout: Partial<Layout> = {
