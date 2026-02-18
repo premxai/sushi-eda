@@ -12,6 +12,7 @@ from loguru import logger
 
 from analyzer import EDAAnalyzer
 from visualizer import Visualizer
+from advanced_stats import AdvancedStatistics
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -263,6 +264,36 @@ async def compare_datasets(file1: UploadFile = File(...), file2: UploadFile = Fi
         "file2": {"name": file2.filename, "report": report2},
         "comparison": comparison,
     }
+
+
+@app.get("/stats/advanced")
+async def get_advanced_stats():
+    """Get advanced statistical tests for the current dataset."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    
+    stats_analyzer = AdvancedStatistics(_current_df)
+    return stats_analyzer.generate_all_tests()
+
+
+@app.post("/stats/regression")
+async def perform_regression(x_col: str, y_col: str):
+    """Perform linear regression between two columns."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    
+    stats_analyzer = AdvancedStatistics(_current_df)
+    return stats_analyzer.linear_regression(x_col, y_col)
+
+
+@app.post("/stats/ttest")
+async def perform_ttest(col1: str, col2: str):
+    """Perform independent t-test between two columns."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    
+    stats_analyzer = AdvancedStatistics(_current_df)
+    return stats_analyzer.t_test_independent(col1, col2)
 
 
 @app.get("/health")
