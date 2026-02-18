@@ -9,19 +9,38 @@
 
 ## 🍱 Features
 
+### 📁 Multiple Data Formats
+- **CSV** — Comma-separated values
+- **TSV** — Tab-separated values
+- **Excel** — .xlsx and .xls files
+- **JSON** — Nested JSON with automatic flattening
+- **Parquet** — High-performance columnar format
+- **SQLite** — Database files (.db, .sqlite, .sqlite3)
+
 ### 🎯 Core Analysis
 - **Data Quality Score** — 0-100 score with A-F grade, breakdown by missing data, duplicates, outliers, type consistency, and unique ratios
 - **Smart Type Detection** — Auto-detect datetime columns, suggest categorical conversions, identify numeric strings and boolean patterns
-- **Interactive Visualizations** — Plotly-powered distribution charts, correlation heatmaps, box plots, and categorical bars
+- **Interactive Visualizations** — Plotly-powered distribution charts, correlation heatmaps, box plots, and categorical bars with hover insights
 - **Outlier Detection** — IQR-based detection with visual indicators and statistics
 - **Column Analysis** — Detailed per-column stats: missing %, unique count, mean/median/std/skew, top values
 
-### 🚀 Advanced Features
-- **PDF Export** — Generate professional PDF reports with quality scores, recommendations, and analysis summary
+### � Advanced Statistics
+- **Hypothesis Testing** — Independent t-test, chi-square test, one-way ANOVA
+- **Regression Analysis** — Simple linear regression with R² and RMSE metrics
+- **Normality Tests** — Shapiro-Wilk test for distribution analysis
+- **Correlation Significance** — Pearson correlation with p-values
+
+### 🚀 Export & Sharing
+- **Excel Export** — Multi-sheet workbook with data, summary, correlations, and outliers
+- **Markdown Reports** — Comprehensive analysis report in markdown format
+- **Chart Export** — Download visualizations as PNG or SVG
 - **Dataset Comparison** — Upload two files for side-by-side comparison with schema diff analysis
-- **File Size Validation** — 100MB upload limit with graceful error handling
+
+### ⚡ Performance & UX
+- **Smart Row Sampling** — Automatic sampling for datasets >5000 rows to prevent timeouts
 - **In-Memory Caching** — MD5-based caching for instant re-analysis of duplicate files
 - **Rate Limiting** — 10 requests/minute per IP to prevent abuse
+- **File Size Validation** — 100MB upload limit with graceful error handling
 
 ### 🎨 UX Polish
 - **Loading Skeletons** — Smooth loading states during analysis
@@ -87,11 +106,11 @@ Access the app at `http://localhost:3000`
 
 | Layer | Technology |
 |-------|------------|
-| **Backend** | FastAPI, pandas, numpy, scipy, plotly, loguru, slowapi |
+| **Backend** | FastAPI, pandas, numpy, scipy, scikit-learn, plotly, pyarrow, loguru, slowapi |
 | **Frontend** | Next.js 14, TypeScript, React, Tailwind CSS, shadcn/ui |
 | **Visualization** | Plotly.js, react-plotly.js |
-| **PDF Export** | jsPDF, html2canvas |
-| **Deployment** | Docker, Railway, Render, Vercel |
+| **Export** | openpyxl (Excel), markdown |
+| **Deployment** | Docker, Render, Vercel |
 
 ## 📚 API Documentation
 
@@ -149,6 +168,25 @@ Generate visualization for a specific column.
 
 #### `GET /visualize`
 Generate all visualizations for the loaded dataset.
+
+#### `GET /stats/advanced`
+Get advanced statistical tests (normality, correlation significance).
+
+#### `POST /stats/regression`
+Perform linear regression between two columns.
+
+**Parameters:** `x_col`, `y_col`
+
+#### `POST /stats/ttest`
+Perform independent t-test between two columns.
+
+**Parameters:** `col1`, `col2`
+
+#### `GET /export/excel`
+Export current dataset and analysis to Excel workbook.
+
+#### `GET /export/markdown`
+Export analysis report as markdown file.
 
 ## 🌍 Environment Variables
 

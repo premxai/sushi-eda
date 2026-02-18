@@ -22,6 +22,7 @@ import { ColumnSearch } from "@/components/ColumnSearch";
 import { SlideUp } from "@/components/PageTransition";
 import Navbar from "@/components/Navbar";
 import UploadCard from "@/components/UploadCard";
+import { FeaturesSection } from "@/components/FeaturesSection";
 
 export default function Home() {
   const [report, setReport] = useState<EDAReport | null>(null);
@@ -214,6 +215,8 @@ export default function Home() {
         </div>
 
       </section>
+
+      <FeaturesSection />
     </main>
   );
 }
