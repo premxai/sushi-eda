@@ -54,8 +54,39 @@ def read_upload(file: UploadFile) -> pd.DataFrame:
 
     if ext == "csv":
         return pd.read_csv(io.BytesIO(contents))
+    elif ext == "tsv":
+        return pd.read_csv(io.BytesIO(contents), sep="\t")
     elif ext in ("xls", "xlsx"):
         return pd.read_excel(io.BytesIO(contents), engine="openpyxl")
+    elif ext == "parquet":
+        return pd.read_parquet(io.BytesIO(contents))
+    elif ext in ("db", "sqlite", "sqlite3"):
+        # For SQLite, we need to save to a temp file
+        import tempfile
+        import sqlite3
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+        
+        try:
+            conn = sqlite3.connect(tmp_path)
+            # Get list of tables
+            tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'", conn)
+            if len(tables) == 0:
+                raise HTTPException(status_code=400, detail="No tables found in SQLite database")
+            
+            # Use the first table (or we could let user select)
+            table_name = tables.iloc[0]['name']
+            df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+            conn.close()
+            
+            # Clean up temp file
+            import os
+            os.unlink(tmp_path)
+            
+            return df
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to read SQLite database: {str(e)}")
     elif ext == "json":
         data = json.loads(contents.decode('utf-8'))
         if isinstance(data, list):
@@ -74,7 +105,7 @@ def read_upload(file: UploadFile) -> pd.DataFrame:
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: .{ext}. Accepted: csv, xlsx, xls, json",
+            detail=f"Unsupported file type: .{ext}. Accepted: csv, tsv, xlsx, xls, parquet, sqlite, json",
         )
 
 

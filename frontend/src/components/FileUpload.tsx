@@ -46,9 +46,12 @@ export function FileUpload({
     onDrop,
     accept: {
       "text/csv": [".csv"],
+      "text/tab-separated-values": [".tsv"],
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
       "application/vnd.ms-excel": [".xls"],
       "application/json": [".json"],
+      "application/vnd.apache.parquet": [".parquet"],
+      "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
     },
     maxFiles: 1,
     disabled: isUploading,
