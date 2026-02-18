@@ -199,7 +199,7 @@ export default function Home() {
             text-neutral-500
             max-w-[600px]
           ">
-            Upload CSV, Excel, or JSON.
+            Upload CSV, TSV, Excel, JSON, Parquet, or SQLite.
             Sushi transforms raw data into beautiful insights instantly.
           </p>
 

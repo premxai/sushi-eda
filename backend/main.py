@@ -13,6 +13,7 @@ from loguru import logger
 from analyzer import EDAAnalyzer
 from visualizer import Visualizer
 from advanced_stats import AdvancedStatistics
+from export_utils import DataExporter
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -294,6 +295,65 @@ async def perform_ttest(col1: str, col2: str):
     
     stats_analyzer = AdvancedStatistics(_current_df)
     return stats_analyzer.t_test_independent(col1, col2)
+
+
+@app.get("/export/excel")
+async def export_to_excel():
+    """Export current dataset and analysis to Excel."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    
+    # Get the cached report
+    file_hash = None
+    report = None
+    for hash_key, cache_data in _analysis_cache.items():
+        if cache_data["df"].equals(_current_df):
+            file_hash = hash_key
+            report = cache_data["report"]
+            break
+    
+    if report is None:
+        # Generate report if not cached
+        analyzer = EDAAnalyzer(_current_df)
+        report = analyzer.generate_full_report()
+    
+    exporter = DataExporter(_current_df, report)
+    excel_data = exporter.to_excel()
+    
+    from fastapi.responses import Response
+    return Response(
+        content=excel_data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=sushi_analysis.xlsx"}
+    )
+
+
+@app.get("/export/markdown")
+async def export_to_markdown():
+    """Export analysis report as markdown."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    
+    # Get the cached report
+    report = None
+    for cache_data in _analysis_cache.values():
+        if cache_data["df"].equals(_current_df):
+            report = cache_data["report"]
+            break
+    
+    if report is None:
+        analyzer = EDAAnalyzer(_current_df)
+        report = analyzer.generate_full_report()
+    
+    exporter = DataExporter(_current_df, report)
+    markdown_content = exporter.generate_markdown_report()
+    
+    from fastapi.responses import Response
+    return Response(
+        content=markdown_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": "attachment; filename=sushi_report.md"}
+    )
 
 
 @app.get("/health")
