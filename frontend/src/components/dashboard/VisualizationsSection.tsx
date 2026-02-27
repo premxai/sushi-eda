@@ -87,7 +87,8 @@ export function VisualizationsSection({
     );
   }
 
-  const columnCharts: Record<string, { distribution?: unknown; box_plot?: unknown; categorical_bar?: unknown }> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const columnCharts: Record<string, { distribution?: any; box_plot?: any; categorical_bar?: any }> =
     visualizations.columns ?? {};
 
   const numericColumns = report.column_analysis.filter((c) => c.is_numeric);
