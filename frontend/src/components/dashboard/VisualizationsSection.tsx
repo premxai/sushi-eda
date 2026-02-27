@@ -94,6 +94,7 @@ export function VisualizationsSection({
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columnCharts: Record<string, { distribution?: any; box_plot?: any; categorical_bar?: any }> =
     visualizations.columns ?? {};
 

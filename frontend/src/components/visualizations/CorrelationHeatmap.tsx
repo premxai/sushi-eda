@@ -22,6 +22,7 @@ export function CorrelationHeatmap({ data }: CorrelationHeatmapProps) {
   if (data.columns.length === 0) return null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const annotations: any[] = [];
   for (let i = 0; i < data.columns.length; i++) {
     for (let j = 0; j < data.columns.length; j++) {

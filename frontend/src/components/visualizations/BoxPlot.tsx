@@ -26,6 +26,7 @@ export function BoxPlot({ outliers, preview }: BoxPlotProps) {
   // Build box traces using the full 5-number summary from outlier metadata.
   // This avoids the 50-row preview limitation — we use the pre-computed stats.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const traces: any[] = cols.map((o) => {
     // Collect raw values from preview for individual point scatter (best-effort)
     const rawValues = preview
