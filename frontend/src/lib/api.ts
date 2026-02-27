@@ -14,6 +14,18 @@ export async function uploadFile(file: File): Promise<EDAReport> {
   return data;
 }
 
+export async function loadSampleData(): Promise<File> {
+  const response = await fetch("/sample_sales.csv");
+  const blob = await response.blob();
+  return new File([blob], "sample_sales.csv", { type: "text/csv" });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchVisualizations(): Promise<Record<string, any>> {
+  const { data } = await client.get("/visualize");
+  return data;
+}
+
 export async function healthCheck(): Promise<boolean> {
   try {
     await client.get("/health");

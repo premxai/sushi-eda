@@ -162,7 +162,7 @@ export function FileUpload({
               <span className="text-indigo-600">browse</span>
             </p>
             <p className="mt-1.5 text-xs text-slate-400">
-              CSV, XLSX, or JSON up to 100 MB
+                CSV, TSV, XLSX, JSON, Parquet, SQLite — up to 100 MB
             </p>
           </div>
         )}

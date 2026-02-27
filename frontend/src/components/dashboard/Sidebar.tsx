@@ -10,6 +10,7 @@ import {
   Lightbulb,
   FileSpreadsheet,
   Plus,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export type NavSection =
   | "correlations"
   | "outliers"
   | "insights"
+  | "visualizations"
   | "data";
 
 interface NavItem {
@@ -33,6 +35,7 @@ const navItems: NavItem[] = [
   { id: "correlations", label: "Correlations", icon: GitCompareArrows },
   { id: "outliers", label: "Outliers", icon: AlertTriangle },
   { id: "insights", label: "Insights", icon: Lightbulb },
+  { id: "visualizations", label: "Visualizations", icon: ChartNoAxesCombined },
   { id: "data", label: "Data Table", icon: Table2 },
 ];
 
