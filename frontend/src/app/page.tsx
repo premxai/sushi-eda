@@ -8,12 +8,13 @@ import { ColumnCard } from "@/components/dashboard/ColumnCard";
 import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
+import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile } from "@/lib/api";
+import { uploadFile, loadSampleData, fetchVisualizations } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare } from "lucide-react";
+import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -32,6 +33,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<NavSection>("overview");
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
+  const [vizLoading, setVizLoading] = useState(false);
 
   const handleFileAccepted = useCallback(async (file: File) => {
     setIsUploading(true);
@@ -70,12 +75,38 @@ export default function Home() {
 
   const handleClearError = () => setError(null);
 
+  const handleTryDemo = useCallback(async () => {
+    setIsDemoLoading(true);
+    try {
+      const file = await loadSampleData();
+      await handleFileAccepted(file);
+    } finally {
+      setIsDemoLoading(false);
+    }
+  }, [handleFileAccepted]);
+
+  const handleSectionChange = useCallback(async (section: NavSection) => {
+    setActiveSection(section);
+    if (section === "visualizations" && !visualizations && !vizLoading) {
+      setVizLoading(true);
+      try {
+        const data = await fetchVisualizations();
+        setVisualizations(data);
+      } catch {
+        // silently fail — VisualizationsSection will show an error state
+      } finally {
+        setVizLoading(false);
+      }
+    }
+  }, [visualizations, vizLoading]);
+
   const handleNewFile = () => {
     setReport(null);
     setFileName("");
     setError(null);
     setUploadProgress(0);
     setActiveSection("overview");
+    setVisualizations(null);
   };
 
   // ─── Dashboard View ───────────────────────────────────────────────
@@ -93,6 +124,7 @@ export default function Home() {
       correlations: "Correlations",
       outliers: "Outlier Detection",
       insights: "Insights",
+      visualizations: "Visualizations",
       data: "Data Table",
     };
 
@@ -101,7 +133,7 @@ export default function Home() {
         <Sidebar
           fileName={fileName}
           activeSection={activeSection}
-          onSectionChange={setActiveSection}
+          onSectionChange={handleSectionChange}
           onNewFile={handleNewFile}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -153,13 +185,20 @@ export default function Home() {
               {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
               {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
               {activeSection === "insights" && <InsightsSection report={report} />}
+              {activeSection === "visualizations" && (
+                <VisualizationsSection
+                  visualizations={visualizations}
+                  isLoading={vizLoading}
+                  report={report}
+                />
+              )}
               {activeSection === "data" && <DataTable preview={report.preview} />}
             </ErrorBoundary>
           </main>
           <KeyboardShortcuts />
-          <CommandPalette 
-            onSectionChange={(section) => setActiveSection(section as NavSection)}
-            sections={["overview", "columns", "correlations", "outliers", "insights", "data"]}
+            <CommandPalette
+            onSectionChange={(section) => handleSectionChange(section as NavSection)}
+            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "data"]}
           />
         </div>
       </div>
@@ -169,7 +208,7 @@ export default function Home() {
   // ─── Landing Page ─────────────────────────────────────────────────
   return (
     <main>
-      <Navbar />
+      <Navbar onTryDemo={handleTryDemo} isDemoLoading={isDemoLoading} />
 
       <section className="
         relative
@@ -204,13 +243,22 @@ export default function Home() {
             Sushi transforms raw data into beautiful insights instantly.
           </p>
 
-          <UploadCard 
+          <UploadCard
             onFileAccepted={handleFileAccepted}
             isUploading={isUploading}
             uploadProgress={uploadProgress}
             error={error}
             onClearError={handleClearError}
           />
+
+          <button
+            onClick={handleTryDemo}
+            disabled={isDemoLoading}
+            className="mt-4 flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-800 disabled:opacity-50"
+          >
+            <ArrowRight className="h-3.5 w-3.5" />
+            {isDemoLoading ? "Loading sample..." : "Try with sample sales data"}
+          </button>
 
         </div>
 
