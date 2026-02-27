@@ -9,6 +9,8 @@ import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
+import { CleaningSection } from "@/components/dashboard/CleaningSection";
+import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations } from "@/lib/api";
@@ -37,6 +39,11 @@ export default function DashboardPage() {
       router.push("/");
     }
   }, [router]);
+
+  const handleReportUpdate = useCallback((newReport: EDAReport, newPreview: Record<string, unknown>[]) => {
+    setReport({ ...newReport, preview: newPreview });
+    setVisualizations(null);
+  }, []);
 
   const handleSectionChange = useCallback(async (section: NavSection) => {
     setActiveSection(section);
@@ -83,12 +90,13 @@ export default function DashboardPage() {
     outliers: "Outlier Detection",
     insights: "Insights",
     visualizations: "Visualizations",
+    cleaning: "Data Cleaning",
+    transforms: "Feature Engineering",
     data: "Data Table",
   };
 
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
       <Sidebar
         fileName={fileName}
         activeSection={activeSection}
@@ -96,35 +104,24 @@ export default function DashboardPage() {
         onNewFile={handleNewFile}
       />
 
-      {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Sticky header */}
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
           <h1 className="text-sm font-semibold text-slate-900">
             {sectionTitles[activeSection]}
           </h1>
           <div className="flex items-center gap-3">
             {headerStats.map((s) => (
-              <div
-                key={s.label}
-                className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1"
-              >
+              <div key={s.label} className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
                 <s.icon className="h-3 w-3 text-slate-400" />
                 <span className="text-[11px] text-slate-500">{s.label}</span>
-                <span className="text-[11px] font-semibold text-slate-900 tabular-nums">
-                  {s.value}
-                </span>
+                <span className="text-[11px] font-semibold text-slate-900 tabular-nums">{s.value}</span>
               </div>
             ))}
           </div>
         </header>
 
-        {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {activeSection === "overview" && (
-            <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />
-          )}
-
+          {activeSection === "overview" && <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}
           {activeSection === "columns" && (
             <div className="space-y-2">
               {report.column_analysis.map((col) => (
@@ -132,30 +129,19 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-
-          {activeSection === "correlations" && (
-            <CorrelationSection data={report.correlation_matrix} />
-          )}
-
-          {activeSection === "outliers" && (
-            <OutliersSection outliers={report.outliers} preview={report.preview} />
-          )}
-
-          {activeSection === "insights" && (
-            <InsightsSection report={report} />
-          )}
-
+          {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
+          {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
+          {activeSection === "insights" && <InsightsSection report={report} />}
           {activeSection === "visualizations" && (
-            <VisualizationsSection
-              visualizations={visualizations}
-              isLoading={vizLoading}
-              report={report}
-            />
+            <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} />
           )}
-
-          {activeSection === "data" && (
-            <DataTable preview={report.preview} />
+          {activeSection === "cleaning" && (
+            <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
           )}
+          {activeSection === "transforms" && (
+            <TransformSection report={report} onReportUpdate={handleReportUpdate} />
+          )}
+          {activeSection === "data" && <DataTable preview={report.preview} />}
         </main>
       </div>
     </div>

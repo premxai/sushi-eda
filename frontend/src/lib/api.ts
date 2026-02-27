@@ -26,6 +26,30 @@ export async function fetchVisualizations(): Promise<Record<string, any>> {
   return data;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchColumnVisualization(
+  columnName: string,
+  chartType: "auto" | "distribution" | "box_plot" | "categorical_bar" = "auto"
+): Promise<Record<string, any>> {
+  const { data } = await client.get(
+    `/visualize/${encodeURIComponent(columnName)}`,
+    { params: { chart_type: chartType } }
+  );
+  return data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function cleanDataset(operations: Record<string, any>): Promise<Record<string, any>> {
+  const { data } = await client.post("/clean", operations);
+  return data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function transformColumn(params: Record<string, any>): Promise<Record<string, any>> {
+  const { data } = await client.post("/transform", params);
+  return data;
+}
+
 export async function healthCheck(): Promise<boolean> {
   try {
     await client.get("/health");

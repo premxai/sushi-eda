@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ColumnAnalysis } from "@/lib/types";
-import { DistributionChart } from "@/components/visualizations/DistributionChart";
-import { CategoricalBar } from "@/components/visualizations/CategoricalBar";
+import { fetchColumnVisualization } from "@/lib/api";
+import dynamic from "next/dynamic";
+import { plotlyConfig } from "@/lib/plotly-theme";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 interface ColumnCardProps {
   column: ColumnAnalysis;
@@ -27,14 +30,63 @@ function missingBadge(pct: number): string {
   return "bg-rose-50 text-rose-700 border-rose-200";
 }
 
-export function ColumnCard({ column, preview, totalRows }: ColumnCardProps) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function BackendChart({ spec }: { spec: any }) {
+  if (!spec || spec.error) return null;
+  const layout = {
+    ...(spec.layout ?? {}),
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "Inter, sans-serif", size: 11, color: "#334155" },
+    autosize: true,
+    margin: { t: 10, r: 20, b: 40, l: 55 },
+  };
+  return (
+    <Plot
+      data={spec.data ?? []}
+      layout={layout}
+      config={{ ...plotlyConfig, responsive: true }}
+      useResizeHandler
+      style={{ width: "100%", minHeight: layout.height ?? 220 }}
+    />
+  );
+}
+
+export function ColumnCard({ column, totalRows }: ColumnCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [chartSpec, setChartSpec] = useState<Record<string, any> | null>(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [boxSpec, setBoxSpec] = useState<Record<string, any> | null>(null);
+
+  const handleToggle = useCallback(async () => {
+    const opening = !isOpen;
+    setIsOpen(opening);
+    if (opening && !chartSpec && !chartLoading) {
+      setChartLoading(true);
+      try {
+        // Primary chart: distribution for numeric, categorical_bar for text
+        const primary = await fetchColumnVisualization(column.name, "auto");
+        setChartSpec(primary);
+        // For numeric columns, also fetch box plot
+        if (column.is_numeric) {
+          const box = await fetchColumnVisualization(column.name, "box_plot");
+          setBoxSpec(box);
+        }
+      } catch {
+        // backend not available — chart stays null, stats still visible
+      } finally {
+        setChartLoading(false);
+      }
+    }
+  }, [isOpen, chartSpec, chartLoading, column.name, column.is_numeric]);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white transition-shadow hover:shadow-md">
       {/* Header — always visible */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flex w-full items-center justify-between p-4 text-left"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -48,20 +100,10 @@ export function ColumnCard({ column, preview, totalRows }: ColumnCardProps) {
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span
-            className={cn(
-              "rounded-full border px-2 py-0.5 text-xs font-medium",
-              dtypeBadgeColor(column.dtype)
-            )}
-          >
+          <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", dtypeBadgeColor(column.dtype))}>
             {column.dtype}
           </span>
-          <span
-            className={cn(
-              "rounded-full border px-2 py-0.5 text-xs font-medium",
-              missingBadge(column.missing_percent)
-            )}
-          >
+          <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", missingBadge(column.missing_percent))}>
             {column.missing_percent}% missing
           </span>
         </div>
@@ -77,65 +119,76 @@ export function ColumnCard({ column, preview, totalRows }: ColumnCardProps) {
             <StatCell label="Type" value={column.dtype} mono />
           </div>
 
-          {/* Numeric stats + sparkline */}
+          {/* Numeric stats */}
           {column.is_numeric && column.stats && (
-            <div className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <StatCell label="Mean" value={column.stats.mean.toLocaleString()} />
-                <StatCell label="Median" value={column.stats.median.toLocaleString()} />
-                <StatCell label="Std Dev" value={column.stats.std.toLocaleString()} />
-                <StatCell label="Skewness" value={column.stats.skewness.toLocaleString()} />
-                <StatCell label="Min" value={column.stats.min.toLocaleString()} />
-                <StatCell label="Q1" value={column.stats.q1.toLocaleString()} />
-                <StatCell label="Q3" value={column.stats.q3.toLocaleString()} />
-                <StatCell label="Max" value={column.stats.max.toLocaleString()} />
-              </div>
-
-              {/* Interactive histogram */}
-              <div className="rounded-md border border-slate-100 bg-white">
-                <DistributionChart
-                  columnName={column.name}
-                  stats={column.stats}
-                  preview={preview}
-                />
-              </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCell label="Mean" value={column.stats.mean.toLocaleString()} />
+              <StatCell label="Median" value={column.stats.median.toLocaleString()} />
+              <StatCell label="Std Dev" value={column.stats.std.toLocaleString()} />
+              <StatCell label="Skewness" value={column.stats.skewness.toLocaleString()} />
+              <StatCell label="Min" value={column.stats.min.toLocaleString()} />
+              <StatCell label="Q1" value={column.stats.q1.toLocaleString()} />
+              <StatCell label="Q3" value={column.stats.q3.toLocaleString()} />
+              <StatCell label="Max" value={column.stats.max.toLocaleString()} />
             </div>
           )}
 
-          {/* Categorical: interactive bar chart */}
+          {/* Top values for categorical */}
           {!column.is_numeric && column.top_values && column.top_values.length > 0 && (
-            <div className="mt-4 rounded-md border border-slate-100 bg-white">
-              <CategoricalBar
-                columnName={column.name}
-                topValues={column.top_values}
-                totalRows={totalRows}
-              />
+            <div className="mt-3">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-400">Top Values</p>
+              <div className="space-y-1">
+                {column.top_values.slice(0, 8).map((tv) => {
+                  const pct = ((tv.count / totalRows) * 100).toFixed(1);
+                  return (
+                    <div key={tv.value} className="flex items-center gap-2">
+                      <span className="w-32 shrink-0 truncate font-mono text-xs text-slate-700">{tv.value}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-indigo-400"
+                          style={{ width: `${Math.min(100, (tv.count / totalRows) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-16 shrink-0 text-right font-mono text-xs text-slate-500 tabular-nums">
+                        {tv.count.toLocaleString()} ({pct}%)
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          {/* Charts */}
+          <div className="mt-4 space-y-3">
+            {chartLoading && (
+              <div className="flex h-32 items-center justify-center gap-2 text-xs text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading chart…
+              </div>
+            )}
+            {!chartLoading && chartSpec && (
+              <div className="rounded-md border border-slate-100 overflow-hidden">
+                <BackendChart spec={chartSpec} />
+              </div>
+            )}
+            {!chartLoading && boxSpec && (
+              <div className="rounded-md border border-slate-100 overflow-hidden">
+                <BackendChart spec={boxSpec} />
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function StatCell({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function StatCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="rounded-md bg-slate-50 px-3 py-2">
       <p className="text-[11px] text-slate-400">{label}</p>
-      <p
-        className={cn(
-          "mt-0.5 text-sm font-medium text-slate-900 tabular-nums",
-          mono && "font-mono"
-        )}
-      >
+      <p className={cn("mt-0.5 text-sm font-medium text-slate-900 tabular-nums", mono && "font-mono")}>
         {value}
       </p>
     </div>

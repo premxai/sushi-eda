@@ -9,6 +9,8 @@ import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
+import { CleaningSection } from "@/components/dashboard/CleaningSection";
+import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
@@ -85,6 +87,11 @@ export default function Home() {
     }
   }, [handleFileAccepted]);
 
+  const handleReportUpdate = useCallback((newReport: EDAReport, newPreview: Record<string, unknown>[]) => {
+    setReport({ ...newReport, preview: newPreview });
+    setVisualizations(null); // invalidate cached viz — data changed
+  }, []);
+
   const handleSectionChange = useCallback(async (section: NavSection) => {
     setActiveSection(section);
     if (section === "visualizations" && !visualizations && !vizLoading) {
@@ -125,6 +132,8 @@ export default function Home() {
       outliers: "Outlier Detection",
       insights: "Insights",
       visualizations: "Visualizations",
+      cleaning: "Data Cleaning",
+      transforms: "Feature Engineering",
       data: "Data Table",
     };
 
@@ -185,6 +194,12 @@ export default function Home() {
               {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
               {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
               {activeSection === "insights" && <InsightsSection report={report} />}
+              {activeSection === "cleaning" && (
+                <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
+              )}
+              {activeSection === "transforms" && (
+                <TransformSection report={report} onReportUpdate={handleReportUpdate} />
+              )}
               {activeSection === "visualizations" && (
                 <VisualizationsSection
                   visualizations={visualizations}
@@ -198,7 +213,7 @@ export default function Home() {
           <KeyboardShortcuts />
             <CommandPalette
             onSectionChange={(section) => handleSectionChange(section as NavSection)}
-            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "data"]}
+            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "data"]}
           />
         </div>
       </div>

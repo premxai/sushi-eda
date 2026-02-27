@@ -34,14 +34,18 @@ function PlotlyChart({ spec, title }: { spec: any; title?: string }) {
     );
   }
 
-  const data = spec.data ?? [];
+  // Backend returns fig.to_plotly_json() — use its layout directly,
+  // only override cosmetic properties to match the app theme
+  const backendLayout = spec.layout ?? {};
   const layout = {
-    ...plotlyLayout,
-    ...(spec.layout ?? {}),
-    paper_bgcolor: "transparent",
-    plot_bgcolor: "transparent",
+    ...backendLayout,
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "Inter, sans-serif", size: 12, color: "#334155" },
+    autosize: true,
   };
+
+  const data = spec.data ?? [];
 
   return (
     <div>
@@ -53,9 +57,9 @@ function PlotlyChart({ spec, title }: { spec: any; title?: string }) {
       <Plot
         data={data}
         layout={layout}
-        config={plotlyConfig}
+        config={{ ...plotlyConfig, responsive: true }}
         useResizeHandler
-        style={{ width: "100%" }}
+        style={{ width: "100%", minHeight: backendLayout.height ?? 280 }}
       />
     </div>
   );

@@ -14,6 +14,7 @@ from analyzer import EDAAnalyzer
 from visualizer import Visualizer
 from advanced_stats import AdvancedStatistics
 from export_utils import DataExporter
+from cleaner import DataCleaner, DataTransformer
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -354,6 +355,162 @@ async def export_to_markdown():
         media_type="text/markdown",
         headers={"Content-Disposition": "attachment; filename=sushi_report.md"}
     )
+
+
+@app.post("/clean")
+async def clean_dataset(operations: dict):
+    """
+    Apply cleaning operations to the current dataset.
+
+    Body example:
+    {
+      "drop_missing_rows": false,
+      "drop_missing_cols_threshold": 0.5,
+      "impute_numeric": "mean",       // "mean" | "median" | "constant" | "ffill" | null
+      "impute_numeric_value": 0,      // used when impute_numeric == "constant"
+      "impute_categorical": "mode",   // "mode" | "constant" | "ffill" | null
+      "impute_categorical_value": "unknown",
+      "remove_duplicates": true,
+      "cap_outliers": false,
+      "remove_outliers": false,
+      "outlier_columns": [],          // empty = all numeric
+      "cast_datetime": [],
+      "cast_numeric": [],
+      "cast_categorical": [],
+      "strip_whitespace": false,
+      "lowercase_strings": false,
+      "drop_constant_columns": false,
+      "rename_snake_case": false
+    }
+    """
+    global _current_df
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+
+    try:
+        cleaner = DataCleaner(_current_df)
+
+        if operations.get("drop_missing_rows"):
+            cleaner.drop_missing_rows(threshold=operations.get("drop_missing_rows_threshold", 0.0))
+
+        threshold = operations.get("drop_missing_cols_threshold")
+        if threshold is not None:
+            cleaner.drop_missing_columns(threshold=float(threshold))
+
+        impute_num = operations.get("impute_numeric")
+        if impute_num == "mean":
+            cleaner.impute_mean(columns=operations.get("impute_numeric_columns") or None)
+        elif impute_num == "median":
+            cleaner.impute_median(columns=operations.get("impute_numeric_columns") or None)
+        elif impute_num == "constant":
+            cleaner.impute_constant(
+                value=operations.get("impute_numeric_value", 0),
+                columns=operations.get("impute_numeric_columns") or None
+            )
+        elif impute_num == "ffill":
+            cleaner.impute_forward_fill(columns=operations.get("impute_numeric_columns") or None)
+
+        impute_cat = operations.get("impute_categorical")
+        if impute_cat == "mode":
+            cleaner.impute_mode(columns=operations.get("impute_categorical_columns") or None)
+        elif impute_cat == "constant":
+            cleaner.impute_constant(
+                value=operations.get("impute_categorical_value", "unknown"),
+                columns=operations.get("impute_categorical_columns") or None
+            )
+        elif impute_cat == "ffill":
+            cleaner.impute_forward_fill(columns=operations.get("impute_categorical_columns") or None)
+
+        if operations.get("remove_duplicates"):
+            cleaner.remove_duplicates(
+                subset=operations.get("duplicate_subset") or None,
+                keep=operations.get("duplicate_keep", "first")
+            )
+
+        outlier_cols = operations.get("outlier_columns") or None
+        if operations.get("cap_outliers"):
+            cleaner.cap_outliers_iqr(columns=outlier_cols)
+        elif operations.get("remove_outliers"):
+            cleaner.remove_outliers_iqr(columns=outlier_cols)
+
+        if operations.get("cast_datetime"):
+            cleaner.cast_to_datetime(operations["cast_datetime"])
+        if operations.get("cast_numeric"):
+            cleaner.cast_to_numeric(operations["cast_numeric"])
+        if operations.get("cast_categorical"):
+            cleaner.cast_to_categorical(operations["cast_categorical"])
+
+        if operations.get("strip_whitespace"):
+            cleaner.strip_whitespace()
+        if operations.get("lowercase_strings"):
+            cleaner.to_lowercase()
+        if operations.get("drop_constant_columns"):
+            cleaner.drop_constant_columns()
+        if operations.get("rename_snake_case"):
+            cleaner.rename_columns_snake_case()
+
+        result = cleaner.result()
+        # Update the in-memory dataframe with the cleaned version
+        _current_df = cleaner.df
+        logger.info(f"Cleaning complete: {result['rows_removed']} rows removed, {result['cols_removed']} cols removed")
+        return result
+
+    except Exception as e:
+        logger.error(f"Cleaning error: {e}")
+        raise HTTPException(status_code=500, detail=f"Cleaning failed: {str(e)}")
+
+
+@app.post("/transform")
+async def transform_dataset(operations: dict):
+    """
+    Apply feature engineering transformations to the current dataset.
+
+    Body example:
+    {
+      "log_transform": ["price", "revenue"],
+      "normalize": ["quantity"],
+      "standardize": ["price"],
+      "bin_equal_width": {"column": "age", "n_bins": 5},
+      "bin_equal_freq": {"column": "age", "n_bins": 5},
+      "one_hot_encode": ["category", "region"],
+      "label_encode": ["customer_type"],
+      "extract_datetime": ["order_date"]
+    }
+    """
+    global _current_df
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+
+    try:
+        transformer = DataTransformer(_current_df)
+
+        if operations.get("log_transform"):
+            transformer.log_transform(operations["log_transform"])
+        if operations.get("normalize"):
+            transformer.normalize_minmax(operations["normalize"])
+        if operations.get("standardize"):
+            transformer.standardize_zscore(operations["standardize"])
+        if operations.get("bin_equal_width"):
+            cfg = operations["bin_equal_width"]
+            transformer.bin_equal_width(cfg["column"], n_bins=cfg.get("n_bins", 5))
+        if operations.get("bin_equal_freq"):
+            cfg = operations["bin_equal_freq"]
+            transformer.bin_equal_frequency(cfg["column"], n_bins=cfg.get("n_bins", 5))
+        if operations.get("one_hot_encode"):
+            transformer.one_hot_encode(operations["one_hot_encode"])
+        if operations.get("label_encode"):
+            transformer.label_encode(operations["label_encode"])
+        if operations.get("extract_datetime"):
+            transformer.extract_datetime_features(operations["extract_datetime"])
+
+        result = transformer.result()
+        _current_df = transformer.df
+        logger.info(f"Transform complete: {len(result['transform_log'])} operations applied")
+        return result
+
+    except Exception as e:
+        logger.error(f"Transform error: {e}")
+        raise HTTPException(status_code=500, detail=f"Transform failed: {str(e)}")
 
 
 @app.get("/health")

@@ -13,9 +13,8 @@ interface BoxPlotProps {
 }
 
 export function BoxPlot({ outliers, preview }: BoxPlotProps) {
-  if (outliers.length === 0) return null;
-
   const cols = outliers.filter((o) => o.outlier_count > 0).slice(0, 8);
+
   if (cols.length === 0) {
     return (
       <div className="flex h-48 items-center justify-center text-xs text-slate-400">
@@ -24,31 +23,51 @@ export function BoxPlot({ outliers, preview }: BoxPlotProps) {
     );
   }
 
-  const traces = cols.map((o) => {
-    const values = preview
+  // Build box traces using the full 5-number summary from outlier metadata.
+  // This avoids the 50-row preview limitation — we use the pre-computed stats.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const traces: any[] = cols.map((o) => {
+    // Collect raw values from preview for individual point scatter (best-effort)
+    const rawValues = preview
       .map((row) => row[o.column])
       .filter((v) => v != null && typeof v === "number") as number[];
 
+    // Detect outlier values from preview to show as red dots
+    const outlierValues = rawValues.filter(
+      (v) => v < o.lower_bound || v > o.upper_bound
+    );
+
+    // Use pre-computed 5-number summary as the box
+    const median = (o.q1 + o.q3) / 2; // approximate — actual median isn't stored
     return {
-      y: values,
-      type: "box" as const,
+      type: "box",
       name: o.column,
+      // Plotly box with pre-set quartiles
+      q1: [o.q1],
+      median: [median],
+      q3: [o.q3],
+      lowerfence: [o.lower_bound],
+      upperfence: [o.upper_bound],
+      // Overlay actual outlier points from preview data
+      ...(outlierValues.length > 0 && {
+        y: outlierValues,
+        boxpoints: "outliers",
+      }),
       marker: {
         color: "rgba(79, 70, 229, 0.5)",
         outliercolor: "#ef4444",
         size: 4,
         line: { outliercolor: "#ef4444", outlierwidth: 1.5 },
       },
-      boxpoints: "outliers" as const,
       line: { color: "#4f46e5" },
       fillcolor: "rgba(79, 70, 229, 0.1)",
-      hovertemplate: 
+      hovertemplate:
         `<b>${o.column}</b><br>` +
-        `Value: %{y:.2f}<br>` +
         `Q1: ${o.q1.toFixed(2)}<br>` +
         `Q3: ${o.q3.toFixed(2)}<br>` +
-        `Min: ${o.lower_bound.toFixed(2)}<br>` +
-        `Max: ${o.upper_bound.toFixed(2)}` +
+        `IQR: ${o.iqr.toFixed(2)}<br>` +
+        `Whiskers: [${o.lower_bound.toFixed(2)}, ${o.upper_bound.toFixed(2)}]<br>` +
+        `Outliers: ${o.outlier_count} (${o.outlier_percent}%)` +
         `<extra></extra>`,
     };
   });
@@ -66,9 +85,7 @@ export function BoxPlot({ outliers, preview }: BoxPlotProps) {
           zerolinecolor: "#e2e8f0",
           title: { text: "Value", font: { size: 11, color: "#94a3b8" } },
         },
-        xaxis: {
-          tickangle: -30,
-        },
+        xaxis: { tickangle: -30 },
       }}
       config={plotlyConfig}
       useResizeHandler
