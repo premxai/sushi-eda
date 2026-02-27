@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
@@ -8,8 +8,10 @@ import { ColumnCard } from "@/components/dashboard/ColumnCard";
 import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
+import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { EDAReport } from "@/lib/types";
+import { fetchVisualizations } from "@/lib/api";
 import { Rows3, Columns3, HardDrive, CopyMinus } from "lucide-react";
 
 export default function DashboardPage() {
@@ -17,6 +19,9 @@ export default function DashboardPage() {
   const [report, setReport] = useState<EDAReport | null>(null);
   const [fileName, setFileName] = useState("");
   const [activeSection, setActiveSection] = useState<NavSection>("overview");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
+  const [vizLoading, setVizLoading] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("eda_report");
@@ -32,6 +37,21 @@ export default function DashboardPage() {
       router.push("/");
     }
   }, [router]);
+
+  const handleSectionChange = useCallback(async (section: NavSection) => {
+    setActiveSection(section);
+    if (section === "visualizations" && !visualizations && !vizLoading) {
+      setVizLoading(true);
+      try {
+        const data = await fetchVisualizations();
+        setVisualizations(data);
+      } catch {
+        // VisualizationsSection handles the empty state
+      } finally {
+        setVizLoading(false);
+      }
+    }
+  }, [visualizations, vizLoading]);
 
   const handleNewFile = () => {
     sessionStorage.removeItem("eda_report");
@@ -62,6 +82,7 @@ export default function DashboardPage() {
     correlations: "Correlations",
     outliers: "Outlier Detection",
     insights: "Insights",
+    visualizations: "Visualizations",
     data: "Data Table",
   };
 
@@ -71,7 +92,7 @@ export default function DashboardPage() {
       <Sidebar
         fileName={fileName}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={handleSectionChange}
         onNewFile={handleNewFile}
       />
 
@@ -122,6 +143,14 @@ export default function DashboardPage() {
 
           {activeSection === "insights" && (
             <InsightsSection report={report} />
+          )}
+
+          {activeSection === "visualizations" && (
+            <VisualizationsSection
+              visualizations={visualizations}
+              isLoading={vizLoading}
+              report={report}
+            />
           )}
 
           {activeSection === "data" && (
