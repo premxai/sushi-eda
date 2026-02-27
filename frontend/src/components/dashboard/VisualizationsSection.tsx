@@ -4,7 +4,7 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { AlertCircle, BarChart3, Loader2 } from "lucide-react";
 import { EDAReport } from "@/lib/types";
-import { plotlyConfig, plotlyLayout } from "@/lib/plotly-theme";
+import { plotlyConfig } from "@/lib/plotly-theme";
 
 const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
@@ -22,9 +22,11 @@ interface VisualizationsSectionProps {
   report: EDAReport;
 }
 
-// Renders a single Plotly figure from a backend-generated JSON spec
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function PlotlyChart({ spec, title }: { spec: any; title?: string }) {
+type PlotSpec = any;
+
+// Renders a single Plotly figure from a backend-generated JSON spec
+function PlotlyChart({ spec, title }: { spec: PlotSpec; title?: string }) {
   if (!spec || spec.error) {
     return (
       <div className="flex h-24 items-center justify-center gap-2 rounded-lg bg-slate-50 text-xs text-slate-400">
