@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { EDAReport } from "./types";
 
@@ -20,13 +21,11 @@ export async function loadSampleData(): Promise<File> {
   return new File([blob], "sample_sales.csv", { type: "text/csv" });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchVisualizations(): Promise<Record<string, any>> {
   const { data } = await client.get("/visualize");
   return data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchColumnVisualization(
   columnName: string,
   chartType: "auto" | "distribution" | "box_plot" | "categorical_bar" = "auto"
@@ -38,13 +37,11 @@ export async function fetchColumnVisualization(
   return data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function cleanDataset(operations: Record<string, any>): Promise<Record<string, any>> {
   const { data } = await client.post("/clean", operations);
   return data;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function transformColumn(params: Record<string, any>): Promise<Record<string, any>> {
   const { data } = await client.post("/transform", params);
   return data;
