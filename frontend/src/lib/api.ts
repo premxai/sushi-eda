@@ -15,6 +15,27 @@ export async function uploadFile(file: File): Promise<EDAReport> {
   return data;
 }
 
+/** Async upload — returns a dataset_id immediately; use useJobStream to track progress. */
+export async function uploadFileAsync(
+  file: File,
+  orgId: string = "default"
+): Promise<{ dataset_id: string; status: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await client.post<{ dataset_id: string; status: string }>(
+    `/datasets/upload?org_id=${orgId}`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+/** Fetch a completed analysis by analysis_id. */
+export async function fetchAnalysis(analysisId: string): Promise<{ report: EDAReport }> {
+  const { data } = await client.get(`/analyses/${analysisId}`);
+  return data;
+}
+
 export async function loadSampleData(): Promise<File> {
   const response = await fetch("/sample_sales.csv");
   const blob = await response.blob();

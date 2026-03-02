@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { useJobStream } from "@/hooks/useJobStream";
 import { Button } from "@/components/ui/button";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
@@ -14,7 +15,7 @@ import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, loadSampleData, fetchVisualizations } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -36,41 +37,90 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState<NavSection>("overview");
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [datasetId, setDatasetId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
   const [vizLoading, setVizLoading] = useState(false);
+
+  // Real-time job stream — activates when datasetId is set after async upload
+  const jobStream = useJobStream(datasetId);
+
+  // When the async job finishes, fetch the full report
+  useEffect(() => {
+    if (jobStream.status === "done" && jobStream.analysisId && datasetId) {
+      // Fetch the completed analysis from the backend
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api";
+      fetch(`${apiBase}/analyses/${jobStream.analysisId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setReport(data.report ?? data);
+          setUploadProgress(100);
+          setIsUploading(false);
+          setDatasetId(null);
+        })
+        .catch(() => {
+          setError("Analysis complete but failed to load results. Please refresh.");
+          setIsUploading(false);
+          setDatasetId(null);
+        });
+    }
+    if (jobStream.status === "failed") {
+      setError(jobStream.error ?? "Analysis failed");
+      setIsUploading(false);
+      setUploadProgress(0);
+      setDatasetId(null);
+    }
+    if (jobStream.status === "processing") {
+      setUploadProgress(jobStream.progress);
+    }
+  }, [jobStream.status, jobStream.analysisId, jobStream.error, jobStream.progress, datasetId]);
 
   const handleFileAccepted = useCallback(async (file: File) => {
     setIsUploading(true);
     setUploadProgress(0);
     setError(null);
     setFileName(file.name);
-
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 300);
+    setDatasetId(null);
 
     try {
-      const data = await uploadFile(file);
-      clearInterval(interval);
-      setUploadProgress(100);
-      await new Promise((r) => setTimeout(r, 200));
-      setReport(data);
+      // Try async (Celery-backed) upload first; fall back to legacy sync
+      const asyncResult = await uploadFileAsync(file).catch(() => null);
+      if (asyncResult?.dataset_id) {
+        // Async path: SSE hook drives progress from here
+        setDatasetId(asyncResult.dataset_id);
+        setUploadProgress(10);
+        return;
+      }
+
+      // Legacy sync path (dev / no-Celery env)
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) { clearInterval(interval); return 90; }
+          return prev + Math.random() * 15;
+        });
+      }, 300);
+
+      try {
+        const data = await uploadFile(file);
+        clearInterval(interval);
+        setUploadProgress(100);
+        await new Promise((r) => setTimeout(r, 200));
+        setReport(data);
+      } catch (err: unknown) {
+          clearInterval(interval);
+          setUploadProgress(0);
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Failed to analyze file. Check that the backend is running on port 8000.";
+          setError(message);
+        } finally {
+          setIsUploading(false);
+        }
+      }
     } catch (err: unknown) {
-      clearInterval(interval);
       setUploadProgress(0);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to analyze file. Check that the backend is running on port 8000.";
-      setError(message);
-    } finally {
+      setError(err instanceof Error ? err.message : "Upload failed");
       setIsUploading(false);
     }
   }, []);

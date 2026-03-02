@@ -19,6 +19,7 @@ from export_utils import DataExporter
 from cache import cache
 from storage import storage
 from worker import analyze_dataset
+from routers import webhooks, jobs as jobs_router
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -40,6 +41,10 @@ app.add_middleware(
 # Add rate limiter to app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Mount routers
+app.include_router(webhooks.router)
+app.include_router(jobs_router.router)
 
 # In-memory store for the last uploaded DataFrame (single-user dev tool)
 _current_df: Optional[pd.DataFrame] = None
