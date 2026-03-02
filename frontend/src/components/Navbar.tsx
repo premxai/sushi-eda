@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Github, Sparkles } from "lucide-react";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 interface NavbarProps {
   onTryDemo?: () => void;
@@ -27,7 +29,7 @@ export default function Navbar({ onTryDemo, isDemoLoading }: NavbarProps) {
 
       <div className="flex items-center gap-3">
         <a
-          href="https://github.com"
+          href="https://github.com/premxai/sushi-eda"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
@@ -46,6 +48,32 @@ export default function Navbar({ onTryDemo, isDemoLoading }: NavbarProps) {
             {isDemoLoading ? "Loading..." : "Try Demo"}
           </button>
         )}
+
+        {/* Auth buttons — shown conditionally by Clerk */}
+        <SignedOut>
+          <Link
+            href="/sign-in"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/sign-up"
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-neutral-700"
+          >
+            Get started
+          </Link>
+        </SignedOut>
+
+        <SignedIn>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "w-8 h-8",
+              },
+            }}
+          />
+        </SignedIn>
       </div>
 
     </nav>
