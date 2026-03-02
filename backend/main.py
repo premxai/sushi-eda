@@ -1,5 +1,7 @@
 import io
 import json
+import os
+import uuid
 from typing import Optional, Any
 
 import pandas as pd
@@ -14,7 +16,9 @@ from analyzer import EDAAnalyzer
 from visualizer import Visualizer
 from advanced_stats import AdvancedStatistics
 from export_utils import DataExporter
-from cleaner import DataCleaner, DataTransformer
+from cache import cache
+from storage import storage
+from worker import analyze_dataset
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -519,6 +523,96 @@ async def health():
     return {
         "status": "ok",
         "version": "1.0.0",
-        "cache_size": len(_analysis_cache),
-        "current_df_loaded": _current_df is not None
+        "cache_size": cache.cache_size(),
+        "redis_ok": cache.ping(),
+        "current_df_loaded": _current_df is not None,
     }
+
+
+# ── Async upload endpoint (Celery-backed) ─────────────────────────────────────
+
+@app.post("/datasets/upload")
+@limiter.limit("10/minute")
+async def upload_dataset_async(
+    request: Request,
+    file: UploadFile = File(...),
+    org_id: str = "default",      # Will be replaced by Clerk auth in Task 7
+):
+    """
+    Production upload endpoint.
+    Saves file to R2, enqueues a Celery analysis job, returns immediately.
+
+    Poll GET /jobs/{dataset_id} for status, or connect to the SSE stream
+    at GET /jobs/{dataset_id}/stream for real-time push.
+    """
+    contents = file.file.read()
+    filename = file.filename or "upload"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
+
+    # Validate size
+    if len(contents) > 100 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File exceeds 100 MB limit")
+
+    # Upload to R2
+    dataset_id = str(uuid.uuid4())
+    file_key = f"uploads/{org_id}/{dataset_id}/{filename}"
+    try:
+        storage.upload(org_id, dataset_id, filename, contents)
+    except Exception as e:
+        logger.error(f"R2 upload failed: {e}")
+        raise HTTPException(status_code=500, detail="File storage failed")
+
+    # Persist Dataset row to Postgres
+    database_url = os.getenv("DATABASE_URL", "")
+    if database_url:
+        try:
+            import psycopg2
+            db_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+            conn = psycopg2.connect(db_url)
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO datasets
+                          (id, org_id, created_by, name, original_filename,
+                           file_key, file_size_bytes, file_format, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                        """,
+                        (dataset_id, org_id, org_id, filename, filename,
+                         file_key, len(contents), ext),
+                    )
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Dataset row insert failed (non-fatal): {e}")
+
+    # Enqueue Celery job
+    cache.set_job_status(dataset_id, "pending")
+    analyze_dataset.delay(
+        dataset_id=dataset_id,
+        org_id=org_id,
+        file_key=file_key,
+        file_format=ext,
+        database_url=database_url,
+    )
+
+    logger.info(f"Enqueued analysis job for dataset={dataset_id}")
+    return {
+        "dataset_id": dataset_id,
+        "status": "pending",
+        "message": "Analysis queued. Poll /jobs/{dataset_id} for progress.",
+    }
+
+
+@app.get("/jobs/{dataset_id}")
+async def get_job_status(dataset_id: str):
+    """
+    Return the current status of an analysis job.
+
+    Status values: pending | processing | done | failed
+    When done, the response includes analysis_id which can be used to
+    fetch the full report from GET /analyses/{analysis_id}.
+    """
+    status_data = cache.get_job_status(dataset_id)
+    if status_data is None:
+        raise HTTPException(status_code=404, detail="Job not found or expired")
+    return {"dataset_id": dataset_id, **status_data}
