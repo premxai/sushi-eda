@@ -4,6 +4,11 @@ import os
 import uuid
 from typing import Optional, Any
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +27,28 @@ from worker import analyze_dataset
 from routers import webhooks, jobs as jobs_router
 from routers.billing import router as billing_router
 from routers.datasets import router as datasets_router, analyses_router, credits_router
+from routers.shares import router as shares_router
+
+# ── Sentry ─────────────────────────────────────────────────────────────────────
+_SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        environment=os.getenv("ENVIRONMENT", "production"),
+        release=os.getenv("SENTRY_RELEASE", "sushi@1.0.0"),
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+            CeleryIntegration(monitor_beat_tasks=False),
+            RedisIntegration(),
+        ],
+        # Don't send PII (user emails, IPs) by default
+        send_default_pii=False,
+    )
+    logger.info("Sentry initialized")
+else:
+    logger.info("SENTRY_DSN not set — Sentry disabled")
 
 # Configure logging
 logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
@@ -48,6 +75,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(webhooks.router)
 app.include_router(jobs_router.router)
 app.include_router(billing_router)
+app.include_router(shares_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
 app.include_router(credits_router)
