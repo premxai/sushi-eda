@@ -301,7 +301,7 @@ export default function DatasetsPage() {
               >
                 {/* Format badge */}
                 <span style={{
-                  shrink: 0,
+                  flexShrink: 0,
                   padding: "3px 9px",
                   borderRadius: 7,
                   fontSize: 11,
