@@ -62,13 +62,16 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="Sushi EDA API", version="1.0.0")
 
-# CORS must be added first
+# CORS configuration - allow all origins for development and preview deployments
+# In production, consider restricting to specific domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allows all origins including Vercel preview URLs
+    allow_credentials=False,  # Must be False when allow_origins=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],  # Allow frontend to read all response headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Add rate limiter to app
