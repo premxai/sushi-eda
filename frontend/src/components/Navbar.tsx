@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Database, Github, Sparkles } from "lucide-react";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface NavbarProps {
   onTryDemo?: () => void;
@@ -29,8 +28,6 @@ export default function Navbar({ onTryDemo, isDemoLoading }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <ThemeToggle />
-
         <a
           href="https://github.com/premxai/sushi-eda"
           target="_blank"

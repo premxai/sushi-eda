@@ -21,7 +21,6 @@ import {
   restoreDataset,
   starDataset,
 } from "@/lib/api";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
 type Tab = "all" | "starred" | "archived";
@@ -133,7 +132,6 @@ export default function DatasetsPage() {
             <span className="font-semibold text-neutral-900 dark:text-neutral-100">Sushi</span>
           </Link>
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             <SignedIn>
               <UserButton appearance={{ elements: { avatarBox: "w-7 h-7" } }} />
             </SignedIn>
