@@ -13,7 +13,10 @@ import {
   ChartNoAxesCombined,
   Sparkles,
   FlaskConical,
+  Archive,
+  Database,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export type NavSection =
@@ -53,9 +56,11 @@ interface SidebarProps {
   activeSection: NavSection;
   onSectionChange: (section: NavSection) => void;
   onNewFile: () => void;
+  datasetId?: string | null;
+  onArchive?: () => void;
 }
 
-export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile }: SidebarProps) {
+export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, datasetId, onArchive }: SidebarProps) {
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-white overflow-y-auto">
       {/* Dataset header */}
@@ -105,8 +110,26 @@ export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile }:
         })}
       </nav>
 
-      {/* New file button */}
-      <div className="border-t border-slate-200 p-3 shrink-0">
+      {/* Footer actions */}
+      <div className="border-t border-slate-200 p-3 shrink-0 space-y-1.5">
+        <Link
+          href="/datasets"
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          <Database className="h-3.5 w-3.5 shrink-0" />
+          My Datasets
+        </Link>
+
+        {datasetId && onArchive && (
+          <button
+            onClick={onArchive}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+          >
+            <Archive className="h-3.5 w-3.5 shrink-0" />
+            Archive dataset
+          </button>
+        )}
+
         <button
           onClick={onNewFile}
           className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:shadow-md"

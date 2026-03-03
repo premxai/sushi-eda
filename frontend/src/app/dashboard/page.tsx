@@ -13,13 +13,14 @@ import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { EDAReport } from "@/lib/types";
-import { fetchVisualizations } from "@/lib/api";
+import { fetchVisualizations, archiveDataset } from "@/lib/api";
 import { Rows3, Columns3, HardDrive, CopyMinus } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [report, setReport] = useState<EDAReport | null>(null);
   const [fileName, setFileName] = useState("");
+  const [datasetId, setDatasetId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<NavSection>("overview");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
@@ -28,10 +29,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem("eda_report");
     const name = sessionStorage.getItem("eda_filename");
+    const id = sessionStorage.getItem("eda_dataset_id");
     if (stored) {
       try {
         setReport(JSON.parse(stored));
         setFileName(name || "dataset");
+        setDatasetId(id);
       } catch {
         router.push("/");
       }
@@ -63,7 +66,17 @@ export default function DashboardPage() {
   const handleNewFile = () => {
     sessionStorage.removeItem("eda_report");
     sessionStorage.removeItem("eda_filename");
+    sessionStorage.removeItem("eda_dataset_id");
     router.push("/");
+  };
+
+  const handleArchive = async () => {
+    if (!datasetId) return;
+    await archiveDataset(datasetId);
+    sessionStorage.removeItem("eda_report");
+    sessionStorage.removeItem("eda_filename");
+    sessionStorage.removeItem("eda_dataset_id");
+    router.push("/datasets");
   };
 
   if (!report) {
@@ -102,6 +115,8 @@ export default function DashboardPage() {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onNewFile={handleNewFile}
+        datasetId={datasetId}
+        onArchive={handleArchive}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">

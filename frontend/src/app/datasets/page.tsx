@@ -110,6 +110,7 @@ export default function DatasetsPage() {
       const analysis = await fetchDatasetAnalysis(dataset.id);
       sessionStorage.setItem("eda_report", JSON.stringify(analysis.report));
       sessionStorage.setItem("eda_filename", dataset.original_filename);
+      sessionStorage.setItem("eda_dataset_id", dataset.id);
       router.push("/");
     } catch {
       setOpeningId(null);

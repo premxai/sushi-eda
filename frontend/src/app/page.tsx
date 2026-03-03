@@ -15,7 +15,7 @@ import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +39,7 @@ export default function Home() {
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [datasetId, setDatasetId] = useState<string | null>(null);
+  const [openDatasetId, setOpenDatasetId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
   const [vizLoading, setVizLoading] = useState(false);
@@ -92,6 +93,7 @@ export default function Home() {
       if (asyncResult?.dataset_id) {
         // Async path: SSE hook drives progress from here
         setDatasetId(asyncResult.dataset_id);
+        setOpenDatasetId(asyncResult.dataset_id);
         setUploadProgress(10);
         return;
       }
@@ -167,6 +169,13 @@ export default function Home() {
     setUploadProgress(0);
     setActiveSection("overview");
     setVisualizations(null);
+    setOpenDatasetId(null);
+  };
+
+  const handleArchive = async () => {
+    if (!openDatasetId) return;
+    await archiveDataset(openDatasetId);
+    handleNewFile();
   };
 
   // ─── Dashboard View ───────────────────────────────────────────────
@@ -197,6 +206,8 @@ export default function Home() {
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
           onNewFile={handleNewFile}
+          datasetId={openDatasetId}
+          onArchive={handleArchive}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
