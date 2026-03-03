@@ -1,0 +1,47 @@
+# Railway monorepo configuration
+# Docs: https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "nixpacks"
+
+# ── Backend (FastAPI) ──────────────────────────────────────────────────────────
+# Railway service name: "backend"
+# Root directory: /backend
+# Start: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+# Health check: GET /health
+
+# ── Celery Worker ──────────────────────────────────────────────────────────────
+# Railway service name: "worker"
+# Root directory: /backend
+# Start: celery -A worker worker --loglevel=info --concurrency=2
+# No public port needed
+
+# ── Celery Beat ────────────────────────────────────────────────────────────────
+# Railway service name: "beat"
+# Root directory: /backend
+# Start: celery -A worker beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+# No public port needed
+
+# ── Recommended Railway services ───────────────────────────────────────────────
+# Add via Railway dashboard:
+#   - Redis (Railway plugin)          → injects REDIS_URL automatically
+#   - PostgreSQL (Railway plugin)     → injects DATABASE_URL automatically
+#
+# Required env vars (set in each service's Variables tab):
+#   DATABASE_URL          injected by Railway Postgres plugin
+#   REDIS_URL             injected by Railway Redis plugin
+#   CELERY_BROKER_URL     = $REDIS_URL
+#   CELERY_RESULT_BACKEND = $REDIS_URL/1
+#   CLERK_SECRET_KEY      your Clerk backend key
+#   ANTHROPIC_API_KEY     your Anthropic API key
+#   R2_ACCOUNT_ID         Cloudflare R2 account
+#   R2_ACCESS_KEY_ID      R2 credentials
+#   R2_SECRET_ACCESS_KEY  R2 credentials
+#   R2_BUCKET_NAME        R2 bucket
+#   STRIPE_SECRET_KEY     Stripe live/test key
+#   STRIPE_WEBHOOK_SECRET Stripe webhook signing secret
+#   CONNECTOR_SECRET_KEY  Fernet key for connector credentials
+#   SLACK_SIGNING_SECRET  Slack app signing secret (optional)
+#   SLACK_BOT_TOKEN       Slack bot OAuth token (optional)
+#   SENTRY_DSN            Sentry project DSN (optional)
+#   ENVIRONMENT           production

@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Sushi EDA",
+  "short_name": "Sushi",
+  "version": "1.0.0",
+  "description": "Capture tables and CSV links from any web page and analyze them instantly with Sushi EDA.",
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "https://api.sushi-eda.com/*",
+    "http://localhost:8000/*"
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sushi EDA",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

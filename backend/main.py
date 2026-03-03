@@ -31,6 +31,7 @@ from routers.datasets import router as datasets_router, analyses_router, credits
 from routers.integrations import router as integrations_router
 from routers.monitors import router as monitors_router
 from routers.shares import router as shares_router
+from routers.slack_bot import router as slack_router
 
 # ── Sentry ─────────────────────────────────────────────────────────────────────
 _SENTRY_DSN = os.getenv("SENTRY_DSN", "")
@@ -85,6 +86,7 @@ app.include_router(monitors_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
 app.include_router(credits_router)
+app.include_router(slack_router)
 
 # In-memory store for the last uploaded DataFrame (single-user dev tool)
 _current_df: Optional[pd.DataFrame] = None
