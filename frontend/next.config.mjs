@@ -1,5 +1,9 @@
 import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
+import webpack from 'webpack';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -15,8 +19,13 @@ const nextConfig = {
     if (!isServer) {
       config.resolve.fallback = {
         ...(config.resolve.fallback || {}),
-        buffer: false,
+        buffer: require.resolve('buffer/'),
       };
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+        })
+      );
     }
     return config;
   },
