@@ -200,6 +200,41 @@ async def get_dataset_analysis(
     }
 
 
+@router.post("/{dataset_id}/analysis/narrative")
+async def regenerate_narrative(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Re-generate the AI narrative for the latest analysis (editor+).
+    Useful after the initial job ran without ANTHROPIC_API_KEY set.
+    Returns the new narrative and updates Analysis.ai_narrative in DB.
+    """
+    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await _get_dataset_or_404(dataset_id, org_id, db)
+    analysis = await _get_latest_analysis(dataset_id, db)
+
+    from ai_narrative import generate_narrative
+    from sqlalchemy import update as sa_update
+
+    narrative = generate_narrative(analysis.report, dataset_name=str(dataset_id))
+    if narrative is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI narrative generation unavailable — check ANTHROPIC_API_KEY",
+        )
+
+    await db.execute(
+        sa_update(Analysis)
+        .where(Analysis.id == analysis.id)
+        .values(ai_narrative=narrative)
+    )
+    await db.commit()
+    return {"analysis_id": str(analysis.id), "ai_narrative": narrative}
+
+
 @router.get("/{dataset_id}/analyses")
 async def list_dataset_analyses(
     dataset_id: str,

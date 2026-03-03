@@ -112,11 +112,19 @@ def analyze_dataset(
         preview = df.head(50).to_pandas().fillna("").to_dict(orient="records")
         report["preview"] = preview
 
-        cache.set_job_status(dataset_id, "processing", {"progress": 80, "stage": "saving"})
+        cache.set_job_status(dataset_id, "processing", {"progress": 70, "stage": "generating_narrative"})
+
+        # ── 4b. AI narrative (Claude) ─────────────────────────────────────────
+        from ai_narrative import generate_narrative
+        narrative = generate_narrative(report, dataset_name=dataset_id)
+
+        cache.set_job_status(dataset_id, "processing", {"progress": 85, "stage": "saving"})
 
         # ── 5. Persist to Postgres + cache ────────────────────────────────────
         duration = time.time() - start_time
-        analysis_id = _save_analysis_to_db(database_url, dataset_id, org_id, report, file_hash, duration)
+        analysis_id = _save_analysis_to_db(
+            database_url, dataset_id, org_id, report, file_hash, duration, narrative=narrative
+        )
         cache.set_analysis(file_hash, report)
 
         # ── 6. Notify frontend via Redis pub/sub ──────────────────────────────
@@ -149,10 +157,10 @@ def _save_analysis_to_db(
     report: dict,
     file_hash: str,
     duration: float,
+    narrative: str | None = None,
 ) -> str:
     """Synchronously write the Analysis row and update Dataset.status using psycopg2."""
     import uuid
-    import json
     import psycopg2
     from psycopg2.extras import Json
 
@@ -171,13 +179,15 @@ def _save_analysis_to_db(
                 )
                 version = cur.fetchone()[0]
 
-                # Insert analysis
+                # Insert analysis (with AI narrative)
                 cur.execute(
                     """
-                    INSERT INTO analyses (id, dataset_id, org_id, version, report, job_id, duration_seconds)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO analyses
+                      (id, dataset_id, org_id, version, report, ai_narrative, job_id, duration_seconds)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (analysis_id, dataset_id, org_id, version, Json(report), file_hash, duration),
+                    (analysis_id, dataset_id, org_id, version,
+                     Json(report), narrative, file_hash, duration),
                 )
 
                 # Update dataset status + row/col counts
