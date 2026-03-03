@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArchiveRestore,
-  Database,
   FileSpreadsheet,
   Loader2,
   Plus,
@@ -25,15 +24,26 @@ import { SignedIn, UserButton } from "@clerk/nextjs";
 
 type Tab = "all" | "starred" | "archived";
 
-const FORMAT_COLORS: Record<string, string> = {
-  csv: "bg-emerald-100 text-emerald-700",
-  xlsx: "bg-blue-100 text-blue-700",
-  xls: "bg-blue-100 text-blue-700",
-  parquet: "bg-violet-100 text-violet-700",
-  json: "bg-amber-100 text-amber-700",
-  tsv: "bg-teal-100 text-teal-700",
-  sqlite: "bg-orange-100 text-orange-700",
-  db: "bg-orange-100 text-orange-700",
+const FORMAT_BG: Record<string, string> = {
+  csv:     "rgba(16,185,129,0.12)",
+  xlsx:    "rgba(59,130,246,0.12)",
+  xls:     "rgba(59,130,246,0.12)",
+  parquet: "rgba(144,96,248,0.12)",
+  json:    "rgba(245,158,11,0.12)",
+  tsv:     "rgba(20,184,166,0.12)",
+  sqlite:  "rgba(249,115,22,0.12)",
+  db:      "rgba(249,115,22,0.12)",
+};
+
+const FORMAT_TEXT: Record<string, string> = {
+  csv:     "#059669",
+  xlsx:    "#2563eb",
+  xls:     "#2563eb",
+  parquet: "#7c3aed",
+  json:    "#d97706",
+  tsv:     "#0f766e",
+  sqlite:  "#ea580c",
+  db:      "#ea580c",
 };
 
 function formatBytes(bytes: number): string {
@@ -117,110 +127,209 @@ export default function DatasetsPage() {
   };
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: "all", label: "All datasets" },
-    { key: "starred", label: "Starred" },
+    { key: "all",      label: "All datasets" },
+    { key: "starred",  label: "Starred" },
     { key: "archived", label: "Archived" },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      {/* Header */}
-      <header className="border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/sushi-logo.png" alt="Sushi" width={28} height={28} />
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">Sushi</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <SignedIn>
-              <UserButton appearance={{ elements: { avatarBox: "w-7 h-7" } }} />
-            </SignedIn>
-          </div>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", background: "#f5f5f7" }}>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* Page title + upload CTA */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">My Datasets</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">
-              {datasets.length} dataset{datasets.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <Link
-            href="/"
-            className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:hover:bg-indigo-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
+      {/* ── NAV ── */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(255,255,255,0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        padding: "0 48px",
+        height: 60,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        {/* Purple accent line */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #9060f8, #e840c8)" }} />
+
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+          <Image src="/sushi-logo.png" alt="Sushi" width={28} height={28} />
+          <span style={{ fontWeight: 600, fontSize: 17, color: "#111010", letterSpacing: "-0.3px" }}>Sushi</span>
+        </Link>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/" style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "7px 14px", borderRadius: 8, fontSize: 13,
+            color: "#6b6860", textDecoration: "none",
+            border: "1px solid rgba(0,0,0,0.1)",
+          }}>
+            <Plus size={13} />
             New upload
           </Link>
+          <SignedIn>
+            <UserButton appearance={{ elements: { avatarBox: "w-8 h-8" } }} />
+          </SignedIn>
+        </div>
+      </nav>
+
+      {/* ── CONTENT ── */}
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 24px" }}>
+
+        {/* Page heading */}
+        <div style={{ marginBottom: 36 }}>
+          <h1 className="font-display" style={{ fontSize: 38, fontWeight: 400, color: "#111010", lineHeight: 1.15, marginBottom: 8 }}>
+            My Datasets
+          </h1>
+          <p style={{ fontSize: 14, color: "#6b6860" }}>
+            {datasets.length > 0
+              ? `${datasets.length} dataset${datasets.length !== 1 ? "s" : ""}`
+              : "Your uploaded files will appear here."}
+          </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-5 border-b border-neutral-200 dark:border-neutral-800">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                tab === t.key
-                  ? "border-neutral-900 dark:border-white text-neutral-900 dark:text-white"
-                  : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Toolbar: pill tabs + upload CTA */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          {/* Pill tabs */}
+          <div style={{ display: "flex", gap: 4, background: "rgba(0,0,0,0.05)", borderRadius: 12, padding: 3 }}>
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: tab === t.key ? 500 : 400,
+                  color: tab === t.key ? "#111010" : "#6b6860",
+                  background: tab === t.key ? "white" : "transparent",
+                  boxShadow: tab === t.key ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Upload CTA */}
+          <Link href="/" style={{
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "8px 18px", borderRadius: 10,
+            fontSize: 13.5, fontWeight: 500,
+            background: "linear-gradient(135deg, #9060f8, #e840c8)",
+            color: "white",
+            textDecoration: "none",
+            boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
+          }}>
+            <Plus size={14} />
+            Upload dataset
+          </Link>
         </div>
 
-        {/* Content */}
+        {/* ── DATASET LIST ── */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+            <Loader2 style={{ width: 22, height: 22, color: "#9060f8", animation: "spin 1s linear infinite" }} />
           </div>
         ) : error ? (
-          <div className="text-center py-20">
-            <Database className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
-            <p className="text-sm text-neutral-500">{error}</p>
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <p style={{ fontSize: 14, color: "#6b6860" }}>{error}</p>
           </div>
         ) : datasets.length === 0 ? (
-          <div className="text-center py-20">
-            <FileSpreadsheet className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 20, margin: "0 auto 20px",
+              background: "linear-gradient(135deg, rgba(144,96,248,0.12), rgba(232,64,200,0.12))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 32,
+            }}>
+              {tab === "starred" ? "⭐" : tab === "archived" ? "📦" : "📂"}
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 500, color: "#111010", marginBottom: 8 }}>
               {tab === "starred" ? "No starred datasets yet" :
-               tab === "archived" ? "Trash is empty" :
+               tab === "archived" ? "Archive is empty" :
                "No datasets yet"}
             </p>
+            <p style={{ fontSize: 13, color: "#6b6860", marginBottom: 20 }}>
+              {tab === "all" ? "Upload a file to get started with AI-powered analysis." : ""}
+            </p>
             {tab === "all" && (
-              <Link href="/" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">
-                Upload your first dataset →
+              <Link href="/" style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 20px", borderRadius: 10,
+                fontSize: 13.5, fontWeight: 500,
+                background: "linear-gradient(135deg, #9060f8, #e840c8)",
+                color: "white", textDecoration: "none",
+                boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
+              }}>
+                <Plus size={14} />
+                Upload your first dataset
               </Link>
             )}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {datasets.map((d) => (
               <div
                 key={d.id}
                 onClick={() => handleOpen(d)}
-                className={`group flex items-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3 transition-all ${
-                  d.status === "ready"
-                    ? "cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm"
-                    : "opacity-60 cursor-default"
-                }`}
+                className="group"
+                style={{
+                  display: "flex", alignItems: "center", gap: 14,
+                  padding: "14px 18px",
+                  background: "rgba(255,255,255,0.85)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  borderRadius: 16,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  cursor: d.status === "ready" ? "pointer" : "default",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  transition: "all 0.15s ease",
+                  opacity: d.status !== "ready" ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (d.status === "ready") {
+                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)";
+                    (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(144,96,248,0.2)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)";
+                  (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(0,0,0,0.06)";
+                }}
               >
                 {/* Format badge */}
-                <span className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${FORMAT_COLORS[d.file_format] ?? "bg-neutral-100 text-neutral-600"}`}>
+                <span style={{
+                  shrink: 0,
+                  padding: "3px 9px",
+                  borderRadius: 7,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  background: FORMAT_BG[d.file_format] ?? "rgba(0,0,0,0.06)",
+                  color: FORMAT_TEXT[d.file_format] ?? "#6b6860",
+                  flexShrink: 0,
+                }}>
                   {d.file_format}
                 </span>
 
+                {/* File icon */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: "linear-gradient(135deg, rgba(144,96,248,0.1), rgba(232,64,200,0.1))",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <FileSpreadsheet style={{ width: 16, height: 16, color: "#9060f8" }} />
+                </div>
+
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {d.name}
                   </p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
+                  <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
                     {d.row_count != null ? `${d.row_count.toLocaleString()} rows` : "—"}
                     {d.column_count != null ? ` · ${d.column_count} cols` : ""}
                     {" · "}{formatBytes(d.file_size_bytes)}
@@ -228,58 +337,60 @@ export default function DatasetsPage() {
                   </p>
                 </div>
 
-                {/* Status badge */}
+                {/* Processing badge */}
                 {d.status !== "ready" && (
-                  <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    d.status === "processing" || d.status === "pending"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-red-100 text-red-700"
-                  }`}>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500,
+                    background: d.status === "processing" || d.status === "pending"
+                      ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
+                    color: d.status === "processing" || d.status === "pending" ? "#b45309" : "#dc2626",
+                    flexShrink: 0,
+                  }}>
                     {d.status}
                   </span>
                 )}
 
-                {/* Loading spinner when opening */}
+                {/* Opening spinner */}
                 {openingId === d.id && (
-                  <Loader2 className="h-4 w-4 animate-spin text-neutral-400 shrink-0" />
+                  <Loader2 style={{ width: 16, height: 16, color: "#9060f8", flexShrink: 0, animation: "spin 1s linear infinite" }} />
                 )}
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Hover actions */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => handleStar(e, d.id)}
                     title={d.is_starred ? "Unstar" : "Star"}
-                    className={`rounded-lg p-1.5 transition-colors ${
-                      d.is_starred
-                        ? "text-amber-500 hover:text-amber-600"
-                        : "text-neutral-300 hover:text-neutral-500"
-                    }`}
+                    style={{
+                      padding: 7, borderRadius: 8, border: "none",
+                      background: "transparent", cursor: "pointer",
+                      color: d.is_starred ? "#f59e0b" : "#d1d5db",
+                    }}
                   >
-                    <Star className="h-4 w-4" fill={d.is_starred ? "currentColor" : "none"} />
+                    <Star style={{ width: 15, height: 15 }} fill={d.is_starred ? "currentColor" : "none"} />
                   </button>
 
                   {tab === "archived" ? (
                     <button
                       onClick={(e) => handleRestore(e, d.id)}
                       title="Restore"
-                      className="rounded-lg p-1.5 text-neutral-300 hover:text-emerald-600 transition-colors"
+                      style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
                     >
-                      <ArchiveRestore className="h-4 w-4" />
+                      <ArchiveRestore style={{ width: 15, height: 15 }} />
                     </button>
                   ) : (
                     <button
                       onClick={(e) => handleArchive(e, d.id)}
-                      title="Move to trash"
-                      className="rounded-lg p-1.5 text-neutral-300 hover:text-red-500 transition-colors"
+                      title="Move to archive"
+                      style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 style={{ width: 15, height: 15 }} />
                     </button>
                   )}
                 </div>
 
-                {/* Persistent star for starred items */}
+                {/* Persistent star indicator */}
                 {d.is_starred && openingId !== d.id && (
-                  <Star className="h-3.5 w-3.5 text-amber-400 shrink-0 group-hover:hidden" fill="currentColor" />
+                  <Star className="group-hover:hidden" style={{ width: 14, height: 14, color: "#f59e0b", flexShrink: 0 }} fill="currentColor" />
                 )}
               </div>
             ))}

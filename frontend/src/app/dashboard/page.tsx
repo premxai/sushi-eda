@@ -112,9 +112,10 @@ export default function DashboardPage() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between bg-white border-b border-slate-200 px-6 py-4">
+        <header className="relative flex shrink-0 items-center justify-between bg-white border-b border-slate-100 px-6 py-4">
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-[#9060f8] to-[#e840c8]" />
           <div>
-            <h1 className="text-lg font-bold text-slate-900">{sectionTitles[activeSection]}</h1>
+            <h1 className="font-display text-xl text-slate-900">{sectionTitles[activeSection]}</h1>
             <p className="text-xs text-slate-400 mt-0.5">Track, manage and explore your dataset.</p>
           </div>
         </header>

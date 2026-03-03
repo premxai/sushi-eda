@@ -83,7 +83,7 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
   }, [isOpen, chartSpec, chartLoading, column.name, column.is_numeric]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white transition-shadow hover:shadow-md">
+    <div className="rounded-2xl bg-white transition-shadow hover:shadow-md" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
       {/* Header — always visible */}
       <button
         onClick={handleToggle}
@@ -91,9 +91,9 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
       >
         <div className="flex items-center gap-3 min-w-0">
           {isOpen ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+            <ChevronDown className="h-4 w-4 shrink-0" style={{ color: "#9060f8" }} />
           ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
           )}
           <span className="truncate font-mono text-sm font-medium text-slate-900">
             {column.name}
@@ -111,9 +111,9 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
 
       {/* Expanded content */}
       {isOpen && (
-        <div className="border-t border-slate-100 p-4">
+        <div className="p-4" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
           {/* Quick stats */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             <StatCell label="Unique" value={column.unique_count.toLocaleString()} />
             <StatCell label="Missing" value={`${column.missing_count.toLocaleString()} (${column.missing_percent}%)`} />
             <StatCell label="Type" value={column.dtype} mono />
@@ -121,7 +121,7 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
 
           {/* Numeric stats */}
           {column.is_numeric && column.stats && (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               <StatCell label="Mean" value={column.stats.mean.toLocaleString()} />
               <StatCell label="Median" value={column.stats.median.toLocaleString()} />
               <StatCell label="Std Dev" value={column.stats.std.toLocaleString()} />
@@ -136,17 +136,17 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
           {/* Top values for categorical */}
           {!column.is_numeric && column.top_values && column.top_values.length > 0 && (
             <div className="mt-3">
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-400">Top Values</p>
-              <div className="space-y-1">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Top Values</p>
+              <div className="space-y-1.5">
                 {column.top_values.slice(0, 8).map((tv) => {
                   const pct = ((tv.count / totalRows) * 100).toFixed(1);
                   return (
                     <div key={tv.value} className="flex items-center gap-2">
                       <span className="w-32 shrink-0 truncate font-mono text-xs text-slate-700">{tv.value}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-indigo-400"
-                          style={{ width: `${Math.min(100, (tv.count / totalRows) * 100)}%` }}
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, (tv.count / totalRows) * 100)}%`, background: "linear-gradient(90deg, #9060f8, #e840c8)" }}
                         />
                       </div>
                       <span className="w-16 shrink-0 text-right font-mono text-xs text-slate-500 tabular-nums">
@@ -163,17 +163,17 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
           <div className="mt-4 space-y-3">
             {chartLoading && (
               <div className="flex h-32 items-center justify-center gap-2 text-xs text-slate-400">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#9060f8" }} />
                 Loading chart…
               </div>
             )}
             {!chartLoading && chartSpec && (
-              <div className="rounded-md border border-slate-100 overflow-hidden">
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.05)" }}>
                 <BackendChart spec={chartSpec} />
               </div>
             )}
             {!chartLoading && boxSpec && (
-              <div className="rounded-md border border-slate-100 overflow-hidden">
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.05)" }}>
                 <BackendChart spec={boxSpec} />
               </div>
             )}
@@ -186,9 +186,9 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
 
 function StatCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-md bg-slate-50 px-3 py-2">
-      <p className="text-[11px] text-slate-400">{label}</p>
-      <p className={cn("mt-0.5 text-sm font-medium text-slate-900 tabular-nums", mono && "font-mono")}>
+    <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.04)" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={cn("mt-0.5 text-sm font-semibold text-slate-800 tabular-nums", mono && "font-mono")}>
         {value}
       </p>
     </div>

@@ -30,6 +30,7 @@ interface StatCardData {
   icon: React.ElementType;
   accent: string;
   iconBg: string;
+  iconGradient?: string;
 }
 
 function buildStats(info: BasicInfo): StatCardData[] {
@@ -38,23 +39,26 @@ function buildStats(info: BasicInfo): StatCardData[] {
       label: "Rows",
       value: info.rows.toLocaleString(),
       icon: Rows3,
-      accent: "text-indigo-600",
-      iconBg: "bg-indigo-50",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #9060f8, #7040d8)",
     },
     {
       label: "Columns",
       value: info.columns.toLocaleString(),
       icon: Columns3,
-      accent: "text-violet-600",
-      iconBg: "bg-violet-50",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #e840c8, #c020a8)",
     },
     {
       label: "Memory",
       value: `${info.memory_usage_mb} MB`,
       sub: `${info.memory_usage_bytes.toLocaleString()} bytes`,
       icon: HardDrive,
-      accent: "text-emerald-600",
-      iconBg: "bg-emerald-50",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #10b981, #059669)",
     },
     {
       label: "Duplicates",
@@ -63,8 +67,9 @@ function buildStats(info: BasicInfo): StatCardData[] {
         ? `${((info.duplicate_rows / info.rows) * 100).toFixed(1)}% of rows`
         : undefined,
       icon: CopyMinus,
-      accent: "text-amber-600",
-      iconBg: "bg-amber-50",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
     },
     {
       label: "Missing Values",
@@ -74,8 +79,9 @@ function buildStats(info: BasicInfo): StatCardData[] {
           ? `${((info.total_missing / (info.rows * info.columns)) * 100).toFixed(1)}% of cells`
           : undefined,
       icon: AlertTriangle,
-      accent: "text-rose-600",
-      iconBg: "bg-rose-50",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #f43f5e, #e11d48)",
     },
     {
       label: "Data Types",
@@ -84,8 +90,9 @@ function buildStats(info: BasicInfo): StatCardData[] {
         .map(([k, v]) => `${v} ${k}`)
         .join(", "),
       icon: Hash,
-      accent: "text-slate-600",
-      iconBg: "bg-slate-100",
+      accent: "text-white",
+      iconBg: "",
+      iconGradient: "linear-gradient(135deg, #64748b, #475569)",
     },
   ];
 }
@@ -97,35 +104,27 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
     <div className="space-y-6">
       {/* Quality Score Card */}
       {qualityScore && (
-        <div className="rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+        <div className="rounded-2xl p-6 shadow-lg text-white" style={{ background: "linear-gradient(135deg, #9060f8, #e840c8)" }}>
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-sm font-medium text-slate-500">Data Quality Score</h3>
-              <div className="mt-2 flex items-baseline gap-3">
-                <span className="text-5xl font-bold tracking-tight text-slate-900">
-                  {qualityScore.overall_score}
-                </span>
-                <span className={cn(
-                  "rounded-full px-3 py-1 text-lg font-semibold",
-                  qualityScore.grade === "A" && "bg-emerald-100 text-emerald-700",
-                  qualityScore.grade === "B" && "bg-indigo-100 text-indigo-700",
-                  qualityScore.grade === "C" && "bg-amber-100 text-amber-700",
-                  (qualityScore.grade === "D" || qualityScore.grade === "F") && "bg-rose-100 text-rose-700"
-                )}>
+              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.65)" }}>Data Quality Score</h3>
+              <div className="mt-3 flex items-baseline gap-4">
+                <span className="text-6xl font-bold tracking-tight">{qualityScore.overall_score}</span>
+                <span className="rounded-full px-3 py-1 text-base font-semibold" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}>
                   Grade {qualityScore.grade}
                 </span>
               </div>
             </div>
           </div>
-          
+
           {/* Breakdown */}
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
             {Object.entries(qualityScore.breakdown).map(([key, val]) => (
-              <div key={key} className="rounded-md bg-white px-3 py-2 border border-slate-100">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400">
+              <div key={key} className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.6)" }}>
                   {key.replace(/_/g, " ")}
                 </p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">{val.score}</p>
+                <p className="mt-0.5 text-sm font-bold text-white">{val.score}</p>
               </div>
             ))}
           </div>
@@ -134,8 +133,8 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
           {qualityScore.recommendations.length > 0 && (
             <div className="mt-4 space-y-1.5">
               {qualityScore.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-slate-600">
-                  <span className="mt-0.5 text-indigo-500">•</span>
+                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  <span className="mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>✦</span>
                   <span>{rec}</span>
                 </div>
               ))}
@@ -161,7 +160,10 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
                         <p className="mt-1 text-[11px] text-slate-400">{s.sub}</p>
                       )}
                     </div>
-                    <div className={cn("rounded-xl p-3 shrink-0", s.iconBg)}>
+                    <div
+                      className="rounded-xl p-3 shrink-0"
+                      style={s.iconGradient ? { background: s.iconGradient } : undefined}
+                    >
                       <s.icon className={cn("h-5 w-5", s.accent)} />
                     </div>
                   </div>
@@ -182,10 +184,11 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
           {Object.entries(info.dtypes_summary).map(([dtype, count]) => (
             <span
               key={dtype}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-xs"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+              style={{ background: "rgba(144,96,248,0.08)", border: "1px solid rgba(144,96,248,0.15)" }}
             >
-              <span className="font-mono text-slate-600">{dtype}</span>
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+              <span className="font-mono" style={{ color: "#7c3aed" }}>{dtype}</span>
+              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(144,96,248,0.15)", color: "#6d28d9" }}>
                 {count}
               </span>
             </span>
@@ -194,20 +197,15 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
         <div className="mt-4">
           <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
             {Object.entries(info.dtypes_summary).map(([dtype, count], i) => {
-              const colors = [
-                "bg-indigo-500",
-                "bg-violet-500",
-                "bg-emerald-500",
-                "bg-amber-500",
-                "bg-rose-500",
-                "bg-slate-400",
+              const gradients = [
+                "#9060f8", "#e840c8", "#10b981", "#f59e0b", "#f43f5e", "#64748b",
               ];
               const pct = (count / info.columns) * 100;
               return (
                 <div
                   key={dtype}
-                  className={cn("transition-all", colors[i % colors.length])}
-                  style={{ width: `${pct}%` }}
+                  className="transition-all"
+                  style={{ width: `${pct}%`, background: gradients[i % gradients.length] }}
                   title={`${dtype}: ${count} columns (${pct.toFixed(0)}%)`}
                 />
               );
@@ -223,7 +221,8 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
           {info.column_names.map((name) => (
             <span
               key={name}
-              className="rounded-md bg-slate-50 px-2 py-1 font-mono text-xs text-slate-600"
+              className="rounded-lg px-2.5 py-1 font-mono text-xs"
+              style={{ background: "rgba(0,0,0,0.04)", color: "#374151", border: "1px solid rgba(0,0,0,0.06)" }}
             >
               {name}
             </span>
