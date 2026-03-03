@@ -86,6 +86,8 @@ export default function DashboardPage() {
     );
   }
 
+  const { basic_info } = report;
+
   const sectionTitles: Record<NavSection, string> = {
     overview: "Overview",
     columns: "Column Analysis",
