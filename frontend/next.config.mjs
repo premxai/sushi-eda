@@ -11,6 +11,15 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'react-plotly.js'],
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        buffer: false,
+      };
+    }
+    return config;
+  },
 };
 
 const sentryConfig = {
