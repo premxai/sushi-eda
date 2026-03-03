@@ -6,6 +6,7 @@ import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { ColumnCard } from "@/components/dashboard/ColumnCard";
 import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
+import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
@@ -92,6 +93,7 @@ export default function DashboardPage() {
   const sectionTitles: Record<NavSection, string> = {
     overview: "Overview",
     columns: "Column Analysis",
+    statistics: "Statistical Analysis",
     correlations: "Correlations",
     outliers: "Outlier Detection",
     insights: "Insights",
@@ -138,6 +140,9 @@ export default function DashboardPage() {
                 <ColumnCard key={col.name} column={col} preview={report.preview} totalRows={basic_info.rows} />
               ))}
             </div>
+          )}
+          {activeSection === "statistics" && (
+            <StatisticsSection report={report} datasetId={datasetId} orgId="default" />
           )}
           {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
           {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}

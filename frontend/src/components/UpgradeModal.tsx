@@ -65,7 +65,7 @@ export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit 
 
         {/* CTA */}
         <a
-          href="/billing"
+          href="/pricing"
           className="block w-full text-center py-2.5 rounded-xl bg-neutral-900 text-white
                      text-sm font-semibold hover:bg-neutral-700 transition-colors"
         >

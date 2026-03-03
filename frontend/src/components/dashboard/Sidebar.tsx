@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   BarChart3,
+  Bell,
   Columns3,
   GitCompareArrows,
   AlertTriangle,
@@ -13,16 +14,20 @@ import {
   ChartNoAxesCombined,
   Sparkles,
   FlaskConical,
+  Sigma,
   Archive,
   Database,
   Unplug,
   TerminalSquare,
 } from "lucide-react";
 import Link from "next/link";
+import CreditsUsageBar from "@/components/CreditsUsageBar";
+import MonitorCreateModal from "@/components/MonitorCreateModal";
 
 export type NavSection =
   | "overview"
   | "columns"
+  | "statistics"
   | "correlations"
   | "outliers"
   | "insights"
@@ -42,6 +47,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "overview",       label: "Overview",       icon: BarChart3,           group: "Analysis" },
   { id: "columns",        label: "Columns",        icon: Columns3,            group: "Analysis" },
+  { id: "statistics",     label: "Statistics",     icon: Sigma,               group: "Analysis" },
   { id: "correlations",   label: "Correlations",   icon: GitCompareArrows,    group: "Analysis" },
   { id: "outliers",       label: "Outliers",       icon: AlertTriangle,       group: "Analysis" },
   { id: "insights",       label: "Insights",       icon: Lightbulb,           group: "Analysis" },
@@ -60,6 +66,7 @@ interface SidebarProps {
   onSectionChange: (section: NavSection) => void;
   onNewFile: () => void;
   datasetId?: string | null;
+  orgId?: string;
   onArchive?: () => void;
 }
 
@@ -69,8 +76,11 @@ export function Sidebar({
   onSectionChange,
   onNewFile,
   datasetId,
+  orgId = "default",
   onArchive,
 }: SidebarProps) {
+  const [monitorOpen, setMonitorOpen] = useState(false);
+
   return (
     <aside style={{
       width: 230,
@@ -175,6 +185,8 @@ export function Sidebar({
 
       {/* ── Footer actions ── */}
       <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: 12 }}>
+        <CreditsUsageBar orgId={orgId} className="mb-2" />
+
         <Link
           href="/datasets"
           style={{
@@ -217,6 +229,22 @@ export function Sidebar({
           </button>
         )}
 
+        {datasetId && (
+          <button
+            onClick={() => setMonitorOpen(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+              fontSize: 13.5, color: "#6b6860",
+              background: "transparent", border: "none", cursor: "pointer",
+              width: "100%", textAlign: "left", fontWeight: 400,
+            }}
+          >
+            <Bell style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+            Create monitor
+          </button>
+        )}
+
         <button
           onClick={onNewFile}
           style={{
@@ -233,6 +261,15 @@ export function Sidebar({
           Analyze New File
         </button>
       </div>
+
+      {datasetId && (
+        <MonitorCreateModal
+          open={monitorOpen}
+          onClose={() => setMonitorOpen(false)}
+          datasetId={datasetId}
+          orgId={orgId}
+        />
+      )}
     </aside>
   );
 }

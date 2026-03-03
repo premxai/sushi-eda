@@ -26,7 +26,7 @@ Routes:
   GET  /datasets/{dataset_id}/export/markdown
 """
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -554,6 +554,40 @@ async def regression(
     return AdvancedStatistics(df).linear_regression(x_col, y_col)
 
 
+@router.post("/{dataset_id}/stats/regression/logistic")
+async def logistic_regression(
+    dataset_id: str,
+    x_col: str,
+    y_col: str,
+    positive_class: Optional[str] = Query(default=None),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Logistic regression for a binary target column (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class)
+
+
+@router.post("/{dataset_id}/stats/regression/polynomial")
+async def polynomial_regression(
+    dataset_id: str,
+    x_col: str,
+    y_col: str,
+    degree: int = Query(default=2, ge=2, le=6),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Polynomial regression for numeric predictor/target pairs (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
+
+
 @router.post("/{dataset_id}/stats/ttest")
 async def ttest(
     dataset_id: str,
@@ -570,7 +604,184 @@ async def ttest(
     return AdvancedStatistics(df).t_test_independent(col1, col2)
 
 
+@router.post("/{dataset_id}/stats/mann_whitney")
+async def mann_whitney(
+    dataset_id: str,
+    col1: str,
+    col2: str,
+    alternative: str = Query(default="two-sided"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mann-Whitney U test between two numeric columns (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
+
+
+@router.post("/{dataset_id}/stats/chi_square")
+async def chi_square(
+    dataset_id: str,
+    col1: str,
+    col2: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Chi-square test of independence between two categorical columns (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).chi_square_test(col1, col2)
+
+
+@router.post("/{dataset_id}/stats/anova")
+async def anova(
+    dataset_id: str,
+    numeric_col: str,
+    group_col: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """One-way ANOVA: numeric_col grouped by group_col (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).anova_one_way(numeric_col, group_col)
+
+
+@router.post("/{dataset_id}/stats/correlation")
+async def correlation_test(
+    dataset_id: str,
+    col1: str,
+    col2: str,
+    method: str = Query(default="pearson"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Correlation coefficient + significance between two numeric columns.
+    method: pearson | spearman | kendall  (viewer+).
+    """
+    from scipy import stats as scipy_stats
+    if method not in ("pearson", "spearman", "kendall"):
+        raise HTTPException(status_code=400, detail="method must be pearson | spearman | kendall")
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    if col1 not in df.columns or col2 not in df.columns:
+        raise HTTPException(status_code=400, detail="Column not found")
+    data = df[[col1, col2]].dropna()
+    if len(data) < 3:
+        raise HTTPException(status_code=422, detail="Insufficient data")
+    fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
+    stat, p = fn(data[col1], data[col2])
+    return {
+        "test": f"{method.title()} correlation",
+        "column1": col1, "column2": col2,
+        "coefficient": float(stat), "p_value": float(p),
+        "significant": p < 0.05, "n": int(len(data)),
+    }
+
+
 # ── DuckDB SQL Query ───────────────────────────────────────────────────────────
+
+@router.post("/{dataset_id}/stats/time_series/decompose")
+async def time_series_decompose(
+    dataset_id: str,
+    date_col: str,
+    value_col: str,
+    period: Optional[int] = Query(default=None, ge=2),
+    model: str = Query(default="additive"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Time-series decomposition into trend/seasonality/residual (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).time_series_decomposition(
+        date_col=date_col,
+        value_col=value_col,
+        period=period,
+        model=model,
+    )
+
+
+@router.post("/{dataset_id}/stats/time_series/arima")
+async def time_series_arima(
+    dataset_id: str,
+    date_col: str,
+    value_col: str,
+    periods: int = Query(default=12, ge=1, le=120),
+    p: int = Query(default=1, ge=0, le=5),
+    d: int = Query(default=1, ge=0, le=2),
+    q: int = Query(default=1, ge=0, le=5),
+    alpha: float = Query(default=0.05, gt=0, lt=1),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ARIMA forecast endpoint for a date/value series (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).arima_forecast(
+        date_col=date_col,
+        value_col=value_col,
+        periods=periods,
+        p=p,
+        d=d,
+        q=q,
+        alpha=alpha,
+    )
+
+
+@router.post("/{dataset_id}/stats/cohort")
+async def cohort_analysis(
+    dataset_id: str,
+    entity_col: str,
+    date_col: str,
+    freq: str = Query(default="M"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cohort retention analysis by entity and activity date (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return AdvancedStatistics(df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
+
+
+@router.post("/{dataset_id}/stats/ab_test")
+async def ab_test_significance(
+    dataset_id: str,
+    control_conversions: int = Query(..., ge=0),
+    control_total: int = Query(..., ge=1),
+    variant_conversions: int = Query(..., ge=0),
+    variant_total: int = Query(..., ge=1),
+    alpha: float = Query(default=0.05, gt=0, lt=1),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """A/B test significance calculator using two-proportion z-test (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    await _get_dataset_or_404(dataset_id, org_id, db)
+    return AdvancedStatistics(pd.DataFrame()).ab_test_significance(
+        control_conversions=control_conversions,
+        control_total=control_total,
+        variant_conversions=variant_conversions,
+        variant_total=variant_total,
+        alpha=alpha,
+    )
+
 
 @router.get("/{dataset_id}/query/schema")
 async def query_schema(

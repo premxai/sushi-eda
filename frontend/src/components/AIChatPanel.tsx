@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Send, Bot, User, Code2, Table, Loader2, Sparkles } from "lucide-react";
 import { askDataset, ChatMessage, ChatResult } from "@/lib/api";
+import UpgradeModal from "@/components/UpgradeModal";
 
 interface AIChatPanelProps {
   datasetId: string;
@@ -29,6 +30,9 @@ export default function AIChatPanel({ datasetId, orgId = "default" }: AIChatPane
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSQL, setShowSQL] = useState<Record<number, boolean>>({});
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [creditsUsed, setCreditsUsed] = useState<number | undefined>(undefined);
+  const [creditsLimit, setCreditsLimit] = useState<number | undefined>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -62,12 +66,22 @@ export default function AIChatPanel({ datasetId, orgId = "default" }: AIChatPane
       ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      let message = detail?.message || detail || "Unknown error";
+      if (typeof message !== "string") message = "Unknown error";
+
+      if (detail?.error === "ai_credits_exhausted") {
+        setCreditsUsed(Number(detail.credits_used));
+        setCreditsLimit(Number(detail.credits_limit));
+        setUpgradeOpen(true);
+      }
+
       setTurns((prev) => [
         ...prev,
         {
           role: "assistant",
           content: "Sorry, something went wrong. Please try again.",
-          error: err?.response?.data?.detail || "Unknown error",
+          error: message,
         },
       ]);
     } finally {
@@ -244,6 +258,13 @@ export default function AIChatPanel({ datasetId, orgId = "default" }: AIChatPane
           Press Enter to send · Shift+Enter for new line
         </p>
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        creditsUsed={creditsUsed}
+        creditsLimit={creditsLimit}
+      />
     </div>
   );
 }

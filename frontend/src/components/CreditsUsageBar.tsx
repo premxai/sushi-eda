@@ -68,7 +68,7 @@ export default function CreditsUsageBar({ orgId = "default", className = "" }: P
           {/* Upgrade CTA */}
           {status.plan === "free" && pct >= 60 && (
             <a
-              href="/billing"
+              href="/pricing"
               className="flex items-center justify-between w-full text-xs px-3 py-2 rounded-lg
                          bg-violet-50 border border-violet-100 text-violet-700
                          hover:bg-violet-100 transition-colors"
