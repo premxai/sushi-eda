@@ -168,7 +168,7 @@ export default function SharedReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.column_analysis.map((col: ColumnAnalysis) => (
+                  {report.column_analysis?.map((col: ColumnAnalysis) => (
                     <tr key={col.name} className="border-t border-neutral-100 hover:bg-neutral-50">
                       <td className="px-4 py-2 font-medium text-neutral-800">{col.name}</td>
                       <td className="px-4 py-2 text-neutral-500">{col.dtype}</td>
