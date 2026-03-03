@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowUpDown,
   ArchiveRestore,
   FileSpreadsheet,
   Loader2,
@@ -159,6 +160,9 @@ export default function DatasetsPage() {
           <Link href="/connectors" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
             Connections
           </Link>
+          <Link href="/pipelines" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+            Pipelines
+          </Link>
           <Link href="/" style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "7px 14px", borderRadius: 8, fontSize: 13,
@@ -227,6 +231,17 @@ export default function DatasetsPage() {
             }}>
               <Unplug size={13} />
               Connect source
+            </Link>
+            <Link href="/pipelines" style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 10,
+              fontSize: 13.5, fontWeight: 500,
+              background: "rgba(255,255,255,0.72)",
+              border: "1px solid rgba(0,0,0,0.1)",
+              color: "#6b6860", textDecoration: "none",
+            }}>
+              <ArrowUpDown size={13} />
+              Build pipeline
             </Link>
             <Link href="/" style={{
               display: "flex", alignItems: "center", gap: 7,

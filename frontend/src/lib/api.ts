@@ -344,6 +344,87 @@ export async function triggerMonitorRun(
   return data;
 }
 
+// ── Pipelines (Task 27) ───────────────────────────────────────────────────────
+
+export interface PipelineSummary {
+  pipeline_id: string;
+  name: string;
+  description: string | null;
+  source_dataset_id: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  graph: Record<string, any>;
+  destination_type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  destination_config: Record<string, any> | null;
+  schedule: string;
+  is_active: boolean;
+  version: number;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PipelineRunSummary {
+  run_id: string;
+  pipeline_id: string;
+  status: string;
+  trigger_type: string;
+  recipe_version: number;
+  output_dataset_id: string | null;
+  logs: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metrics: Record<string, any> | null;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+}
+
+export async function listPipelines(orgId: string = "default"): Promise<PipelineSummary[]> {
+  const { data } = await client.get<{ pipelines: PipelineSummary[] }>(`/pipelines?org_id=${orgId}`);
+  return data.pipelines;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function createPipeline(body: Record<string, any>, orgId: string = "default"): Promise<PipelineSummary> {
+  const { data } = await client.post<PipelineSummary>(`/pipelines?org_id=${orgId}`, body);
+  return data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updatePipeline(pipelineId: string, body: Record<string, any>, orgId: string = "default"): Promise<PipelineSummary> {
+  const { data } = await client.patch<PipelineSummary>(`/pipelines/${pipelineId}?org_id=${orgId}`, body);
+  return data;
+}
+
+export async function deletePipeline(pipelineId: string, orgId: string = "default"): Promise<void> {
+  await client.delete(`/pipelines/${pipelineId}?org_id=${orgId}`);
+}
+
+export async function runPipelineNow(pipelineId: string, orgId: string = "default"): Promise<{ task_id: string; run_id: string; status: string }> {
+  const { data } = await client.post(`/pipelines/${pipelineId}/run?org_id=${orgId}`);
+  return data;
+}
+
+export async function listPipelineRuns(
+  pipelineId: string,
+  orgId: string = "default",
+  limit: number = 50
+): Promise<PipelineRunSummary[]> {
+  const { data } = await client.get<{ runs: PipelineRunSummary[] }>(
+    `/pipelines/${pipelineId}/runs?org_id=${orgId}&limit=${limit}`
+  );
+  return data.runs;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function listPipelineVersions(pipelineId: string, orgId: string = "default", limit: number = 50): Promise<any[]> {
+  const { data } = await client.get<{ versions: any[] }>(
+    `/pipelines/${pipelineId}/versions?org_id=${orgId}&limit=${limit}`
+  );
+  return data.versions;
+}
+
 // ── Statistical Analysis ───────────────────────────────────────────────────────
 
 export async function fetchAdvancedStats(

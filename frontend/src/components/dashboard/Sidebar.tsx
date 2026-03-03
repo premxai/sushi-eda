@@ -19,6 +19,7 @@ import {
   Database,
   Unplug,
   TerminalSquare,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import CreditsUsageBar from "@/components/CreditsUsageBar";
@@ -211,6 +212,19 @@ export function Sidebar({
         >
           <Unplug style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
           Connections
+        </Link>
+
+        <Link
+          href="/pipelines"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+            fontWeight: 400,
+          }}
+        >
+          <Workflow style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+          Pipelines
         </Link>
 
         {datasetId && onArchive && (

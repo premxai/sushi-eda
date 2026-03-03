@@ -10,6 +10,9 @@ datasets        — uploaded files / connected data sources
 analyses        — versioned EDA results per dataset
 monitors        — user-defined data quality checks
 monitor_runs    — historical run results for each monitor
+pipeline_recipes — ETL pipeline definitions
+pipeline_recipe_versions — immutable snapshots of recipe versions
+pipeline_runs   — run history and logs for pipeline executions
 audit_logs      — immutable log of every user action
 """
 
@@ -61,6 +64,8 @@ class Organization(Base):
     datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="org", cascade="all, delete-orphan")
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="org", cascade="all, delete-orphan")
     connectors: Mapped[list["DataConnector"]] = relationship("DataConnector", back_populates="org", cascade="all, delete-orphan")
+    pipelines: Mapped[list["PipelineRecipe"]] = relationship("PipelineRecipe", back_populates="org", cascade="all, delete-orphan")
+    pipeline_runs: Mapped[list["PipelineRun"]] = relationship("PipelineRun", back_populates="org", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="org", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
@@ -84,6 +89,7 @@ class User(Base):
     memberships: Mapped[list["OrgMember"]] = relationship("OrgMember", back_populates="user", cascade="all, delete-orphan")
     datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="created_by_user")
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="created_by_user")
+    pipelines: Mapped[list["PipelineRecipe"]] = relationship("PipelineRecipe", back_populates="created_by_user")
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"
@@ -142,6 +148,7 @@ class Dataset(Base):
     created_by_user: Mapped["User"] = relationship("User", back_populates="datasets")
     analyses: Mapped[list["Analysis"]] = relationship("Analysis", back_populates="dataset", cascade="all, delete-orphan")
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="dataset", cascade="all, delete-orphan")
+    source_pipelines: Mapped[list["PipelineRecipe"]] = relationship("PipelineRecipe", back_populates="source_dataset")
 
     def __repr__(self) -> str:
         return f"<Dataset {self.name} status={self.status}>"
@@ -260,6 +267,103 @@ class DataConnector(Base):
 
     def __repr__(self) -> str:
         return f"<DataConnector {self.name} type={self.connector_type}>"
+
+
+# ─── Pipeline Recipes ─────────────────────────────────────────────────────────
+
+class PipelineRecipe(Base):
+    """
+    ETL pipeline definition.
+    graph stores Source → Transform nodes → Destination in a JSON structure.
+    """
+    __tablename__ = "pipeline_recipes"
+    __table_args__ = (
+        Index("ix_pipeline_recipes_org_id", "org_id"),
+        Index("ix_pipeline_recipes_source_dataset_id", "source_dataset_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    source_dataset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    graph: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    destination_type: Mapped[str] = mapped_column(Text, nullable=False, default="dataset")
+    destination_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    schedule: Mapped[str] = mapped_column(Text, nullable=False, default="0 * * * *")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_run_status: Mapped[str | None] = mapped_column(Text, nullable=True)  # pending | running | success | failed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    org: Mapped["Organization"] = relationship("Organization", back_populates="pipelines")
+    created_by_user: Mapped["User"] = relationship("User", back_populates="pipelines")
+    source_dataset: Mapped["Dataset | None"] = relationship("Dataset", back_populates="source_pipelines")
+    versions: Mapped[list["PipelineRecipeVersion"]] = relationship("PipelineRecipeVersion", back_populates="pipeline", cascade="all, delete-orphan")
+    runs: Mapped[list["PipelineRun"]] = relationship("PipelineRun", back_populates="pipeline", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<PipelineRecipe {self.name} v{self.version}>"
+
+
+# ─── Pipeline Recipe Versions ────────────────────────────────────────────────
+
+class PipelineRecipeVersion(Base):
+    __tablename__ = "pipeline_recipe_versions"
+    __table_args__ = (
+        UniqueConstraint("pipeline_id", "version", name="uq_pipeline_recipe_versions_pipeline_version"),
+        Index("ix_pipeline_recipe_versions_pipeline_id", "pipeline_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    pipeline_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pipeline_recipes.id", ondelete="CASCADE"), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    graph: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    pipeline: Mapped["PipelineRecipe"] = relationship("PipelineRecipe", back_populates="versions")
+
+    def __repr__(self) -> str:
+        return f"<PipelineRecipeVersion pipeline={self.pipeline_id} v{self.version}>"
+
+
+# ─── Pipeline Runs ───────────────────────────────────────────────────────────
+
+class PipelineRun(Base):
+    __tablename__ = "pipeline_runs"
+    __table_args__ = (
+        Index("ix_pipeline_runs_org_id", "org_id"),
+        Index("ix_pipeline_runs_pipeline_id", "pipeline_id"),
+        Index("ix_pipeline_runs_started_at", "started_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    pipeline_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pipeline_recipes.id", ondelete="CASCADE"), nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    triggered_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    recipe_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    trigger_type: Mapped[str] = mapped_column(Text, nullable=False, default="manual")  # manual | schedule
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")  # pending | running | success | failed
+    logs: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    output_dataset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    pipeline: Mapped["PipelineRecipe"] = relationship("PipelineRecipe", back_populates="runs")
+    org: Mapped["Organization"] = relationship("Organization", back_populates="pipeline_runs")
+
+    def __repr__(self) -> str:
+        return f"<PipelineRun pipeline={self.pipeline_id} status={self.status}>"
 
 
 # ─── Audit Logs ───────────────────────────────────────────────────────────────

@@ -112,13 +112,71 @@ CREATE TABLE IF NOT EXISTS monitor_runs (
 
 CREATE INDEX IF NOT EXISTS ix_monitor_runs_monitor_id ON monitor_runs(monitor_id);
 
+-- ── pipeline_recipes ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pipeline_recipes (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id             UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    created_by         UUID NOT NULL REFERENCES users(id),
+    source_dataset_id  UUID REFERENCES datasets(id) ON DELETE SET NULL,
+    name               TEXT NOT NULL,
+    description        TEXT,
+    graph              JSONB NOT NULL DEFAULT '{}'::jsonb,  -- nodes + edges
+    destination_type   TEXT NOT NULL DEFAULT 'dataset',
+    destination_config JSONB,
+    schedule           TEXT NOT NULL DEFAULT '0 * * * *',
+    is_active          BOOLEAN NOT NULL DEFAULT TRUE,
+    version            INTEGER NOT NULL DEFAULT 1,
+    last_run_at        TIMESTAMPTZ,
+    last_run_status    TEXT,
+    created_at         TIMESTAMPTZ DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_pipeline_recipes_org_id ON pipeline_recipes(org_id);
+CREATE INDEX IF NOT EXISTS ix_pipeline_recipes_source_dataset_id ON pipeline_recipes(source_dataset_id);
+
+-- ── pipeline_recipe_versions ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pipeline_recipe_versions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pipeline_id UUID NOT NULL REFERENCES pipeline_recipes(id) ON DELETE CASCADE,
+    version     INTEGER NOT NULL,
+    graph       JSONB NOT NULL DEFAULT '{}'::jsonb,
+    description TEXT,
+    created_by  UUID REFERENCES users(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(pipeline_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS ix_pipeline_recipe_versions_pipeline_id ON pipeline_recipe_versions(pipeline_id);
+
+-- ── pipeline_runs ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pipeline_id       UUID NOT NULL REFERENCES pipeline_recipes(id) ON DELETE CASCADE,
+    org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    triggered_by      UUID REFERENCES users(id),
+    recipe_version    INTEGER NOT NULL,
+    trigger_type      TEXT NOT NULL DEFAULT 'manual',      -- manual | schedule
+    status            TEXT NOT NULL DEFAULT 'pending',     -- pending | running | success | failed
+    logs              TEXT,
+    metrics           JSONB,
+    output_dataset_id UUID REFERENCES datasets(id) ON DELETE SET NULL,
+    started_at        TIMESTAMPTZ,
+    finished_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_pipeline_runs_org_id ON pipeline_runs(org_id);
+CREATE INDEX IF NOT EXISTS ix_pipeline_runs_pipeline_id ON pipeline_runs(pipeline_id);
+CREATE INDEX IF NOT EXISTS ix_pipeline_runs_started_at ON pipeline_runs(started_at);
+
 -- ── audit_logs ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS audit_logs (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     user_id       UUID REFERENCES users(id),
     action        TEXT NOT NULL,            -- upload | analyze | export | delete | invite | query
-    resource_type TEXT,                     -- dataset | analysis | monitor
+    resource_type TEXT,                     -- dataset | analysis | monitor | pipeline
     resource_id   UUID,
     metadata      JSONB,
     ip_address    TEXT,
@@ -139,6 +197,9 @@ ALTER TABLE datasets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE monitor_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_recipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_recipe_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Service-role (backend) bypasses RLS — all policies below are for anon/user JWT access.

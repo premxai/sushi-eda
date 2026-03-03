@@ -15,6 +15,7 @@ import hashlib
 import os
 import time
 from datetime import datetime, timezone
+from typing import Any
 
 from celery import Celery
 from loguru import logger
@@ -48,6 +49,10 @@ celery_app.conf.update(
         "run-all-monitors": {
             "task": "run_all_monitors",
             "schedule": 60 * 60,   # every hour (monitors gate themselves by their own cron)
+        },
+        "run-all-pipelines": {
+            "task": "run_all_pipelines",
+            "schedule": 60 * 60,   # every hour (pipelines gate by their cron)
         },
     },
 )
@@ -265,6 +270,254 @@ def run_all_monitors() -> dict:
     return {"dispatched": dispatched}
 
 
+# ── Pipeline tasks ─────────────────────────────────────────────────────────────
+
+@celery_app.task(bind=True, name="run_pipeline_recipe", max_retries=1, default_retry_delay=60)
+def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url: str) -> dict:
+    """
+    Execute a pipeline recipe:
+      1) Load source dataset
+      2) Apply transform nodes
+      3) Save transformed dataset as a new upload
+      4) Trigger async analysis on output dataset
+      5) Persist run status/logs/metrics
+    """
+    import uuid
+    import pandas as pd
+    import psycopg2
+    from psycopg2.extras import Json
+
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    if not db_url:
+        logger.warning("run_pipeline_recipe: DATABASE_URL not set, skipping")
+        return {"skipped": True}
+
+    log_lines: list[str] = []
+    output_dataset_id: str | None = None
+
+    def _log(message: str) -> None:
+        log_lines.append(message)
+        logger.info(message)
+
+    try:
+        conn = psycopg2.connect(db_url)
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, org_id, created_by, source_dataset_id, name, graph, version, schedule, is_active
+                    FROM pipeline_recipes
+                    WHERE id = %s
+                    """,
+                    (pipeline_id,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return {"error": "pipeline not found"}
+
+                (
+                    recipe_id,
+                    org_id,
+                    created_by,
+                    source_dataset_id,
+                    recipe_name,
+                    graph,
+                    recipe_version,
+                    _schedule,
+                    _is_active,
+                ) = row
+
+                if run_id is None:
+                    run_id = str(uuid.uuid4())
+                    cur.execute(
+                        """
+                        INSERT INTO pipeline_runs
+                          (id, pipeline_id, org_id, triggered_by, recipe_version, trigger_type, status, started_at)
+                        VALUES (%s, %s, %s, %s, %s, 'schedule', 'running', NOW())
+                        """,
+                        (run_id, recipe_id, org_id, created_by, recipe_version),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE pipeline_runs
+                        SET status = 'running', started_at = NOW()
+                        WHERE id = %s
+                        """,
+                        (run_id,),
+                    )
+
+                if source_dataset_id is None:
+                    raise RuntimeError("Pipeline has no source_dataset_id configured")
+
+                cur.execute(
+                    """
+                    SELECT id, file_key, file_format
+                    FROM datasets
+                    WHERE id = %s AND org_id = %s
+                    """,
+                    (str(source_dataset_id), str(org_id)),
+                )
+                source_row = cur.fetchone()
+                if source_row is None:
+                    raise RuntimeError("Source dataset not found")
+                source_id, file_key, file_format = source_row
+
+        _log(f"Pipeline {pipeline_id}: loading source dataset {source_id}")
+        source_bytes = storage.download(file_key)
+        source_df = _parse_bytes(source_bytes, file_format).to_pandas()
+        input_rows = int(len(source_df))
+        input_cols = int(len(source_df.columns))
+        _log(f"Loaded source with {input_rows} rows and {input_cols} columns")
+
+        transformed_df, transform_logs = _apply_pipeline_graph(source_df, graph or {})
+        for line in transform_logs:
+            _log(line)
+
+        output_rows = int(len(transformed_df))
+        output_cols = int(len(transformed_df.columns))
+        _log(f"Transform output has {output_rows} rows and {output_cols} columns")
+
+        output_dataset_id = str(uuid.uuid4())
+        safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(recipe_name).lower())[:40]
+        output_filename = f"{safe_name or 'pipeline_output'}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+        output_bytes = transformed_df.to_csv(index=False).encode("utf-8")
+        storage.upload(str(org_id), output_dataset_id, output_filename, output_bytes)
+        _log(f"Uploaded output file to storage as {output_filename}")
+
+        with psycopg2.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO datasets
+                      (id, org_id, created_by, name, original_filename, file_key, file_size_bytes, file_format, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'csv', 'pending')
+                    """,
+                    (
+                        output_dataset_id,
+                        str(org_id),
+                        str(created_by),
+                        f"{recipe_name} output",
+                        output_filename,
+                        f"uploads/{org_id}/{output_dataset_id}/{output_filename}",
+                        len(output_bytes),
+                    ),
+                )
+        _log(f"Created output dataset row {output_dataset_id}")
+
+        analysis_result = analyze_dataset.delay(
+            dataset_id=output_dataset_id,
+            org_id=str(org_id),
+            file_key=f"uploads/{org_id}/{output_dataset_id}/{output_filename}",
+            file_format="csv",
+            database_url=database_url,
+        )
+        _log(f"Queued analysis job {analysis_result.id} for output dataset")
+
+        metrics = {
+            "input_rows": input_rows,
+            "input_cols": input_cols,
+            "output_rows": output_rows,
+            "output_cols": output_cols,
+            "output_dataset_id": output_dataset_id,
+            "analysis_job_id": analysis_result.id,
+            "steps_executed": len(transform_logs),
+        }
+
+        with psycopg2.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE pipeline_runs
+                    SET status = 'success',
+                        logs = %s,
+                        metrics = %s,
+                        output_dataset_id = %s,
+                        finished_at = NOW()
+                    WHERE id = %s
+                    """,
+                    ("\n".join(log_lines), Json(metrics), output_dataset_id, run_id),
+                )
+                cur.execute(
+                    """
+                    UPDATE pipeline_recipes
+                    SET last_run_at = NOW(), last_run_status = 'success', updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (pipeline_id,),
+                )
+        return {"pipeline_id": pipeline_id, "run_id": run_id, "status": "success", **metrics}
+
+    except Exception as exc:
+        logger.error(f"run_pipeline_recipe failed for {pipeline_id}: {exc}")
+        try:
+            with psycopg2.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    if run_id:
+                        cur.execute(
+                            """
+                            UPDATE pipeline_runs
+                            SET status = 'failed', logs = %s, metrics = %s, finished_at = NOW()
+                            WHERE id = %s
+                            """,
+                            (
+                                "\n".join(log_lines + [f"ERROR: {exc}"]),
+                                Json({"error": str(exc), "output_dataset_id": output_dataset_id}),
+                                run_id,
+                            ),
+                        )
+                    cur.execute(
+                        """
+                        UPDATE pipeline_recipes
+                        SET last_run_at = NOW(), last_run_status = 'failed', updated_at = NOW()
+                        WHERE id = %s
+                        """,
+                        (pipeline_id,),
+                    )
+        except Exception:
+            logger.exception("Failed to persist pipeline failure status")
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(name="run_all_pipelines")
+def run_all_pipelines() -> dict:
+    """Dispatch due active pipelines based on cron schedules."""
+    import psycopg2
+    from croniter import croniter
+    from datetime import datetime, timezone
+
+    database_url = os.getenv("DATABASE_URL", "")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    if not db_url:
+        return {"skipped": True}
+
+    now = datetime.now(timezone.utc)
+    dispatched = 0
+
+    try:
+        conn = psycopg2.connect(db_url)
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, schedule FROM pipeline_recipes WHERE is_active = true"
+                )
+                for (pipeline_id, schedule) in cur.fetchall():
+                    try:
+                        cron = croniter(schedule, now)
+                        prev_run = cron.get_prev(datetime)
+                        if (now - prev_run).total_seconds() < 3600:
+                            run_pipeline_recipe.delay(str(pipeline_id), None, database_url)
+                            dispatched += 1
+                    except Exception as e:
+                        logger.warning(f"Invalid cron for pipeline {pipeline_id}: {e}")
+        conn.close()
+    except Exception as e:
+        logger.error(f"run_all_pipelines failed: {e}")
+
+    logger.info(f"run_all_pipelines dispatched {dispatched} runs")
+    return {"dispatched": dispatched}
+
+
 # ── Monitor evaluation ─────────────────────────────────────────────────────────
 
 def _evaluate_monitor(
@@ -368,6 +621,125 @@ def _send_slack_alert(
         logger.info(f"Slack alert sent for monitor '{monitor_name}'")
     except Exception as e:
         logger.warning(f"Failed to send Slack alert: {e}")
+
+
+# ── Pipeline transformation helpers ───────────────────────────────────────────
+
+def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
+    """
+    Execute transform nodes from a pipeline graph.
+    Expected node format:
+      {"type":"transform","data":{"operation":"select_columns","params":{...},"order":1}}
+    """
+    import pandas as pd
+
+    working = df.copy()
+    logs: list[str] = []
+    nodes = graph.get("nodes", []) if isinstance(graph, dict) else []
+    steps = []
+
+    for idx, node in enumerate(nodes):
+        if not isinstance(node, dict):
+            continue
+        data = node.get("data", {}) if isinstance(node.get("data"), dict) else {}
+        node_type = node.get("type")
+        operation = data.get("operation") or node.get("operation")
+        params = data.get("params") if isinstance(data.get("params"), dict) else node.get("params", {})
+        if node_type == "transform" or operation:
+            steps.append(
+                {
+                    "order": data.get("order", idx),
+                    "operation": operation,
+                    "params": params if isinstance(params, dict) else {},
+                }
+            )
+
+    for step in sorted(steps, key=lambda s: s["order"]):
+        op = step.get("operation")
+        params = step.get("params", {})
+        if not op:
+            continue
+
+        if op == "select_columns":
+            cols = [c for c in params.get("columns", []) if c in working.columns]
+            if cols:
+                working = working[cols]
+                logs.append(f"select_columns: kept {len(cols)} columns")
+            else:
+                logs.append("select_columns: skipped (no valid columns)")
+        elif op == "filter_rows":
+            col = params.get("column")
+            operator = params.get("operator", "eq")
+            value = params.get("value")
+            if col not in working.columns:
+                logs.append(f"filter_rows: skipped (column '{col}' missing)")
+                continue
+            before = len(working)
+            series = working[col]
+            if operator == "eq":
+                mask = series == value
+            elif operator == "ne":
+                mask = series != value
+            elif operator == "gt":
+                mask = pd.to_numeric(series, errors="coerce") > float(value)
+            elif operator == "gte":
+                mask = pd.to_numeric(series, errors="coerce") >= float(value)
+            elif operator == "lt":
+                mask = pd.to_numeric(series, errors="coerce") < float(value)
+            elif operator == "lte":
+                mask = pd.to_numeric(series, errors="coerce") <= float(value)
+            elif operator == "contains":
+                mask = series.astype(str).str.contains(str(value), case=False, na=False)
+            else:
+                mask = pd.Series([True] * len(working), index=working.index)
+            working = working[mask]
+            logs.append(f"filter_rows: {before - len(working)} rows filtered")
+        elif op == "rename_columns":
+            mapping = params.get("mapping", {})
+            if isinstance(mapping, dict) and mapping:
+                working = working.rename(columns=mapping)
+                logs.append(f"rename_columns: renamed {len(mapping)} columns")
+        elif op == "sort_rows":
+            col = params.get("column")
+            ascending = bool(params.get("ascending", True))
+            if col in working.columns:
+                working = working.sort_values(by=col, ascending=ascending)
+                logs.append(f"sort_rows: sorted by {col} ({'asc' if ascending else 'desc'})")
+        elif op == "limit_rows":
+            limit = int(params.get("limit", 1000))
+            working = working.head(max(0, limit))
+            logs.append(f"limit_rows: limited to {limit} rows")
+        elif op == "fill_missing":
+            col = params.get("column")
+            value = params.get("value", "")
+            if col and col in working.columns:
+                working[col] = working[col].fillna(value)
+                logs.append(f"fill_missing: filled nulls in {col}")
+            elif not col:
+                working = working.fillna(value)
+                logs.append("fill_missing: filled nulls in all columns")
+        elif op == "drop_missing":
+            subset = params.get("subset")
+            if isinstance(subset, list) and subset:
+                valid = [c for c in subset if c in working.columns]
+                working = working.dropna(subset=valid)
+                logs.append(f"drop_missing: dropped rows with nulls in {len(valid)} columns")
+            else:
+                working = working.dropna()
+                logs.append("drop_missing: dropped rows with any null")
+        elif op == "derive_column":
+            target = params.get("target")
+            expression = params.get("expression")
+            if target and expression:
+                try:
+                    working[target] = working.eval(str(expression))
+                    logs.append(f"derive_column: computed {target}")
+                except Exception:
+                    logs.append(f"derive_column: failed for target {target}")
+        else:
+            logs.append(f"unknown_operation: {op} (skipped)")
+
+    return working, logs
 
 
 # ── DB helpers (synchronous — no asyncio in Celery workers) ────────────────────
