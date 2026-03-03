@@ -148,7 +148,7 @@ export default function SharedReportPage() {
         )}
 
         {/* Column list */}
-        {report?.column_analysis?.length > 0 && (
+        {(report?.column_analysis?.length ?? 0) > 0 && (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100">
               <h2 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
