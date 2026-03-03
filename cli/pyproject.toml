@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "sushi-cli"
+version = "0.1.0"
+description = "Command-line interface for the Sushi EDA platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["data", "eda", "analytics", "sushi"]
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.26",
+    "rich>=13.0",
+    "keyring>=24.0",
+]
+
+[project.scripts]
+sushi = "sushi_cli.main:cli"
+
+[project.urls]
+Homepage = "https://sushi-eda.com"
+Repository = "https://github.com/premxai/sushi-eda"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sushi_cli*"]
