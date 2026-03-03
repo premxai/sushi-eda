@@ -291,6 +291,31 @@ async def get_analysis(
     }
 
 
+# ── AI Endpoints ──────────────────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/ai/cleaning-suggestions")
+async def ai_cleaning_suggestions(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    AI-powered data cleaning suggestions (viewer+).
+
+    Uses the latest analysis report to generate actionable cleaning steps
+    with priority ranking, impact estimates, and ready-to-apply operation specs.
+    Falls back to rule-based suggestions if ANTHROPIC_API_KEY is not set.
+    """
+    await validate_org_access(org_id, current_user, db)
+    await _get_dataset_or_404(dataset_id, org_id, db)
+    analysis = await _get_latest_analysis(dataset_id, db)
+
+    from ai_cleaning import generate_cleaning_suggestions
+    suggestions = generate_cleaning_suggestions(analysis.report)
+    return {"dataset_id": dataset_id, "suggestions": suggestions}
+
+
 # ── Visualizations ─────────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/visualize/{column_name}")
