@@ -293,6 +293,69 @@ async def get_analysis(
 
 # ── AI Endpoints ──────────────────────────────────────────────────────────────
 
+@router.post("/{dataset_id}/ai/chat")
+async def ai_chat(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    question: str = Body(..., embed=True),
+    chat_history: list = Body(default=[], embed=True),
+    limit: int = Body(default=500, ge=1, le=5000, embed=True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ask a natural-language question about the dataset (viewer+).
+
+    Claude translates the question to DuckDB SQL, executes it, and returns
+    a plain-English answer with the SQL and raw results.
+
+    Body:
+    {
+      "question": "Which region has the highest average sales?",
+      "chat_history": [{"role": "user", "content": "..."}, ...],  // optional
+      "limit": 500
+    }
+    """
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+
+    from ai_chat import ask_dataset
+    return ask_dataset(pl_df, question, chat_history=chat_history, limit=limit)
+
+
+@router.post("/{dataset_id}/ai/chat/stream")
+async def ai_chat_stream(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    question: str = Body(..., embed=True),
+    chat_history: list = Body(default=[], embed=True),
+    limit: int = Body(default=500, ge=1, le=5000, embed=True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Streaming SSE version of AI chat (viewer+).
+
+    Yields events: sql | results | token | done | error
+    Content-Type: text/event-stream
+    """
+    from fastapi.responses import StreamingResponse
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+
+    from ai_chat import ask_dataset_stream
+    return StreamingResponse(
+        ask_dataset_stream(pl_df, question, chat_history=chat_history, limit=limit),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.get("/{dataset_id}/ai/cleaning-suggestions")
 async def ai_cleaning_suggestions(
     dataset_id: str,
