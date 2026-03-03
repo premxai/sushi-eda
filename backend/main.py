@@ -26,7 +26,9 @@ from storage import storage
 from worker import analyze_dataset
 from routers import webhooks, jobs as jobs_router
 from routers.billing import router as billing_router
+from routers.connectors import router as connectors_router
 from routers.datasets import router as datasets_router, analyses_router, credits_router
+from routers.monitors import router as monitors_router
 from routers.shares import router as shares_router
 
 # ── Sentry ─────────────────────────────────────────────────────────────────────
@@ -76,6 +78,8 @@ app.include_router(webhooks.router)
 app.include_router(jobs_router.router)
 app.include_router(billing_router)
 app.include_router(shares_router)
+app.include_router(connectors_router)
+app.include_router(monitors_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
 app.include_router(credits_router)

@@ -60,6 +60,7 @@ class Organization(Base):
     members: Mapped[list["OrgMember"]] = relationship("OrgMember", back_populates="org", cascade="all, delete-orphan")
     datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="org", cascade="all, delete-orphan")
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="org", cascade="all, delete-orphan")
+    connectors: Mapped[list["DataConnector"]] = relationship("DataConnector", back_populates="org", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="org", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
@@ -225,6 +226,38 @@ class MonitorRun(Base):
 
     def __repr__(self) -> str:
         return f"<MonitorRun monitor={self.monitor_id} status={self.status}>"
+
+
+# ─── Data Connectors ──────────────────────────────────────────────────────────
+
+class DataConnector(Base):
+    """
+    Saved connection config for external data sources.
+    Credentials are stored Fernet-encrypted in config_encrypted.
+    connector_type: postgres | s3
+    """
+    __tablename__ = "data_connectors"
+    __table_args__ = (
+        Index("ix_data_connectors_org_id", "org_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    connector_type: Mapped[str] = mapped_column(Text, nullable=False)    # postgres | s3
+    config_encrypted: Mapped[str] = mapped_column(Text, nullable=False)  # Fernet-encrypted JSON
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    org: Mapped["Organization"] = relationship("Organization", back_populates="connectors")
+    created_by_user: Mapped["User"] = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<DataConnector {self.name} type={self.connector_type}>"
 
 
 # ─── Audit Logs ───────────────────────────────────────────────────────────────
