@@ -14,7 +14,6 @@ import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations, archiveDataset } from "@/lib/api";
-import { Rows3, Columns3, HardDrive, CopyMinus } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -87,15 +86,6 @@ export default function DashboardPage() {
     );
   }
 
-  const { basic_info } = report;
-
-  const headerStats = [
-    { label: "Rows", value: basic_info.rows.toLocaleString(), icon: Rows3 },
-    { label: "Cols", value: basic_info.columns.toLocaleString(), icon: Columns3 },
-    { label: "Size", value: `${basic_info.memory_usage_mb} MB`, icon: HardDrive },
-    { label: "Dupes", value: basic_info.duplicate_rows.toLocaleString(), icon: CopyMinus },
-  ];
-
   const sectionTitles: Record<NavSection, string> = {
     overview: "Overview",
     columns: "Column Analysis",
@@ -109,7 +99,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-[#f0f2f8]">
       <Sidebar
         fileName={fileName}
         activeSection={activeSection}
@@ -120,18 +110,10 @@ export default function DashboardPage() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-          <h1 className="text-sm font-semibold text-slate-900">
-            {sectionTitles[activeSection]}
-          </h1>
-          <div className="flex items-center gap-3">
-            {headerStats.map((s) => (
-              <div key={s.label} className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
-                <s.icon className="h-3 w-3 text-slate-400" />
-                <span className="text-[11px] text-slate-500">{s.label}</span>
-                <span className="text-[11px] font-semibold text-slate-900 tabular-nums">{s.value}</span>
-              </div>
-            ))}
+        <header className="flex shrink-0 items-center justify-between bg-white border-b border-slate-200 px-6 py-4">
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">{sectionTitles[activeSection]}</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Track, manage and explore your dataset.</p>
           </div>
         </header>
 

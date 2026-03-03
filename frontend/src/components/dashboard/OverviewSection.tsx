@@ -97,7 +97,7 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
     <div className="space-y-6">
       {/* Quality Score Card */}
       {qualityScore && (
-        <div className="rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-6 transition-shadow hover:shadow-md">
+        <div className="rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-sm font-medium text-slate-500">Data Quality Score</h3>
@@ -150,19 +150,19 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
           {stats.map((s) => (
             <Tooltip key={s.label}>
               <TooltipTrigger asChild>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
+                <div className="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500">{s.label}</p>
-                      <p className={cn("mt-1 text-2xl font-semibold tracking-tight text-slate-900")}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{s.label}</p>
+                      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
                         {s.value}
                       </p>
                       {s.sub && (
-                        <p className="mt-0.5 text-[11px] text-slate-400">{s.sub}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{s.sub}</p>
                       )}
                     </div>
-                    <div className={cn("rounded-lg p-2", s.iconBg)}>
-                      <s.icon className={cn("h-4 w-4", s.accent)} />
+                    <div className={cn("rounded-xl p-3 shrink-0", s.iconBg)}>
+                      <s.icon className={cn("h-5 w-5", s.accent)} />
                     </div>
                   </div>
                 </div>
@@ -176,8 +176,8 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
       </TooltipProvider>
 
       {/* Data types breakdown */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-sm font-medium text-slate-900">Column Types</h3>
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Column Types</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {Object.entries(info.dtypes_summary).map(([dtype, count]) => (
             <span
@@ -217,8 +217,8 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
       </div>
 
       {/* Column list */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-sm font-medium text-slate-900">All Columns</h3>
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">All Columns</h3>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {info.column_names.map((name) => (
             <span

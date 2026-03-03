@@ -15,8 +15,10 @@ import {
   FlaskConical,
   Archive,
   Database,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export type NavSection =
@@ -62,27 +64,40 @@ interface SidebarProps {
 
 export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, datasetId, onArchive }: SidebarProps) {
   return (
-    <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-white overflow-y-auto">
-      {/* Dataset header */}
-      <div className="border-b border-slate-200 px-4 py-4 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
-            <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900">{fileName}</p>
-            <p className="text-[11px] text-slate-500">Dataset</p>
-          </div>
+    <aside className="flex h-screen w-60 flex-col bg-[#1a2035] overflow-y-auto">
+      {/* Logo */}
+      <div className="px-4 py-5 shrink-0">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image src="/sushi-logo.png" alt="Sushi" width={32} height={32} />
+          <span className="text-lg font-bold text-white tracking-tight">Sushi</span>
+        </Link>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 pb-4 shrink-0">
+        <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2">
+          <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <span className="text-xs text-slate-400">Search here...</span>
         </div>
       </div>
 
-      {/* Navigation grouped */}
-      <nav className="flex-1 px-2 py-3">
+      {/* Dataset name */}
+      <div className="px-3 pb-3 shrink-0">
+        <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/20">
+            <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" />
+          </div>
+          <p className="truncate text-xs font-medium text-slate-300">{fileName}</p>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-2">
         {GROUPS.map((group) => {
           const items = navItems.filter((i) => i.group === group);
           return (
-            <div key={group} className="mb-4">
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <div key={group} className="mb-5">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                 {group}
               </p>
               <div className="space-y-0.5">
@@ -93,13 +108,13 @@ export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, d
                       key={item.id}
                       onClick={() => onSectionChange(item.id)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
                         isActive
-                          ? "bg-indigo-50 font-medium text-indigo-600"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          ? "bg-white/10 text-white font-medium"
+                          : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                       )}
                     >
-                      <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-indigo-600" : "text-slate-400")} />
+                      <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-indigo-400" : "text-slate-500")} />
                       {item.label}
                     </button>
                   );
@@ -110,29 +125,29 @@ export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, d
         })}
       </nav>
 
-      {/* Footer actions */}
-      <div className="border-t border-slate-200 p-3 shrink-0 space-y-1.5">
+      {/* Footer */}
+      <div className="border-t border-white/10 p-3 shrink-0 space-y-1">
         <Link
           href="/datasets"
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-all hover:bg-white/5 hover:text-slate-200"
         >
-          <Database className="h-3.5 w-3.5 shrink-0" />
+          <Database className="h-4 w-4 shrink-0 text-slate-500" />
           My Datasets
         </Link>
 
         {datasetId && onArchive && (
           <button
             onClick={onArchive}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
           >
-            <Archive className="h-3.5 w-3.5 shrink-0" />
+            <Archive className="h-4 w-4 shrink-0 text-slate-500" />
             Archive dataset
           </button>
         )}
 
         <button
           onClick={onNewFile}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:shadow-md"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-700"
         >
           <Plus className="h-3.5 w-3.5" />
           Analyze New File
