@@ -126,7 +126,15 @@ export function FileUpload({
               </span>
             </div>
             <Progress value={uploadProgress} className="h-1.5" />
-            <p className="text-xs text-slate-500">Analyzing your data...</p>
+            <p className="text-xs text-slate-500">
+              {uploadProgress === 0
+                ? "Connecting to server…"
+                : uploadProgress < 50
+                  ? `Uploading… ${uploadProgress}%`
+                  : uploadProgress < 90
+                    ? "Analyzing your data…"
+                    : "Almost done…"}
+            </p>
           </div>
         ) : error ? (
           <div className="text-center">

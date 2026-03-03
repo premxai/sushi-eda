@@ -15,7 +15,7 @@ import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { Rows3, Columns3, HardDrive, CopyMinus, GitCompare, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +41,9 @@ export default function Home() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
   const [vizLoading, setVizLoading] = useState(false);
+
+  // Pre-warm backend on page load to reduce cold-start delay on first upload
+  useEffect(() => { prewarmBackend(); }, []);
 
   // Real-time job stream — activates when datasetId is set after async upload
   const jobStream = useJobStream(datasetId);
@@ -84,7 +87,7 @@ export default function Home() {
 
     try {
       // Try async (Celery-backed) upload first; fall back to legacy sync
-      const asyncResult = await uploadFileAsync(file).catch(() => null);
+      const asyncResult = await uploadFileAsync(file, "default", setUploadProgress).catch(() => null);
       if (asyncResult?.dataset_id) {
         // Async path: SSE hook drives progress from here
         setDatasetId(asyncResult.dataset_id);

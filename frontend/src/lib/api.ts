@@ -4,7 +4,10 @@ import { EDAReport } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '/api' : 'http://localhost:8000');
 
-const client = axios.create({ baseURL: API_BASE });
+const client = axios.create({
+  baseURL: API_BASE,
+  timeout: 300_000, // 5 min — accounts for Render cold start + large file processing
+});
 
 export async function uploadFile(file: File): Promise<EDAReport> {
   const formData = new FormData();
@@ -15,17 +18,31 @@ export async function uploadFile(file: File): Promise<EDAReport> {
   return data;
 }
 
+/** Fire-and-forget ping to wake Render backend before user uploads. */
+export function prewarmBackend(): void {
+  client.get("/health", { timeout: 15_000 }).catch(() => {/* silent */});
+}
+
 /** Async upload — returns a dataset_id immediately; use useJobStream to track progress. */
 export async function uploadFileAsync(
   file: File,
-  orgId: string = "default"
+  orgId: string = "default",
+  onProgress?: (percent: number) => void,
 ): Promise<{ dataset_id: string; status: string }> {
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await client.post<{ dataset_id: string; status: string }>(
     `/datasets/upload?org_id=${orgId}`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (e) => {
+        if (e.total) {
+          // Upload transfer = 0–50%; analysis phase = 50–99% (driven by SSE)
+          onProgress?.(Math.round((e.loaded / e.total) * 50));
+        }
+      },
+    }
   );
   return data;
 }
