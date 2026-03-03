@@ -42,7 +42,7 @@ export function LandingPage({
       <ProductTour />
 
       {/* ── NAV ── */}
-      <nav className="lp-nav">
+      <nav className="lp-nav" style={{ background: "rgba(240,238,233,0.88)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div className="lp-logo-icon">
             <Image src="/sushi-logo.png" alt="Sushi" width={22} height={22} />

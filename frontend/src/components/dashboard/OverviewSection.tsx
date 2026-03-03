@@ -10,7 +10,6 @@ import {
   Hash,
 } from "lucide-react";
 import { BasicInfo, QualityScore } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -28,9 +27,8 @@ interface StatCardData {
   value: string;
   sub?: string;
   icon: React.ElementType;
-  accent: string;
-  iconBg: string;
-  iconGradient?: string;
+  glow: string;
+  dot: string;
 }
 
 function buildStats(info: BasicInfo): StatCardData[] {
@@ -39,26 +37,23 @@ function buildStats(info: BasicInfo): StatCardData[] {
       label: "Rows",
       value: info.rows.toLocaleString(),
       icon: Rows3,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #9060f8, #7040d8)",
+      glow: "#9060f8",
+      dot: "#9060f8",
     },
     {
       label: "Columns",
       value: info.columns.toLocaleString(),
       icon: Columns3,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #e840c8, #c020a8)",
+      glow: "#e840c8",
+      dot: "#e840c8",
     },
     {
       label: "Memory",
       value: `${info.memory_usage_mb} MB`,
       sub: `${info.memory_usage_bytes.toLocaleString()} bytes`,
       icon: HardDrive,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #10b981, #059669)",
+      glow: "#00d4e8",
+      dot: "#00d4e8",
     },
     {
       label: "Duplicates",
@@ -67,9 +62,8 @@ function buildStats(info: BasicInfo): StatCardData[] {
         ? `${((info.duplicate_rows / info.rows) * 100).toFixed(1)}% of rows`
         : undefined,
       icon: CopyMinus,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #f59e0b, #d97706)",
+      glow: "#f8d030",
+      dot: "#f8d030",
     },
     {
       label: "Missing Values",
@@ -79,9 +73,8 @@ function buildStats(info: BasicInfo): StatCardData[] {
           ? `${((info.total_missing / (info.rows * info.columns)) * 100).toFixed(1)}% of cells`
           : undefined,
       icon: AlertTriangle,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #f43f5e, #e11d48)",
+      glow: "#ff7040",
+      dot: "#ff7040",
     },
     {
       label: "Data Types",
@@ -90,9 +83,8 @@ function buildStats(info: BasicInfo): StatCardData[] {
         .map(([k, v]) => `${v} ${k}`)
         .join(", "),
       icon: Hash,
-      accent: "text-white",
-      iconBg: "",
-      iconGradient: "linear-gradient(135deg, #64748b, #475569)",
+      glow: "#00e8a0",
+      dot: "#00e8a0",
     },
   ];
 }
@@ -101,40 +93,72 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
   const stats = buildStats(info);
 
   return (
-    <div className="space-y-6">
-      {/* Quality Score Card */}
+    <div className="space-y-5">
+
+      {/* ── Quality Score Card — dark glass ── */}
       {qualityScore && (
-        <div className="rounded-2xl p-6 shadow-lg text-white" style={{ background: "linear-gradient(135deg, #9060f8, #e840c8)" }}>
+        <div style={{
+          borderRadius: 18, padding: 24,
+          background: "linear-gradient(145deg, rgba(14,14,22,0.93), rgba(8,8,16,0.97))",
+          border: "1px solid rgba(255,255,255,0.1)",
+          position: "relative", overflow: "hidden",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+          color: "white",
+        }}>
+          {/* Iridescent top stripe */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(0,212,232,0.7), rgba(144,96,248,0.7), rgba(232,64,200,0.7), transparent)",
+          }} />
+          {/* Glow pool */}
+          <div style={{
+            position: "absolute", bottom: 0, left: "15%", right: "15%", height: 60,
+            background: "radial-gradient(ellipse, rgba(144,96,248,0.12) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }} />
+
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.65)" }}>Data Quality Score</h3>
-              <div className="mt-3 flex items-baseline gap-4">
-                <span className="text-6xl font-bold tracking-tight">{qualityScore.overall_score}</span>
-                <span className="rounded-full px-3 py-1 text-base font-semibold" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}>
+              <p style={{ fontSize: 9, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: "2px", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 12 }}>
+                Data Quality Score
+              </p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+                <span className="font-display" style={{ fontSize: 56, lineHeight: 1, letterSpacing: "-2px", color: "rgba(255,255,255,0.92)" }}>
+                  {qualityScore.overall_score}
+                </span>
+                <span style={{
+                  padding: "4px 14px", borderRadius: 99, fontSize: 14, fontWeight: 500,
+                  background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}>
                   Grade {qualityScore.grade}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Breakdown */}
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {/* Breakdown pills */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginTop: 20 }}>
             {Object.entries(qualityScore.breakdown).map(([key, val]) => (
-              <div key={key} className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
-                <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <div key={key} style={{
+                borderRadius: 10, padding: "10px 12px",
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}>
+                <p style={{ fontSize: 9, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>
                   {key.replace(/_/g, " ")}
                 </p>
-                <p className="mt-0.5 text-sm font-bold text-white">{val.score}</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>{val.score}</p>
               </div>
             ))}
           </div>
 
           {/* Recommendations */}
           {qualityScore.recommendations.length > 0 && (
-            <div className="mt-4 space-y-1.5">
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
               {qualityScore.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>
-                  <span className="mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>✦</span>
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+                  <span style={{ color: "rgba(144,96,248,0.8)", marginTop: 1, flexShrink: 0 }}>✦</span>
                   <span>{rec}</span>
                 </div>
               ))}
@@ -143,30 +167,53 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
         </div>
       )}
 
-      {/* Stat cards grid */}
+      {/* ── Stat cards — warm glass ── */}
       <TooltipProvider>
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {stats.map((s) => (
             <Tooltip key={s.label}>
               <TooltipTrigger asChild>
-                <div className="rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{s.label}</p>
-                      <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-                        {s.value}
-                      </p>
-                      {s.sub && (
-                        <p className="mt-1 text-[11px] text-slate-400">{s.sub}</p>
-                      )}
-                    </div>
-                    <div
-                      className="rounded-xl p-3 shrink-0"
-                      style={s.iconGradient ? { background: s.iconGradient } : undefined}
-                    >
-                      <s.icon className={cn("h-5 w-5", s.accent)} />
-                    </div>
+                <div style={{
+                  background: "rgba(255,255,255,0.72)",
+                  border: "1px solid rgba(255,255,255,0.8)",
+                  borderRadius: 16,
+                  padding: "22px 22px 18px",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  boxShadow: "0 2px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
+                  position: "relative", overflow: "hidden",
+                  cursor: "default",
+                }}>
+                  {/* Colored glow blob */}
+                  <div style={{
+                    position: "absolute", top: -24, right: -24, width: 72, height: 72, borderRadius: "50%",
+                    background: s.glow, opacity: 0.1, pointerEvents: "none",
+                    boxShadow: `0 0 30px ${s.glow}`,
+                  }} />
+
+                  {/* Label row with colored dot */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: s.dot, boxShadow: `0 0 6px ${s.dot}`,
+                      flexShrink: 0,
+                    }} />
+                    <p style={{
+                      fontSize: 10, fontFamily: "ui-monospace, Menlo, monospace",
+                      letterSpacing: "1.5px", textTransform: "uppercase", color: "#9a9690",
+                    }}>
+                      {s.label}
+                    </p>
                   </div>
+
+                  {/* Value — Instrument Serif */}
+                  <p className="font-display" style={{ fontSize: 36, lineHeight: 1, letterSpacing: "-1px", color: "#111010", marginBottom: 6 }}>
+                    {s.value}
+                  </p>
+
+                  {s.sub && (
+                    <p style={{ fontSize: 11, color: "#9a9690" }}>{s.sub}</p>
+                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -177,58 +224,77 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
         </div>
       </TooltipProvider>
 
-      {/* Data types breakdown */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">Column Types</h3>
-        <div className="mt-3 flex flex-wrap gap-2">
+      {/* ── Column Types ── */}
+      <div style={{
+        background: "rgba(255,255,255,0.72)",
+        border: "1px solid rgba(255,255,255,0.8)",
+        borderRadius: 16, padding: 20,
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+      }}>
+        <p style={{ fontWeight: 500, fontSize: 14, color: "#111010", marginBottom: 12 }}>Column Types</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
           {Object.entries(info.dtypes_summary).map(([dtype, count]) => (
             <span
               key={dtype}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
-              style={{ background: "rgba(144,96,248,0.08)", border: "1px solid rgba(144,96,248,0.15)" }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "4px 10px", borderRadius: 99, fontSize: 12,
+                background: "rgba(144,96,248,0.08)", border: "1px solid rgba(144,96,248,0.15)",
+              }}
             >
-              <span className="font-mono" style={{ color: "#7c3aed" }}>{dtype}</span>
-              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(144,96,248,0.15)", color: "#6d28d9" }}>
+              <span style={{ fontFamily: "ui-monospace, Menlo, monospace", color: "#7c3aed", fontSize: 11 }}>{dtype}</span>
+              <span style={{
+                padding: "1px 6px", borderRadius: 99, fontSize: 10, fontWeight: 600,
+                background: "rgba(144,96,248,0.15)", color: "#6d28d9",
+              }}>
                 {count}
               </span>
             </span>
           ))}
         </div>
-        <div className="mt-4">
-          <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
-            {Object.entries(info.dtypes_summary).map(([dtype, count], i) => {
-              const gradients = [
-                "#9060f8", "#e840c8", "#10b981", "#f59e0b", "#f43f5e", "#64748b",
-              ];
-              const pct = (count / info.columns) * 100;
-              return (
-                <div
-                  key={dtype}
-                  className="transition-all"
-                  style={{ width: `${pct}%`, background: gradients[i % gradients.length] }}
-                  title={`${dtype}: ${count} columns (${pct.toFixed(0)}%)`}
-                />
-              );
-            })}
-          </div>
+        {/* Segmented bar */}
+        <div style={{ height: 4, borderRadius: 2, overflow: "hidden", display: "flex", background: "rgba(0,0,0,0.06)" }}>
+          {Object.entries(info.dtypes_summary).map(([dtype, count], i) => {
+            const colors = ["#9060f8", "#e840c8", "#00d4e8", "#f8d030", "#ff7040", "#00e8a0"];
+            const pct = (count / info.columns) * 100;
+            return (
+              <div
+                key={dtype}
+                style={{ width: `${pct}%`, background: colors[i % colors.length] }}
+                title={`${dtype}: ${count} (${pct.toFixed(0)}%)`}
+              />
+            );
+          })}
         </div>
       </div>
 
-      {/* Column list */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">All Columns</h3>
-        <div className="mt-3 flex flex-wrap gap-1.5">
+      {/* ── All Columns ── */}
+      <div style={{
+        background: "rgba(255,255,255,0.72)",
+        border: "1px solid rgba(255,255,255,0.8)",
+        borderRadius: 16, padding: 20,
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+      }}>
+        <p style={{ fontWeight: 500, fontSize: 14, color: "#111010", marginBottom: 12 }}>All Columns</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {info.column_names.map((name) => (
             <span
               key={name}
-              className="rounded-lg px-2.5 py-1 font-mono text-xs"
-              style={{ background: "rgba(0,0,0,0.04)", color: "#374151", border: "1px solid rgba(0,0,0,0.06)" }}
+              style={{
+                padding: "4px 10px", borderRadius: 7,
+                fontFamily: "ui-monospace, Menlo, monospace",
+                fontSize: 11, color: "#6b6860",
+                background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)",
+              }}
             >
               {name}
             </span>
           ))}
         </div>
       </div>
+
     </div>
   );
 }

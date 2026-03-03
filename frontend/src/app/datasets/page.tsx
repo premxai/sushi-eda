@@ -133,15 +133,15 @@ export default function DatasetsPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f7" }}>
+    <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
 
       {/* ── NAV ── */}
       <nav style={{
         position: "sticky", top: 0, zIndex: 100,
-        background: "rgba(255,255,255,0.85)",
+        background: "rgba(240,238,233,0.88)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        borderBottom: "1px solid rgba(0,0,0,0.07)",
         padding: "0 48px",
         height: 60,
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -278,25 +278,25 @@ export default function DatasetsPage() {
                 style={{
                   display: "flex", alignItems: "center", gap: 14,
                   padding: "14px 18px",
-                  background: "rgba(255,255,255,0.85)",
+                  background: "rgba(255,255,255,0.72)",
                   backdropFilter: "blur(12px)",
                   WebkitBackdropFilter: "blur(12px)",
                   borderRadius: 16,
-                  border: "1px solid rgba(0,0,0,0.06)",
+                  border: "1px solid rgba(255,255,255,0.8)",
                   cursor: d.status === "ready" ? "pointer" : "default",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  boxShadow: "0 2px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
                   transition: "all 0.15s ease",
                   opacity: d.status !== "ready" ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (d.status === "ready") {
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)";
-                    (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(144,96,248,0.2)";
+                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.09)";
+                    (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(144,96,248,0.25)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)";
-                  (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(0,0,0,0.06)";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)";
+                  (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,255,255,0.8)";
                 }}
               >
                 {/* Format badge */}

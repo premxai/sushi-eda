@@ -191,7 +191,7 @@ export default function Home() {
     };
 
     return (
-      <div className="flex h-screen bg-[#f0f2f8]">
+      <div className="flex h-screen" style={{ background: "#f0eee9" }}>
         <Sidebar
           fileName={fileName}
           activeSection={activeSection}
@@ -201,11 +201,19 @@ export default function Home() {
           onArchive={handleArchive}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="relative flex shrink-0 items-center justify-between bg-white border-b border-slate-100 px-6 py-4">
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-[#9060f8] to-[#e840c8]" />
+          <header style={{
+            position: "relative", display: "flex", flexShrink: 0,
+            alignItems: "center", justifyContent: "space-between",
+            padding: "14px 32px",
+            background: "rgba(240,238,233,0.88)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(0,0,0,0.07)",
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(144,96,248,0.5), rgba(232,64,200,0.5), transparent)" }} />
             <div>
-              <h1 className="font-display text-xl text-slate-900">{sectionTitles[activeSection]}</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Track, manage and explore your dataset.</p>
+              <h1 className="font-display" style={{ fontSize: 22, color: "#111010", letterSpacing: "-0.3px" }}>{sectionTitles[activeSection]}</h1>
+              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>Track, manage and explore your dataset.</p>
             </div>
             <div className="flex items-center gap-2">
               <Link href="/compare">

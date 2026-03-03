@@ -15,11 +15,8 @@ import {
   FlaskConical,
   Archive,
   Database,
-  Search,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 export type NavSection =
   | "overview"
@@ -36,19 +33,19 @@ interface NavItem {
   id: NavSection;
   label: string;
   icon: React.ElementType;
-  group?: string;
+  group: string;
 }
 
 const navItems: NavItem[] = [
-  { id: "overview",        label: "Overview",        icon: BarChart3,            group: "Analysis" },
-  { id: "columns",         label: "Columns",         icon: Columns3,             group: "Analysis" },
-  { id: "correlations",    label: "Correlations",    icon: GitCompareArrows,     group: "Analysis" },
-  { id: "outliers",        label: "Outliers",        icon: AlertTriangle,        group: "Analysis" },
-  { id: "insights",        label: "Insights",        icon: Lightbulb,            group: "Analysis" },
-  { id: "visualizations",  label: "Visualizations",  icon: ChartNoAxesCombined,  group: "Analysis" },
-  { id: "cleaning",        label: "Data Cleaning",   icon: Sparkles,             group: "Engineering" },
-  { id: "transforms",      label: "Transforms",      icon: FlaskConical,         group: "Engineering" },
-  { id: "data",            label: "Data Table",      icon: Table2,               group: "Data" },
+  { id: "overview",       label: "Overview",       icon: BarChart3,           group: "Analysis" },
+  { id: "columns",        label: "Columns",        icon: Columns3,            group: "Analysis" },
+  { id: "correlations",   label: "Correlations",   icon: GitCompareArrows,    group: "Analysis" },
+  { id: "outliers",       label: "Outliers",       icon: AlertTriangle,       group: "Analysis" },
+  { id: "insights",       label: "Insights",       icon: Lightbulb,           group: "Analysis" },
+  { id: "visualizations", label: "Visualizations", icon: ChartNoAxesCombined, group: "Analysis" },
+  { id: "cleaning",       label: "Data Cleaning",  icon: Sparkles,            group: "Engineering" },
+  { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
+  { id: "data",           label: "Data Table",     icon: Table2,              group: "Data" },
 ];
 
 const GROUPS = ["Analysis", "Engineering", "Data"];
@@ -62,60 +59,107 @@ interface SidebarProps {
   onArchive?: () => void;
 }
 
-export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, datasetId, onArchive }: SidebarProps) {
+export function Sidebar({
+  fileName,
+  activeSection,
+  onSectionChange,
+  onNewFile,
+  datasetId,
+  onArchive,
+}: SidebarProps) {
   return (
-    <aside className="flex h-screen w-60 flex-col bg-[#1a2035] overflow-y-auto">
-      {/* Logo */}
-      <div className="px-4 py-5 shrink-0">
-        <Link href="/" className="flex items-center gap-2.5">
-          <Image src="/sushi-logo.png" alt="Sushi" width={32} height={32} />
-          <span className="text-lg font-bold text-white tracking-tight">Sushi</span>
-        </Link>
-      </div>
+    <aside style={{
+      width: 230,
+      height: "100vh",
+      flexShrink: 0,
+      background: "rgba(255,255,255,0.65)",
+      borderRight: "1px solid rgba(0,0,0,0.07)",
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      display: "flex",
+      flexDirection: "column",
+      overflowY: "auto",
+      overflowX: "hidden",
+    }}>
 
-      {/* Search */}
-      <div className="px-3 pb-4 shrink-0">
-        <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2">
-          <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span className="text-xs text-slate-400">Search here...</span>
+      {/* ── Logo ── */}
+      <Link href="/" style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "20px 20px",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        textDecoration: "none",
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: "linear-gradient(135deg, #1a1a1a, #333)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 16, flexShrink: 0,
+        }}>🍣</div>
+        <span style={{ fontWeight: 600, fontSize: 16, color: "#111010", letterSpacing: "-0.2px" }}>Sushi</span>
+      </Link>
+
+      {/* ── Active file chip ── */}
+      <div style={{ padding: "10px 12px 4px" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 10px", borderRadius: 8,
+          background: "rgba(144,96,248,0.07)",
+          border: "1px solid rgba(144,96,248,0.14)",
+        }}>
+          <FileSpreadsheet style={{ width: 13, height: 13, color: "#9060f8", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {fileName}
+          </span>
         </div>
       </div>
 
-      {/* Dataset name */}
-      <div className="px-3 pb-3 shrink-0">
-        <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-500/20">
-            <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" />
-          </div>
-          <p className="truncate text-xs font-medium text-slate-300">{fileName}</p>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-2">
+      {/* ── Navigation ── */}
+      <nav style={{ flex: 1, padding: "6px 12px" }}>
         {GROUPS.map((group) => {
           const items = navItems.filter((i) => i.group === group);
           return (
-            <div key={group} className="mb-5">
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <div key={group} style={{ marginBottom: 18 }}>
+              <p style={{
+                fontSize: 9,
+                fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
+                letterSpacing: "2px",
+                textTransform: "uppercase",
+                color: "#9a9690",
+                padding: "0 8px",
+                marginBottom: 3,
+              }}>
                 {group}
               </p>
-              <div className="space-y-0.5">
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {items.map((item) => {
                   const isActive = activeSection === item.id;
                   return (
                     <button
                       key={item.id}
                       onClick={() => onSectionChange(item.id)}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
-                        isActive
-                          ? "bg-white/10 text-white font-medium"
-                          : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                      )}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "9px 10px", borderRadius: 8,
+                        fontSize: 13.5, fontWeight: isActive ? 500 : 400,
+                        color: isActive ? "#9060f8" : "#6b6860",
+                        background: isActive ? "rgba(144,96,248,0.1)" : "transparent",
+                        border: "none", cursor: "pointer",
+                        width: "100%", textAlign: "left",
+                        transition: "background 0.15s, color 0.15s",
+                      }}
                     >
-                      <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-indigo-400" : "text-slate-500")} />
+                      <item.icon style={{
+                        width: 16, height: 16, flexShrink: 0,
+                        opacity: isActive ? 1 : 0.5,
+                      }} />
                       {item.label}
+                      {isActive && (
+                        <div style={{
+                          marginLeft: "auto", width: 5, height: 5, borderRadius: "50%",
+                          background: "#9060f8", flexShrink: 0,
+                          boxShadow: "0 0 6px rgba(144,96,248,0.7)",
+                        }} />
+                      )}
                     </button>
                   );
                 })}
@@ -125,31 +169,50 @@ export function Sidebar({ fileName, activeSection, onSectionChange, onNewFile, d
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-white/10 p-3 shrink-0 space-y-1">
+      {/* ── Footer actions ── */}
+      <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: 12 }}>
         <Link
           href="/datasets"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-all hover:bg-white/5 hover:text-slate-200"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+            fontWeight: 400,
+          }}
         >
-          <Database className="h-4 w-4 shrink-0 text-slate-500" />
+          <Database style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
           My Datasets
         </Link>
 
         {datasetId && onArchive && (
           <button
             onClick={onArchive}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+              fontSize: 13.5, color: "#6b6860",
+              background: "transparent", border: "none", cursor: "pointer",
+              width: "100%", textAlign: "left", fontWeight: 400,
+            }}
           >
-            <Archive className="h-4 w-4 shrink-0 text-slate-500" />
+            <Archive style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
             Archive dataset
           </button>
         )}
 
         <button
           onClick={onNewFile}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-700"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            width: "100%", padding: "9px 12px", borderRadius: 8, marginTop: 6,
+            fontSize: 13.5, fontWeight: 500,
+            background: "linear-gradient(135deg, #9060f8, #e840c8)",
+            color: "white", border: "none", cursor: "pointer",
+            boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
+            transition: "opacity 0.15s, transform 0.15s",
+          }}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus style={{ width: 13, height: 13 }} />
           Analyze New File
         </button>
       </div>
