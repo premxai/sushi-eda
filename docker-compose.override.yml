@@ -1,0 +1,27 @@
+# Local development overrides — auto-loaded by `docker compose up`.
+# Mounts source code for hot-reload; skips frontend build for speed.
+version: '3.8'
+
+services:
+  backend:
+    volumes:
+      - ./backend:/app          # live code reload via uvicorn --reload
+      - backend_logs:/app/logs
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    volumes:
+      - ./backend:/app          # worker picks up code changes on restart
+
+  frontend:
+    build: {}
+    # In dev, run `npm run dev` directly (outside Docker) for HMR.
+    # Or uncomment below to run inside Docker:
+    # command: npm run dev
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    #   - /app/.next
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000
