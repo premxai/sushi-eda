@@ -310,7 +310,6 @@ export default function DatasetsPage() {
                   textTransform: "uppercase",
                   background: FORMAT_BG[d.file_format] ?? "rgba(0,0,0,0.06)",
                   color: FORMAT_TEXT[d.file_format] ?? "#6b6860",
-                  flexShrink: 0,
                 }}>
                   {d.file_format}
                 </span>
