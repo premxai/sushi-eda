@@ -28,12 +28,16 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import Body
+
 from analyzer import EDAAnalyzer
 from advanced_stats import AdvancedStatistics
+from duckdb_query import get_schema, run_query
 from export_utils import DataExporter
 from visualizer import Visualizer
 from cache import cache
 from storage import storage
+from polars_loader import parse_to_polars
 from db import get_db
 from db.models import Analysis, Dataset
 
@@ -70,15 +74,19 @@ async def _get_latest_analysis(dataset_id: str, db: AsyncSession) -> Analysis:
     return analysis
 
 
-def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
-    """Download file from R2 and parse into a pandas DataFrame via Polars (fast I/O)."""
-    from polars_loader import parse_to_polars
+def _load_polars_from_r2(file_key: str, file_format: str):
+    """Download file from R2 and return a Polars DataFrame."""
+    import polars as pl
     data = storage.download(file_key)
     try:
-        pl_df = parse_to_polars(data, file_format)
-        return pl_df.to_pandas()
+        return parse_to_polars(data, file_format)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
+    """Download file from R2 and return a pandas DataFrame (for scipy/plotly consumers)."""
+    return _load_polars_from_r2(file_key, file_format).to_pandas()
 
 
 # ── Dataset CRUD ──────────────────────────────────────────────────────────────
@@ -313,6 +321,48 @@ async def ttest(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).t_test_independent(col1, col2)
+
+
+# ── DuckDB SQL Query ─────────────────────────────────────────────────────────
+
+@router.get("/{dataset_id}/query/schema")
+async def query_schema(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the column schema visible to DuckDB for a dataset."""
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+    return {"schema": get_schema(pl_df)}
+
+
+@router.post("/{dataset_id}/query")
+async def query_dataset(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    sql: str = Body(..., embed=True),
+    limit: int = Body(default=1000, ge=1, le=10_000, embed=True),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Run an ad-hoc SQL SELECT against the dataset using DuckDB.
+
+    The table is aliased as `df` in your query, e.g.:
+        SELECT region, AVG(sales) FROM df GROUP BY region ORDER BY 2 DESC
+
+    Results are capped at `limit` rows (default 1 000, max 10 000).
+    Only SELECT statements are allowed.
+    """
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+    try:
+        result = run_query(pl_df, sql, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
 
 
 # ── Exports ───────────────────────────────────────────────────────────────────
