@@ -25,6 +25,7 @@ Routes:
   GET  /datasets/{dataset_id}/export/excel
   GET  /datasets/{dataset_id}/export/markdown
 """
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -48,6 +49,21 @@ router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
+    return {
+        "id": str(d.id),
+        "name": d.name,
+        "original_filename": d.original_filename,
+        "file_format": d.file_format,
+        "file_size_bytes": d.file_size_bytes,
+        "row_count": d.row_count,
+        "column_count": d.column_count,
+        "status": d.status,
+        "is_starred": d.is_starred,
+        "archived_at": d.archived_at.isoformat() if d.archived_at else None,
+        "created_at": d.created_at.isoformat(),
+    }
 
 async def _get_dataset_or_404(dataset_id: str, org_id: str, db: AsyncSession) -> Dataset:
     result = await db.execute(
@@ -96,29 +112,83 @@ def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
 @router.get("")
 async def list_datasets(
     org_id: str = Query(default="default"),
+    archived: bool = Query(default=False),
+    starred: bool = Query(default=False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all datasets for an organisation (viewer+)."""
+    """List datasets for an org. Excludes archived by default. Use ?archived=true for trash."""
     await validate_org_access(org_id, current_user, db)
+    query = select(Dataset).where(Dataset.org_id == org_id)
+    if archived:
+        query = query.where(Dataset.archived_at.isnot(None))
+    else:
+        query = query.where(Dataset.archived_at.is_(None))
+    if starred:
+        query = query.where(Dataset.is_starred.is_(True))
+    query = query.order_by(Dataset.is_starred.desc(), Dataset.created_at.desc())
+    result = await db.execute(query)
+    return [_dataset_dict(d) for d in result.scalars().all()]
+
+
+@router.patch("/{dataset_id}/star")
+async def toggle_star(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle starred status on a dataset (editor+)."""
+    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
-        select(Dataset).where(Dataset.org_id == org_id).order_by(Dataset.created_at.desc())
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
     )
-    datasets = result.scalars().all()
-    return [
-        {
-            "id": str(d.id),
-            "name": d.name,
-            "original_filename": d.original_filename,
-            "file_format": d.file_format,
-            "file_size_bytes": d.file_size_bytes,
-            "row_count": d.row_count,
-            "column_count": d.column_count,
-            "status": d.status,
-            "created_at": d.created_at.isoformat(),
-        }
-        for d in datasets
-    ]
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    dataset.is_starred = not dataset.is_starred
+    await db.commit()
+    return {"id": dataset_id, "is_starred": dataset.is_starred}
+
+
+@router.patch("/{dataset_id}/archive")
+async def archive_dataset(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-archive a dataset (moves to trash, editor+)."""
+    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    result = await db.execute(
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    dataset.archived_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"id": dataset_id, "archived_at": dataset.archived_at.isoformat()}
+
+
+@router.patch("/{dataset_id}/restore")
+async def restore_dataset(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore a dataset from the archive (editor+)."""
+    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    result = await db.execute(
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    dataset.archived_at = None
+    await db.commit()
+    return {"id": dataset_id, "archived_at": None}
 
 
 @router.get("/{dataset_id}")
@@ -137,16 +207,8 @@ async def get_dataset(
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return {
-        "id": str(dataset.id),
-        "name": dataset.name,
-        "original_filename": dataset.original_filename,
-        "file_format": dataset.file_format,
-        "file_size_bytes": dataset.file_size_bytes,
-        "row_count": dataset.row_count,
-        "column_count": dataset.column_count,
-        "status": dataset.status,
+        **_dataset_dict(dataset),
         "error_message": dataset.error_message,
-        "created_at": dataset.created_at.isoformat(),
         "updated_at": dataset.updated_at.isoformat(),
     }
 

@@ -152,6 +152,70 @@ export async function getCreditStatus(orgId: string = "default"): Promise<Credit
   return data;
 }
 
+// ── Datasets management ───────────────────────────────────────────────────────
+
+export interface DatasetSummary {
+  id: string;
+  name: string;
+  original_filename: string;
+  file_format: string;
+  file_size_bytes: number;
+  row_count: number | null;
+  column_count: number | null;
+  status: string;
+  is_starred: boolean;
+  archived_at: string | null;
+  created_at: string;
+}
+
+export async function listDatasets(
+  orgId: string = "default",
+  opts: { archived?: boolean; starred?: boolean } = {}
+): Promise<DatasetSummary[]> {
+  const params = new URLSearchParams({ org_id: orgId });
+  if (opts.archived) params.set("archived", "true");
+  if (opts.starred) params.set("starred", "true");
+  const { data } = await client.get<DatasetSummary[]>(`/datasets?${params}`);
+  return data;
+}
+
+export async function starDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+  await client.patch(`/datasets/${datasetId}/star?org_id=${orgId}`);
+}
+
+export async function archiveDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+  await client.patch(`/datasets/${datasetId}/archive?org_id=${orgId}`);
+}
+
+export async function restoreDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+  await client.patch(`/datasets/${datasetId}/restore?org_id=${orgId}`);
+}
+
+export interface AnalysisVersion {
+  analysis_id: string;
+  version: number;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
+export async function listDatasetAnalyses(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<AnalysisVersion[]> {
+  const { data } = await client.get<AnalysisVersion[]>(
+    `/datasets/${datasetId}/analyses?org_id=${orgId}`
+  );
+  return data;
+}
+
+export async function fetchDatasetAnalysis(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<{ analysis_id: string; report: EDAReport; ai_narrative: string | null; version: number }> {
+  const { data } = await client.get(`/datasets/${datasetId}/analysis?org_id=${orgId}`);
+  return data;
+}
+
 // ── Connectors ────────────────────────────────────────────────────────────────
 
 export interface ConnectorSummary {
