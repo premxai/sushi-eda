@@ -20,6 +20,7 @@ from cache import cache
 from storage import storage
 from worker import analyze_dataset
 from routers import webhooks, jobs as jobs_router
+from routers.billing import router as billing_router
 from routers.datasets import router as datasets_router, analyses_router, credits_router
 
 # Configure logging
@@ -46,6 +47,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Mount routers
 app.include_router(webhooks.router)
 app.include_router(jobs_router.router)
+app.include_router(billing_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
 app.include_router(credits_router)
