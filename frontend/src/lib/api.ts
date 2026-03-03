@@ -118,3 +118,127 @@ export async function getAICleaningSuggestions(
   );
   return data;
 }
+
+// ── Credits ───────────────────────────────────────────────────────────────────
+
+export interface CreditStatus {
+  org_id: string;
+  plan: string;
+  ai_credits_used: number;
+  ai_credits_limit: number;   // -1 = unlimited
+  remaining: number;
+  percent_used: number;
+}
+
+export async function getCreditStatus(orgId: string = "default"): Promise<CreditStatus> {
+  const { data } = await client.get<CreditStatus>(`/orgs/${orgId}/credits`);
+  return data;
+}
+
+// ── Connectors ────────────────────────────────────────────────────────────────
+
+export interface ConnectorSummary {
+  connector_id: string;
+  name: string;
+  connector_type: "postgres" | "s3";
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+  created_at: string;
+}
+
+export async function listConnectors(orgId: string = "default"): Promise<ConnectorSummary[]> {
+  const { data } = await client.get<{ connectors: ConnectorSummary[] }>(
+    `/connectors?org_id=${orgId}`
+  );
+  return data.connectors;
+}
+
+export async function createConnector(
+  body: Record<string, any>,
+  orgId: string = "default"
+): Promise<ConnectorSummary> {
+  const { data } = await client.post<ConnectorSummary>(
+    `/connectors?org_id=${orgId}`,
+    body
+  );
+  return data;
+}
+
+export async function testConnector(
+  connectorId: string,
+  orgId: string = "default"
+): Promise<{ ok: boolean; tested_at: string }> {
+  const { data } = await client.post(`/connectors/${connectorId}/test?org_id=${orgId}`);
+  return data;
+}
+
+export async function deleteConnector(connectorId: string, orgId: string = "default"): Promise<void> {
+  await client.delete(`/connectors/${connectorId}?org_id=${orgId}`);
+}
+
+export async function listConnectorTables(
+  connectorId: string,
+  orgId: string = "default"
+): Promise<{ tables?: any[]; objects?: any[] }> {
+  const { data } = await client.get(`/connectors/${connectorId}/tables?org_id=${orgId}`);
+  return data;
+}
+
+export async function importFromConnector(
+  connectorId: string,
+  body: Record<string, any>,
+  orgId: string = "default"
+): Promise<{ dataset_id: string; status: string; message: string }> {
+  const { data } = await client.post(
+    `/connectors/${connectorId}/import?org_id=${orgId}`,
+    body
+  );
+  return data;
+}
+
+// ── Monitors ──────────────────────────────────────────────────────────────────
+
+export interface MonitorSummary {
+  monitor_id: string;
+  dataset_id: string;
+  name: string;
+  check_type: string;
+  column_name: string | null;
+  condition: string;
+  threshold: number;
+  schedule: string;
+  is_active: boolean;
+  last_checked_at: string | null;
+  last_status: string | null;
+  created_at: string;
+}
+
+export async function listMonitors(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<MonitorSummary[]> {
+  const { data } = await client.get<{ monitors: MonitorSummary[] }>(
+    `/datasets/${datasetId}/monitors?org_id=${orgId}`
+  );
+  return data.monitors;
+}
+
+export async function createMonitor(
+  datasetId: string,
+  body: Record<string, any>,
+  orgId: string = "default"
+): Promise<MonitorSummary> {
+  const { data } = await client.post<MonitorSummary>(
+    `/datasets/${datasetId}/monitors?org_id=${orgId}`,
+    body
+  );
+  return data;
+}
+
+export async function triggerMonitorRun(
+  monitorId: string,
+  orgId: string = "default"
+): Promise<{ task_id: string }> {
+  const { data } = await client.post(`/monitors/${monitorId}/run?org_id=${orgId}`);
+  return data;
+}
