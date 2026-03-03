@@ -142,6 +142,41 @@ async def get_optional_user(
         return None
 
 
+async def validate_org_access(
+    org_id: str,
+    current_user: User,
+    db: AsyncSession,
+    allowed_roles: tuple[str, ...] | None = None,
+) -> OrgMember | None:
+    """
+    Check that `current_user` is a member of `org_id` and (optionally) has
+    one of the `allowed_roles`.
+
+    - If `org_id == "default"` and Clerk is unconfigured (dev mode), skips check.
+    - Returns the OrgMember row on success; raises HTTP 403 on failure.
+    """
+    if org_id == "default" and not CLERK_SECRET_KEY:
+        return None  # dev bypass — no auth configured
+
+    query = select(OrgMember).where(
+        OrgMember.org_id == org_id,
+        OrgMember.user_id == current_user.id,
+    )
+    if allowed_roles:
+        query = query.where(OrgMember.role.in_(allowed_roles))
+
+    result = await db.execute(query)
+    member = result.scalar_one_or_none()
+    if member is None:
+        detail = (
+            f"Requires one of roles: {', '.join(allowed_roles)}"
+            if allowed_roles
+            else "Not a member of this organization"
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    return member
+
+
 def require_role(*allowed_roles: str):
     """
     Dependency factory — checks that the current user has one of the
@@ -151,7 +186,7 @@ def require_role(*allowed_roles: str):
         @app.delete("/datasets/{dataset_id}")
         async def delete_dataset(
             dataset_id: UUID,
-            org_id: UUID = Query(...),
+            org_id: str = Query(...),
             current_user: User = Depends(get_current_user),
             _: None = Depends(require_role("admin", "editor")),
             db: AsyncSession = Depends(get_db),
@@ -162,19 +197,7 @@ def require_role(*allowed_roles: str):
         current_user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> None:
-        result = await db.execute(
-            select(OrgMember).where(
-                OrgMember.org_id == org_id,
-                OrgMember.user_id == current_user.id,
-                OrgMember.role.in_(allowed_roles),
-            )
-        )
-        membership = result.scalar_one_or_none()
-        if membership is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requires one of roles: {', '.join(allowed_roles)}",
-            )
+        await validate_org_access(org_id, current_user, db, allowed_roles=allowed_roles)
 
     return _check_role
 

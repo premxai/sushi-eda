@@ -1,50 +1,53 @@
 """
-Dataset & Analysis router — replaces the global _current_df pattern.
+Dataset & Analysis router — org-scoped, Clerk-authenticated.
 
-All endpoints are scoped to (org_id, dataset_id). The DataFrame is
-fetched from R2 on demand, never held in global server memory.
+All endpoints require a valid Clerk JWT (via Authorization: Bearer <token>).
+org_id is a query param set by the frontend from Clerk's active organisation.
+Membership and RBAC are enforced per-endpoint:
+  - Viewers  : all GET / read-only POST endpoints
+  - Editors  : + mutating POST endpoints
+  - Admins   : + DELETE
 
 Routes:
-  GET  /datasets                        — list datasets for an org
-  GET  /datasets/{dataset_id}           — get dataset metadata
-  DELETE /datasets/{dataset_id}         — delete dataset + R2 files
-  GET  /datasets/{dataset_id}/analysis  — get latest analysis report
-  GET  /analyses/{analysis_id}          — get analysis by ID
-  GET  /datasets/{dataset_id}/visualize/{column} — on-demand chart
-  GET  /datasets/{dataset_id}/visualize          — all charts
-  GET  /datasets/{dataset_id}/stats/advanced     — advanced stats
-  POST /datasets/{dataset_id}/stats/regression   — linear regression
-  POST /datasets/{dataset_id}/stats/ttest        — t-test
-  GET  /datasets/{dataset_id}/export/excel       — Excel export
-  GET  /datasets/{dataset_id}/export/markdown    — Markdown export
+  GET  /datasets                             — list org datasets
+  GET  /datasets/{dataset_id}               — dataset metadata
+  DELETE /datasets/{dataset_id}             — delete (admin|editor)
+  GET  /datasets/{dataset_id}/analysis      — latest analysis report
+  GET  /datasets/{dataset_id}/analyses      — version history
+  GET  /analyses/{analysis_id}              — analysis by UUID
+  GET  /datasets/{dataset_id}/visualize/{col}
+  GET  /datasets/{dataset_id}/visualize
+  GET  /datasets/{dataset_id}/stats/advanced
+  POST /datasets/{dataset_id}/stats/regression
+  POST /datasets/{dataset_id}/stats/ttest
+  GET  /datasets/{dataset_id}/query/schema
+  POST /datasets/{dataset_id}/query
+  GET  /datasets/{dataset_id}/export/excel
+  GET  /datasets/{dataset_id}/export/markdown
 """
 from typing import Any
-from uuid import UUID
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import Response
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import Body
-
-from analyzer import EDAAnalyzer
 from advanced_stats import AdvancedStatistics
+from auth import get_current_user, validate_org_access
 from duckdb_query import get_schema, run_query
 from export_utils import DataExporter
-from visualizer import Visualizer
-from cache import cache
-from storage import storage
 from polars_loader import parse_to_polars
+from storage import storage
+from visualizer import Visualizer
 from db import get_db
-from db.models import Analysis, Dataset
+from db.models import Analysis, Dataset, User
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
 async def _get_dataset_or_404(dataset_id: str, org_id: str, db: AsyncSession) -> Dataset:
     result = await db.execute(
@@ -56,7 +59,7 @@ async def _get_dataset_or_404(dataset_id: str, org_id: str, db: AsyncSession) ->
     if dataset.status != "ready":
         raise HTTPException(
             status_code=409,
-            detail=f"Dataset is not ready (status={dataset.status}). Wait for analysis to complete.",
+            detail=f"Dataset not ready (status={dataset.status}). Wait for analysis to complete.",
         )
     return dataset
 
@@ -75,8 +78,7 @@ async def _get_latest_analysis(dataset_id: str, db: AsyncSession) -> Analysis:
 
 
 def _load_polars_from_r2(file_key: str, file_format: str):
-    """Download file from R2 and return a Polars DataFrame."""
-    import polars as pl
+    """Download from R2 and return a Polars DataFrame."""
     data = storage.download(file_key)
     try:
         return parse_to_polars(data, file_format)
@@ -85,18 +87,20 @@ def _load_polars_from_r2(file_key: str, file_format: str):
 
 
 def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
-    """Download file from R2 and return a pandas DataFrame (for scipy/plotly consumers)."""
+    """Download from R2 and return a pandas DataFrame (for scipy/plotly)."""
     return _load_polars_from_r2(file_key, file_format).to_pandas()
 
 
-# ── Dataset CRUD ──────────────────────────────────────────────────────────────
+# ── Dataset CRUD ───────────────────────────────────────────────────────────────
 
 @router.get("")
 async def list_datasets(
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all datasets for an organization."""
+    """List all datasets for an organisation (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     result = await db.execute(
         select(Dataset).where(Dataset.org_id == org_id).order_by(Dataset.created_at.desc())
     )
@@ -121,9 +125,11 @@ async def list_datasets(
 async def get_dataset(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get dataset metadata."""
+    """Get dataset metadata (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     result = await db.execute(
         select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
     )
@@ -149,9 +155,11 @@ async def get_dataset(
 async def delete_dataset(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a dataset, its analyses, and its R2 files."""
+    """Delete a dataset, its analyses, and R2 files (admin|editor)."""
+    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
         select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
     )
@@ -159,28 +167,27 @@ async def delete_dataset(
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    # Delete R2 files
     try:
-        prefix = f"uploads/{org_id}/{dataset_id}/"
-        storage.delete_prefix(prefix)
+        storage.delete_prefix(f"uploads/{org_id}/{dataset_id}/")
     except Exception as e:
         logger.warning(f"R2 delete failed for {dataset_id}: {e}")
 
-    # Delete DB row (cascades to analyses, monitors)
     await db.delete(dataset)
     await db.commit()
-    logger.info(f"Deleted dataset {dataset_id}")
+    logger.info(f"Deleted dataset {dataset_id} by user {current_user.id}")
 
 
-# ── Analysis retrieval ────────────────────────────────────────────────────────
+# ── Analysis retrieval ─────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/analysis")
 async def get_dataset_analysis(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the latest analysis report for a dataset."""
+    """Return the latest analysis report (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
     return {
@@ -197,9 +204,11 @@ async def get_dataset_analysis(
 async def list_dataset_analyses(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all analysis versions for a dataset (version history)."""
+    """List all analysis versions for a dataset (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     await _get_dataset_or_404(dataset_id, org_id, db)
     result = await db.execute(
         select(Analysis)
@@ -222,16 +231,20 @@ async def list_dataset_analyses(
 
 analyses_router = APIRouter(prefix="/analyses", tags=["analyses"])
 
+
 @analyses_router.get("/{analysis_id}")
 async def get_analysis(
     analysis_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fetch a specific analysis by its UUID (used after SSE job_done)."""
+    """Fetch a specific analysis by UUID (used after SSE job_done — auth required)."""
     result = await db.execute(select(Analysis).where(Analysis.id == analysis_id))
     analysis = result.scalar_one_or_none()
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
+    # Org membership check: the analysis's org_id must be accessible by current_user
+    await validate_org_access(str(analysis.org_id), current_user, db)
     return {
         "analysis_id": str(analysis.id),
         "dataset_id": str(analysis.dataset_id),
@@ -243,7 +256,7 @@ async def get_analysis(
     }
 
 
-# ── Visualizations (on-demand, loads DF from R2) ─────────────────────────────
+# ── Visualizations ─────────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/visualize/{column_name}")
 async def visualize_column(
@@ -251,8 +264,11 @@ async def visualize_column(
     column_name: str,
     org_id: str = Query(default="default"),
     chart_type: str = "auto",
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """On-demand chart for a single column (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
 
@@ -269,29 +285,34 @@ async def visualize_column(
         return viz.create_box_plot(column_name)
     elif resolved == "categorical_bar":
         return viz.create_categorical_bar(column_name)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unknown chart_type: {resolved}")
+    raise HTTPException(status_code=400, detail=f"Unknown chart_type: {resolved}")
 
 
 @router.get("/{dataset_id}/visualize")
 async def visualize_all(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """All charts for a dataset (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return Visualizer(df).generate_all_visualizations()
 
 
-# ── Advanced Stats ────────────────────────────────────────────────────────────
+# ── Advanced Stats ─────────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/stats/advanced")
 async def advanced_stats(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Advanced statistical tests (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).generate_all_tests()
@@ -303,8 +324,11 @@ async def regression(
     x_col: str,
     y_col: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Linear regression between two columns (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).linear_regression(x_col, y_col)
@@ -316,22 +340,27 @@ async def ttest(
     col1: str,
     col2: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Independent t-test between two columns (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).t_test_independent(col1, col2)
 
 
-# ── DuckDB SQL Query ─────────────────────────────────────────────────────────
+# ── DuckDB SQL Query ───────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/query/schema")
 async def query_schema(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the column schema visible to DuckDB for a dataset."""
+    """Column schema for the DuckDB query interface (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     return {"schema": get_schema(pl_df)}
@@ -343,36 +372,37 @@ async def query_dataset(
     org_id: str = Query(default="default"),
     sql: str = Body(..., embed=True),
     limit: int = Body(default=1000, ge=1, le=10_000, embed=True),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Run an ad-hoc SQL SELECT against the dataset using DuckDB.
+    Ad-hoc SQL SELECT against the dataset via DuckDB (viewer+).
 
-    The table is aliased as `df` in your query, e.g.:
+    Table alias: `df`. Example:
         SELECT region, AVG(sales) FROM df GROUP BY region ORDER BY 2 DESC
-
-    Results are capped at `limit` rows (default 1 000, max 10 000).
-    Only SELECT statements are allowed.
     """
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
-        result = run_query(pl_df, sql, limit=limit)
+        return run_query(pl_df, sql, limit=limit)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return result
 
 
-# ── Exports ───────────────────────────────────────────────────────────────────
+# ── Exports ────────────────────────────────────────────────────────────────────
 
 @router.get("/{dataset_id}/export/excel")
 async def export_excel(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Export dataset + analysis to Excel (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
@@ -388,8 +418,11 @@ async def export_excel(
 async def export_markdown(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Export analysis as Markdown (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
