@@ -198,8 +198,18 @@ No environment variables required for basic operation. Logging is configured in 
 Create `.env.local` from `.env.example`:
 
 ```bash
-# Required
+# Backend API
 NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Clerk Authentication (Get from https://dashboard.clerk.com)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# Optional Clerk redirects (defaults provided)
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
 # Optional
 NODE_ENV=development
@@ -208,8 +218,12 @@ NODE_ENV=development
 For production:
 ```bash
 NEXT_PUBLIC_API_URL=https://your-api.railway.app
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_SECRET_KEY=sk_live_...
 NODE_ENV=production
 ```
+
+**⚠️ Important:** You must create a free Clerk account at https://clerk.com to get authentication keys. The app requires authentication to function.
 
 ## 🚢 Deployment
 
@@ -241,8 +255,10 @@ railway up
 cd frontend
 vercel --prod
 ```
-3. Set environment variable in Vercel dashboard:
+3. Set environment variables in Vercel dashboard (Settings → Environment Variables):
    - `NEXT_PUBLIC_API_URL` = your backend URL
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` = from Clerk dashboard
+   - `CLERK_SECRET_KEY` = from Clerk dashboard
 
 #### Alternative: Docker
 ```bash

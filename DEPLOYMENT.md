@@ -63,8 +63,23 @@ docker-compose up --build -d
 No environment variables required. All configuration is in code.
 
 ### Frontend (Vercel)
-Set in Vercel dashboard:
-- `NEXT_PUBLIC_API_URL` = Your backend URL (e.g., https://devwhisperer-api.railway.app)
+**Required** - Set these in Vercel dashboard (Settings → Environment Variables):
+
+1. **Clerk Authentication** (Get from https://dashboard.clerk.com → Your App → API Keys)
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` = `pk_test_...` or `pk_live_...`
+   - `CLERK_SECRET_KEY` = `sk_test_...` or `sk_live_...`
+
+2. **Backend API**
+   - `NEXT_PUBLIC_API_URL` = Your backend URL (e.g., `https://sushi-backend-y9er.onrender.com`)
+
+3. **Optional Configuration**
+   - `NEXT_PUBLIC_SITE_URL` = Your frontend URL (e.g., `https://sushi-eda.vercel.app`)
+   - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` = `/sign-in` (default)
+   - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` = `/sign-up` (default)
+   - `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` = `/dashboard` (default)
+   - `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` = `/dashboard` (default)
+
+**⚠️ Important:** Without Clerk environment variables, the build will fail. Create a free account at https://clerk.com if you don't have one.
 
 ## Post-Deployment Verification
 
