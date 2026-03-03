@@ -12,7 +12,6 @@ Each task:
   5. Updates the Dataset.status in Postgres
 """
 import hashlib
-import io
 import os
 import time
 from datetime import datetime, timezone
@@ -99,10 +98,9 @@ def analyze_dataset(
             cache.publish_job_done(org_id, dataset_id, "cached")
             return {"analysis_id": "cached", "duration_seconds": 0.0}
 
-        # ── 3. Parse into DataFrame ────────────────────────────────────────────
-        import pandas as pd
+        # ── 3. Parse into Polars DataFrame (no row cap) ───────────────────────
         df = _parse_bytes(file_bytes, file_format)
-        logger.info(f"[Task] Parsed dataset={dataset_id}: {df.shape[0]}r x {df.shape[1]}c")
+        logger.info(f"[Task] Parsed dataset={dataset_id}: {df.height}r x {df.width}c")
 
         # Update job progress
         cache.set_job_status(dataset_id, "processing", {"progress": 30, "stage": "analyzing"})
@@ -110,7 +108,8 @@ def analyze_dataset(
         # ── 4. Run EDA analysis ────────────────────────────────────────────────
         analyzer = EDAAnalyzer(df)
         report = analyzer.generate_full_report()
-        preview = df.head(50).fillna("").to_dict(orient="records")
+        # Preview: convert only first 50 rows to pandas for JSON serialisation
+        preview = df.head(50).to_pandas().fillna("").to_dict(orient="records")
         report["preview"] = preview
 
         cache.set_job_status(dataset_id, "processing", {"progress": 80, "stage": "saving"})
@@ -138,45 +137,9 @@ def analyze_dataset(
 # ── DB helpers (synchronous — no asyncio in Celery workers) ────────────────────
 
 def _parse_bytes(data: bytes, file_format: str):
-    """Parse raw bytes into a pandas DataFrame based on file format."""
-    import json as _json
-    import pandas as pd
-
-    buf = io.BytesIO(data)
-
-    if file_format == "csv":
-        return pd.read_csv(buf)
-    elif file_format == "tsv":
-        return pd.read_csv(buf, sep="\t")
-    elif file_format in ("xls", "xlsx"):
-        return pd.read_excel(buf, engine="openpyxl")
-    elif file_format == "parquet":
-        return pd.read_parquet(buf)
-    elif file_format == "json":
-        raw = _json.loads(data.decode("utf-8"))
-        if isinstance(raw, list):
-            df = pd.json_normalize(raw, max_level=1) if raw else pd.DataFrame()
-        else:
-            df = pd.json_normalize([raw], max_level=1)
-        for col in df.columns:
-            if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                df[col] = df[col].apply(lambda x: _json.dumps(x) if isinstance(x, (dict, list)) else x)
-        return df
-    elif file_format in ("db", "sqlite", "sqlite3"):
-        import sqlite3, tempfile, os as _os
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
-            tmp.write(data)
-            tmp_path = tmp.name
-        conn = sqlite3.connect(tmp_path)
-        tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'", conn)
-        if tables.empty:
-            raise ValueError("No tables found in SQLite database")
-        df = pd.read_sql_query(f"SELECT * FROM {tables.iloc[0]['name']}", conn)
-        conn.close()
-        _os.unlink(tmp_path)
-        return df
-    else:
-        raise ValueError(f"Unsupported format: {file_format}")
+    """Parse raw bytes into a Polars DataFrame using the fast I/O layer."""
+    from polars_loader import parse_to_polars
+    return parse_to_polars(data, file_format)
 
 
 def _save_analysis_to_db(

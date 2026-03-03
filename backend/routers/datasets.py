@@ -18,7 +18,6 @@ Routes:
   GET  /datasets/{dataset_id}/export/excel       — Excel export
   GET  /datasets/{dataset_id}/export/markdown    — Markdown export
 """
-import io
 from typing import Any
 from uuid import UUID
 
@@ -72,28 +71,14 @@ async def _get_latest_analysis(dataset_id: str, db: AsyncSession) -> Analysis:
 
 
 def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
-    """Download file from R2 and parse into a DataFrame."""
+    """Download file from R2 and parse into a pandas DataFrame via Polars (fast I/O)."""
+    from polars_loader import parse_to_polars
     data = storage.download(file_key)
-    buf = io.BytesIO(data)
-
-    if file_format == "csv":
-        return pd.read_csv(buf)
-    elif file_format == "tsv":
-        return pd.read_csv(buf, sep="\t")
-    elif file_format in ("xls", "xlsx"):
-        return pd.read_excel(buf, engine="openpyxl")
-    elif file_format == "parquet":
-        return pd.read_parquet(buf)
-    elif file_format == "json":
-        import json
-        raw = json.loads(data.decode("utf-8"))
-        df = pd.json_normalize(raw if isinstance(raw, list) else [raw], max_level=1)
-        for col in df.columns:
-            if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
-        return df
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {file_format}")
+    try:
+        pl_df = parse_to_polars(data, file_format)
+        return pl_df.to_pandas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ── Dataset CRUD ──────────────────────────────────────────────────────────────
