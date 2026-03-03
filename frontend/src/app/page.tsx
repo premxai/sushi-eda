@@ -27,6 +27,7 @@ import { SlideUp } from "@/components/PageTransition";
 import Navbar from "@/components/Navbar";
 import UploadCard from "@/components/UploadCard";
 import { FeaturesSection } from "@/components/FeaturesSection";
+import { ProductTour } from "@/components/ProductTour";
 
 export default function Home() {
   const [report, setReport] = useState<EDAReport | null>(null);
@@ -275,6 +276,7 @@ export default function Home() {
   // ─── Landing Page ─────────────────────────────────────────────────
   return (
     <main>
+      <ProductTour />
       <Navbar onTryDemo={handleTryDemo} isDemoLoading={isDemoLoading} />
 
       <section className="
