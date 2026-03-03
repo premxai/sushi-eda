@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",  // Clerk webhooks bypass auth
+  "/share/(.*)",        // public shareable report links
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
