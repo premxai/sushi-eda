@@ -216,6 +216,9 @@ async def regenerate_narrative(
     await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
 
+    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+    await check_credits(org_id, cost=CREDIT_COSTS["narrative"], db=db)
+
     from ai_narrative import generate_narrative
     from sqlalchemy import update as sa_update
 
@@ -226,6 +229,7 @@ async def regenerate_narrative(
             detail="AI narrative generation unavailable — check ANTHROPIC_API_KEY",
         )
 
+    await consume_credits(org_id, cost=CREDIT_COSTS["narrative"], db=db)
     await db.execute(
         sa_update(Analysis)
         .where(Analysis.id == analysis.id)
@@ -317,11 +321,16 @@ async def ai_chat(
     }
     """
     await validate_org_access(org_id, current_user, db)
+    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+    await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
 
     from ai_chat import ask_dataset
-    return ask_dataset(pl_df, question, chat_history=chat_history, limit=limit)
+    result = ask_dataset(pl_df, question, chat_history=chat_history, limit=limit)
+    if result.get("error") is None:
+        await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
+    return result
 
 
 @router.post("/{dataset_id}/ai/chat/stream")
@@ -342,8 +351,12 @@ async def ai_chat_stream(
     """
     from fastapi.responses import StreamingResponse
     await validate_org_access(org_id, current_user, db)
+    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+    await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+    # Consume credits upfront for streaming (can't check mid-stream)
+    await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
 
     from ai_chat import ask_dataset_stream
     return StreamingResponse(
@@ -374,9 +387,31 @@ async def ai_cleaning_suggestions(
     await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
 
+    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+    await check_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
+
     from ai_cleaning import generate_cleaning_suggestions
     suggestions = generate_cleaning_suggestions(analysis.report)
+    if suggestions:
+        await consume_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
     return {"dataset_id": dataset_id, "suggestions": suggestions}
+
+
+# ── AI Credits ────────────────────────────────────────────────────────────────
+
+credits_router = APIRouter(prefix="/orgs", tags=["credits"])
+
+
+@credits_router.get("/{org_id}/credits")
+async def get_org_credits(
+    org_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return AI credit usage for an organisation (any member)."""
+    await validate_org_access(org_id, current_user, db)
+    from ai_credits import get_credit_status
+    return await get_credit_status(org_id, db)
 
 
 # ── Visualizations ─────────────────────────────────────────────────────────────
