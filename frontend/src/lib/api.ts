@@ -76,3 +76,45 @@ export async function healthCheck(): Promise<boolean> {
     return false;
   }
 }
+
+// ── AI Chat ───────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResult {
+  sql: string | null;
+  results: {
+    columns: string[];
+    rows: (string | number | null)[][];
+    row_count: number;
+    truncated: boolean;
+  } | null;
+  answer: string;
+  error: string | null;
+}
+
+export async function askDataset(
+  datasetId: string,
+  question: string,
+  chatHistory: ChatMessage[] = [],
+  orgId: string = "default"
+): Promise<ChatResult> {
+  const { data } = await client.post<ChatResult>(
+    `/datasets/${datasetId}/ai/chat?org_id=${orgId}`,
+    { question, chat_history: chatHistory, limit: 500 }
+  );
+  return data;
+}
+
+export async function getAICleaningSuggestions(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<{ suggestions: any[] }> {
+  const { data } = await client.get(
+    `/datasets/${datasetId}/ai/cleaning-suggestions?org_id=${orgId}`
+  );
+  return data;
+}
