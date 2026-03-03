@@ -42,7 +42,7 @@ export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit 
           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
             <Zap className="h-5 w-5 text-violet-600" />
           </div>
-          <h2 className="text-lg font-bold text-neutral-900">You've hit your AI credit limit</h2>
+          <h2 className="text-lg font-bold text-neutral-900">You&apos;ve hit your AI credit limit</h2>
           {creditsUsed !== undefined && creditsLimit !== undefined && (
             <p className="text-sm text-neutral-500">
               {creditsUsed.toLocaleString()} / {creditsLimit.toLocaleString()} credits used this period.

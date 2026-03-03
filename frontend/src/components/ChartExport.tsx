@@ -82,6 +82,7 @@ export function ChartExport({ chartId, chartName, className = "" }: ChartExportP
         className="h-8 gap-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
         aria-label={`Export ${chartName} as PNG`}
       >
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <Image className="h-3.5 w-3.5" aria-hidden="true" />
         PNG
       </Button>

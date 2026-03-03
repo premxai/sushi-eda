@@ -60,6 +60,7 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
           handleClose();
         }, 1200);
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setTestResult("fail");
       setError(e?.response?.data?.detail || "Connection test failed");
@@ -73,6 +74,7 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
       await createConnector(buildBody(), orgId);
       onCreated?.();
       handleClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e?.response?.data?.detail || "Failed to save connector");
     } finally {

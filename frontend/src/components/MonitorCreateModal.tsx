@@ -66,6 +66,7 @@ export default function MonitorCreateModal({
       );
       onCreated?.();
       handleClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e?.response?.data?.detail || "Failed to create monitor");
     } finally {

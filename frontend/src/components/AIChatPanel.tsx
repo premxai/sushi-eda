@@ -60,6 +60,7 @@ export default function AIChatPanel({ datasetId, orgId = "default" }: AIChatPane
           error: result.error,
         },
       ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setTurns((prev) => [
         ...prev,
