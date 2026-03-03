@@ -15,6 +15,7 @@ import {
   FlaskConical,
   Archive,
   Database,
+  Unplug,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -182,6 +183,19 @@ export function Sidebar({
         >
           <Database style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
           My Datasets
+        </Link>
+
+        <Link
+          href="/connectors"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+            fontWeight: 400,
+          }}
+        >
+          <Unplug style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+          Connections
         </Link>
 
         {datasetId && onArchive && (

@@ -9,6 +9,7 @@ import {
   Plus,
   Star,
   Trash2,
+  Unplug,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -155,6 +156,9 @@ export default function DatasetsPage() {
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/connectors" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+            Connections
+          </Link>
           <Link href="/" style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "7px 14px", borderRadius: 8, fontSize: 13,
@@ -211,19 +215,31 @@ export default function DatasetsPage() {
             ))}
           </div>
 
-          {/* Upload CTA */}
-          <Link href="/" style={{
-            display: "flex", alignItems: "center", gap: 7,
-            padding: "8px 18px", borderRadius: 10,
-            fontSize: 13.5, fontWeight: 500,
-            background: "linear-gradient(135deg, #9060f8, #e840c8)",
-            color: "white",
-            textDecoration: "none",
-            boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
-          }}>
-            <Plus size={14} />
-            Upload dataset
-          </Link>
+          {/* CTAs */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/connectors" style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 10,
+              fontSize: 13.5, fontWeight: 500,
+              background: "rgba(255,255,255,0.72)",
+              border: "1px solid rgba(0,0,0,0.1)",
+              color: "#6b6860", textDecoration: "none",
+            }}>
+              <Unplug size={13} />
+              Connect source
+            </Link>
+            <Link href="/" style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 18px", borderRadius: 10,
+              fontSize: 13.5, fontWeight: 500,
+              background: "linear-gradient(135deg, #9060f8, #e840c8)",
+              color: "white", textDecoration: "none",
+              boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
+            }}>
+              <Plus size={14} />
+              Upload dataset
+            </Link>
+          </div>
         </div>
 
         {/* ── DATASET LIST ── */}
