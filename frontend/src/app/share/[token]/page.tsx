@@ -7,6 +7,36 @@ import Image from "next/image";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+interface ColumnStats {
+  mean?: number;
+  std?: number;
+}
+
+interface TopValue {
+  value: string;
+}
+
+interface ColumnAnalysis {
+  name: string;
+  dtype: string;
+  missing_percent?: number;
+  unique_count?: number;
+  stats?: ColumnStats;
+  top_values?: TopValue[];
+}
+
+interface AnalysisReport {
+  basic_info?: {
+    rows?: number;
+    columns?: number;
+    total_missing?: number;
+  };
+  quality_score?: {
+    overall_score?: number;
+  };
+  column_analysis?: ColumnAnalysis[];
+}
+
 interface SharedReport {
   token: string;
   dataset_name: string;
@@ -17,7 +47,7 @@ interface SharedReport {
     ai_narrative: string | null;
     duration_seconds: number;
     created_at: string;
-    report: any;
+    report: AnalysisReport;
   };
 }
 
@@ -138,7 +168,7 @@ export default function SharedReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.column_analysis.map((col: any) => (
+                  {report.column_analysis.map((col: ColumnAnalysis) => (
                     <tr key={col.name} className="border-t border-neutral-100 hover:bg-neutral-50">
                       <td className="px-4 py-2 font-medium text-neutral-800">{col.name}</td>
                       <td className="px-4 py-2 text-neutral-500">{col.dtype}</td>
