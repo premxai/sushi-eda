@@ -16,6 +16,7 @@ import {
   Archive,
   Database,
   Unplug,
+  TerminalSquare,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +29,7 @@ export type NavSection =
   | "visualizations"
   | "cleaning"
   | "transforms"
+  | "sql"
   | "data";
 
 interface NavItem {
@@ -46,6 +48,7 @@ const navItems: NavItem[] = [
   { id: "visualizations", label: "Visualizations", icon: ChartNoAxesCombined, group: "Analysis" },
   { id: "cleaning",       label: "Data Cleaning",  icon: Sparkles,            group: "Engineering" },
   { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
+  { id: "sql",            label: "SQL Editor",     icon: TerminalSquare,      group: "Engineering" },
   { id: "data",           label: "Data Table",     icon: Table2,              group: "Data" },
 ];
 

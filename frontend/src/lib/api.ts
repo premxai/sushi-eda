@@ -323,3 +323,41 @@ export async function triggerMonitorRun(
   const { data } = await client.post(`/monitors/${monitorId}/run?org_id=${orgId}`);
   return data;
 }
+
+// ── SQL Query Editor ───────────────────────────────────────────────────────────
+
+export interface QuerySchemaColumn {
+  name: string;
+  dtype: string;
+}
+
+export async function fetchQuerySchema(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<QuerySchemaColumn[]> {
+  const { data } = await client.get<{ schema: QuerySchemaColumn[] }>(
+    `/datasets/${datasetId}/query/schema?org_id=${orgId}`
+  );
+  return data.schema;
+}
+
+export interface QueryResult {
+  columns: string[];
+  rows: unknown[][];
+  row_count: number;
+  truncated: boolean;
+  execution_time_ms?: number;
+}
+
+export async function runSQLQuery(
+  datasetId: string,
+  sql: string,
+  limit: number = 1000,
+  orgId: string = "default"
+): Promise<QueryResult> {
+  const { data } = await client.post<QueryResult>(
+    `/datasets/${datasetId}/query?org_id=${orgId}`,
+    { sql, limit }
+  );
+  return data;
+}

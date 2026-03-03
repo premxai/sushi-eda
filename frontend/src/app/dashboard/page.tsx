@@ -12,6 +12,7 @@ import { VisualizationsSection } from "@/components/dashboard/VisualizationsSect
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
+import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations, archiveDataset } from "@/lib/api";
 
@@ -97,6 +98,7 @@ export default function DashboardPage() {
     visualizations: "Visualizations",
     cleaning: "Data Cleaning",
     transforms: "Feature Engineering",
+    sql: "SQL Editor",
     data: "Data Table",
   };
 
@@ -148,6 +150,9 @@ export default function DashboardPage() {
           )}
           {activeSection === "transforms" && (
             <TransformSection report={report} onReportUpdate={handleReportUpdate} />
+          )}
+          {activeSection === "sql" && (
+            <SQLQuerySection datasetId={datasetId} orgId="default" />
           )}
           {activeSection === "data" && <DataTable preview={report.preview} />}
         </main>

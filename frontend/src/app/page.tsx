@@ -13,6 +13,7 @@ import { VisualizationsSection } from "@/components/dashboard/VisualizationsSect
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
+import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
 import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset } from "@/lib/api";
@@ -187,6 +188,7 @@ export default function Home() {
       visualizations: "Visualizations",
       cleaning: "Data Cleaning",
       transforms: "Feature Engineering",
+      sql: "SQL Editor",
       data: "Data Table",
     };
 
@@ -262,13 +264,16 @@ export default function Home() {
                   report={report}
                 />
               )}
+              {activeSection === "sql" && (
+                <SQLQuerySection datasetId={openDatasetId} orgId="default" />
+              )}
               {activeSection === "data" && <DataTable preview={report.preview} />}
             </ErrorBoundary>
           </main>
           <KeyboardShortcuts />
             <CommandPalette
             onSectionChange={(section) => handleSectionChange(section as NavSection)}
-            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "data"]}
+            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "sql", "data"]}
           />
         </div>
       </div>
