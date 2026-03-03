@@ -117,7 +117,6 @@ export default function Home() {
         } finally {
           setIsUploading(false);
         }
-      }
     } catch (err: unknown) {
       setUploadProgress(0);
       setError(err instanceof Error ? err.message : "Upload failed");

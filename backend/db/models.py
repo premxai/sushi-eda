@@ -275,7 +275,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(Text, nullable=False)          # upload | analyze | export | delete | invite | query
     resource_type: Mapped[str | None] = mapped_column(Text, nullable=True)  # dataset | analysis | monitor
     resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True, key="metadata")
     ip_address: Mapped[str | None] = mapped_column(Text, nullable=True)  # stored as text for compatibility
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
