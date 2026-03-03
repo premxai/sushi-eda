@@ -17,17 +17,14 @@ import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
 import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { GitCompare, ArrowRight } from "lucide-react";
+import { GitCompare } from "lucide-react";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ColumnSearch } from "@/components/ColumnSearch";
 import { SlideUp } from "@/components/PageTransition";
-import Navbar from "@/components/Navbar";
-import UploadCard from "@/components/UploadCard";
-import { FeaturesSection } from "@/components/FeaturesSection";
-import { ProductTour } from "@/components/ProductTour";
+import { LandingPage } from "@/components/LandingPage";
 
 export default function Home() {
   const [report, setReport] = useState<EDAReport | null>(null);
@@ -271,65 +268,14 @@ export default function Home() {
 
   // ─── Landing Page ─────────────────────────────────────────────────
   return (
-    <main>
-      <ProductTour />
-      <Navbar onTryDemo={handleTryDemo} isDemoLoading={isDemoLoading} />
-
-      <section className="
-        relative
-        flex flex-col items-center
-        justify-center
-        text-center
-        pt-[120px]
-        pb-[80px]
-        bg-[radial-gradient(circle_at_50%_30%,#ffffff_0%,#f5f5f7_40%,#ffffff_100%)]
-      ">
-
-        <div className="container-apple flex flex-col items-center">
-
-          <h1 className="
-            text-[72px]
-            font-bold
-            tracking-[-0.03em]
-            leading-[1.05]
-            text-neutral-900
-          ">
-            Serve your raw data.<br/>
-            Perfectly.
-          </h1>
-
-          <p className="
-            mt-6
-            text-[20px]
-            text-neutral-500
-            max-w-[600px]
-          ">
-            Upload CSV, TSV, Excel, JSON, Parquet, or SQLite.
-            Sushi transforms raw data into beautiful insights instantly.
-          </p>
-
-          <UploadCard
-            onFileAccepted={handleFileAccepted}
-            isUploading={isUploading}
-            uploadProgress={uploadProgress}
-            error={error}
-            onClearError={handleClearError}
-          />
-
-          <button
-            onClick={handleTryDemo}
-            disabled={isDemoLoading}
-            className="mt-4 flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-800 disabled:opacity-50"
-          >
-            <ArrowRight className="h-3.5 w-3.5" />
-            {isDemoLoading ? "Loading sample..." : "Try with sample sales data"}
-          </button>
-
-        </div>
-
-      </section>
-
-      <FeaturesSection />
-    </main>
+    <LandingPage
+      onFileAccepted={handleFileAccepted}
+      onTryDemo={handleTryDemo}
+      isDemoLoading={isDemoLoading}
+      isUploading={isUploading}
+      uploadProgress={uploadProgress}
+      error={error}
+      onClearError={handleClearError}
+    />
   );
 }

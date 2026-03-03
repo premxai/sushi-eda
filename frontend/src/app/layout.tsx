@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+const instrumentSerif = Instrument_Serif({
+  weight: ["400"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-instrument-serif",
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sushi-eda.com";
@@ -55,7 +62,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${inter.variable} font-sans antialiased`}>
+        <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
           {children}
         </body>
       </html>
