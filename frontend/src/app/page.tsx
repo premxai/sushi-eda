@@ -10,6 +10,7 @@ import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
+import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
@@ -182,6 +183,7 @@ export default function Home() {
     const sectionTitles: Record<NavSection, string> = {
       overview: "Overview",
       columns: "Column Analysis",
+      statistics: "Statistical Analysis",
       correlations: "Correlations",
       outliers: "Outlier Detection",
       insights: "Insights",
@@ -251,6 +253,9 @@ export default function Home() {
               {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
               {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
               {activeSection === "insights" && <InsightsSection report={report} />}
+              {activeSection === "statistics" && (
+                <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
+              )}
               {activeSection === "cleaning" && (
                 <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
               )}
@@ -273,7 +278,7 @@ export default function Home() {
           <KeyboardShortcuts />
             <CommandPalette
             onSectionChange={(section) => handleSectionChange(section as NavSection)}
-            sections={["overview", "columns", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "sql", "data"]}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "sql", "data"]}
           />
         </div>
       </div>

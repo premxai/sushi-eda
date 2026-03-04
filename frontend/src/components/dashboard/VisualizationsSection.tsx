@@ -139,7 +139,7 @@ function ChartCard({ title, spec, dtype }: { title: string; spec: any; dtype?: s
 // ── Custom chart builder ──────────────────────────────────────────────────────
 
 function ChartBuilder({ report }: { report: EDAReport }) {
-  const preview = report.preview ?? [];
+  const preview = useMemo(() => report.preview ?? [], [report.preview]);
   const columns = report.column_analysis;
   const numericCols = columns.filter((c) => c.is_numeric).map((c) => c.name);
   const categoricalCols = columns.filter((c) => !c.is_numeric).map((c) => c.name);
@@ -150,16 +150,6 @@ function ChartBuilder({ report }: { report: EDAReport }) {
   const [yCol, setYCol] = useState(numericCols[0] ?? "");
   const [colorCol, setColorCol] = useState("");
   const [title, setTitle] = useState("");
-
-  // Auto-suggest chart type based on selected columns
-  const autoSuggest = useMemo(() => {
-    const xIsNum = numericCols.includes(xCol);
-    const yIsNum = numericCols.includes(yCol);
-    if (xIsNum && yIsNum) return "scatter";
-    if (!xIsNum && yIsNum) return "bar";
-    if (xIsNum && !yCol) return "histogram";
-    return "bar";
-  }, [xCol, yCol, numericCols]);
 
   // Build plotly trace from preview data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -198,7 +188,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
     };
 
     return { data: [trace], layout };
-  }, [chartType, xCol, yCol, colorCol, title, preview, autoSuggest]);
+  }, [chartType, xCol, yCol, colorCol, title, preview]);
 
   const selectStyle: React.CSSProperties = {
     padding: "7px 10px", borderRadius: 8, fontSize: 13,

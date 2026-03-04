@@ -16,6 +16,10 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'react-plotly.js'],
   },
   webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'plotly.js$': require.resolve('plotly.js-dist-min'),
+    };
     if (!isServer) {
       config.resolve.fallback = {
         ...(config.resolve.fallback || {}),
