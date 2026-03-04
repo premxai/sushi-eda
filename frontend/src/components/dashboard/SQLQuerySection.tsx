@@ -15,8 +15,17 @@ import {
   RotateCcw,
   BookOpen,
   Loader2,
+  FileSearch,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
-import { fetchQuerySchema, runSQLQuery, QuerySchemaColumn, QueryResult } from "@/lib/api";
+import {
+  explainSQLQuery,
+  fetchQuerySchema,
+  runSQLQuery,
+  QuerySchemaColumn,
+  QueryResult,
+} from "@/lib/api";
 
 // Lazy-load CodeMirror (heavy — avoid SSR)
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
@@ -80,7 +89,9 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
   const [sql, setSql] = useState("SELECT *\nFROM df\nLIMIT 100");
   const [schema, setSchema] = useState<QuerySchemaColumn[]>([]);
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [explainPlan, setExplainPlan] = useState<string>("");
   const [running, setRunning] = useState(false);
+  const [explaining, setExplaining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [saved, setSaved] = useState<SavedQuery[]>([]);
@@ -89,6 +100,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [copied, setCopied] = useState(false);
   const [limit, setLimit] = useState(1000);
+  const [offset, setOffset] = useState(0);
   const [schemaOpen, setSchemaOpen] = useState(true);
 
   // Load extensions lazily to avoid SSR
@@ -100,34 +112,44 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
     setHistory(loadHistory());
     setSaved(loadSaved());
 
-    // Load CodeMirror extensions client-side
-    async function loadExts() {
-      const [{ sql: sqlLang }, { oneDark }] = await Promise.all([
-        import("@codemirror/lang-sql"),
-        import("@codemirror/theme-one-dark"),
-      ]);
-      setExtensions([sqlLang()]);
+    async function loadTheme() {
+      const { oneDark } = await import("@codemirror/theme-one-dark");
       setTheme(oneDark);
     }
-    loadExts();
+    loadTheme();
   }, []);
 
   useEffect(() => {
+    async function loadSqlExtensions() {
+      const { sql: sqlLang } = await import("@codemirror/lang-sql");
+      const columns = schema.map((col) => col.name);
+      setExtensions([sqlLang({ schema: { df: columns } })]);
+    }
+    loadSqlExtensions();
+  }, [schema]);
+
+  useEffect(() => {
     if (!datasetId) return;
+    setOffset(0);
+    setResult(null);
+    setExplainPlan("");
+    setError(null);
     fetchQuerySchema(datasetId, orgId)
       .then(setSchema)
       .catch(() => setSchema([]));
   }, [datasetId, orgId]);
 
-  const handleRun = useCallback(async () => {
+  const handleRun = useCallback(async (nextOffset?: number) => {
     if (!datasetId || !sql.trim()) return;
+    const targetOffset = Math.max(0, nextOffset ?? offset);
     setRunning(true);
     setError(null);
     const start = Date.now();
     try {
-      const res = await runSQLQuery(datasetId, sql, limit, orgId);
+      const res = await runSQLQuery(datasetId, sql, limit, targetOffset, orgId);
       const ms = Date.now() - start;
       setResult({ ...res, execution_time_ms: ms });
+      setOffset(res.offset);
 
       // Prepend to history
       const entry: HistoryEntry = { sql: sql.trim(), ts: Date.now(), rows: res.row_count, ms };
@@ -141,7 +163,23 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
     } finally {
       setRunning(false);
     }
-  }, [datasetId, sql, limit, orgId, history]);
+  }, [datasetId, sql, limit, orgId, history, offset]);
+
+  const handleExplain = useCallback(async () => {
+    if (!datasetId || !sql.trim()) return;
+    setExplaining(true);
+    setError(null);
+    try {
+      const res = await explainSQLQuery(datasetId, sql, orgId);
+      setExplainPlan(res.plan ?? "");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } }; message?: string };
+      setError(err?.response?.data?.detail ?? err?.message ?? "Explain failed");
+      setExplainPlan("");
+    } finally {
+      setExplaining(false);
+    }
+  }, [datasetId, orgId, sql]);
 
   // Ctrl+Enter to run
   useEffect(() => {
@@ -247,7 +285,10 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                 <span style={{ fontSize: 11, color: "#9a9690" }}>Limit</span>
                 <select
                   value={limit}
-                  onChange={(e) => setLimit(Number(e.target.value))}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setOffset(0);
+                  }}
                   style={{
                     padding: "3px 7px", borderRadius: 6, fontSize: 12,
                     border: "1px solid rgba(0,0,0,0.1)",
@@ -277,10 +318,30 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                 Save
               </button>
 
+              {/* Explain plan */}
+              <button
+                onClick={handleExplain}
+                disabled={explaining || running}
+                title="Explain query"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 10px", borderRadius: 7, fontSize: 12,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  background: "rgba(255,255,255,0.8)",
+                  color: "#6b6860", cursor: "pointer",
+                  opacity: (explaining || running) ? 0.7 : 1,
+                }}
+              >
+                {explaining
+                  ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                  : <FileSearch style={{ width: 12, height: 12 }} />}
+                Explain
+              </button>
+
               {/* Run */}
               <button
                 ref={runBtnRef}
-                onClick={handleRun}
+                onClick={() => void handleRun(0)}
                 disabled={running}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
@@ -391,6 +452,32 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
           </div>
         )}
 
+        {explainPlan && (
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: "rgba(15,23,42,0.04)",
+            border: "1px solid rgba(15,23,42,0.12)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <FileSearch style={{ width: 13, height: 13, color: "#6b6860" }} />
+              <span style={{ fontSize: 12, color: "#6b6860", fontWeight: 600 }}>EXPLAIN plan</span>
+            </div>
+            <pre style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.45,
+              color: "#34312d",
+              fontFamily: "ui-monospace, Menlo, monospace",
+              whiteSpace: "pre-wrap",
+              maxHeight: 180,
+              overflow: "auto",
+            }}>
+              {explainPlan}
+            </pre>
+          </div>
+        )}
+
         {/* Results */}
         {result && (
           <div style={{
@@ -410,8 +497,11 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
             }}>
               <Table2 style={{ width: 13, height: 13, color: "#9060f8" }} />
               <span style={{ fontSize: 12, color: "#6b6860" }}>
-                <strong style={{ color: "#111010" }}>{result.row_count.toLocaleString()}</strong> rows
-                {result.truncated && <span style={{ color: "#f59e0b", marginLeft: 4 }}>(truncated to {limit.toLocaleString()})</span>}
+                <strong style={{ color: "#111010" }}>
+                  {result.row_count === 0 ? "0" : `${result.offset + 1}-${result.offset + result.row_count}`}
+                </strong>
+                {" "}of page results
+                {result.truncated && <span style={{ color: "#f59e0b", marginLeft: 4 }}>(page limited to {result.limit.toLocaleString()})</span>}
               </span>
               {result.execution_time_ms != null && (
                 <span style={{ fontSize: 11, color: "#9a9690", marginLeft: 4 }}>
@@ -419,11 +509,47 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   {result.execution_time_ms}ms
                 </span>
               )}
+              <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignItems: "center" }}>
+                <button
+                  onClick={() => void handleRun(Math.max(0, result.offset - result.limit))}
+                  disabled={running || result.offset <= 0}
+                  title="Previous page"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "4px 8px", borderRadius: 7, fontSize: 11,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    background: "rgba(255,255,255,0.8)",
+                    color: "#6b6860",
+                    cursor: result.offset <= 0 ? "not-allowed" : "pointer",
+                    opacity: result.offset <= 0 ? 0.5 : 1,
+                  }}
+                >
+                  <ArrowLeft style={{ width: 11, height: 11 }} />
+                  Prev
+                </button>
+                <button
+                  onClick={() => void handleRun(result.offset + result.limit)}
+                  disabled={running || !result.has_more}
+                  title="Next page"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "4px 8px", borderRadius: 7, fontSize: 11,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    background: "rgba(255,255,255,0.8)",
+                    color: "#6b6860",
+                    cursor: !result.has_more ? "not-allowed" : "pointer",
+                    opacity: !result.has_more ? 0.5 : 1,
+                  }}
+                >
+                  Next
+                  <ArrowRight style={{ width: 11, height: 11 }} />
+                </button>
+              </div>
               <button
                 onClick={handleCopyResults}
                 title="Copy as TSV"
                 style={{
-                  marginLeft: "auto", display: "flex", alignItems: "center", gap: 5,
+                  display: "flex", alignItems: "center", gap: 5,
                   padding: "4px 10px", borderRadius: 7, fontSize: 11,
                   border: "1px solid rgba(0,0,0,0.1)",
                   background: "rgba(255,255,255,0.8)",

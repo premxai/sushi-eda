@@ -1,24 +1,25 @@
 """
-Data connector endpoints — org-scoped, Clerk-authenticated.
+Data connector endpoints (org-scoped, Clerk-authenticated).
 
 Routes:
-  POST   /connectors                         — create a connector (editor+)
-  GET    /connectors                         — list org connectors (viewer+)
-  GET    /connectors/{connector_id}          — get connector details (viewer+)
-  DELETE /connectors/{connector_id}          — delete connector (editor+)
-  POST   /connectors/{connector_id}/test     — test live connection (editor+)
-  GET    /connectors/{connector_id}/tables   — list tables/objects (editor+)
-  GET    /connectors/{connector_id}/columns  — list columns for a table (editor+)
-  POST   /connectors/{connector_id}/preview  — preview rows (editor+)
-  POST   /connectors/{connector_id}/import   — import as dataset (editor+)
+  POST   /connectors                         - create a connector (editor+)
+  GET    /connectors                         - list org connectors (viewer+)
+  GET    /connectors/{connector_id}          - get connector details (viewer+)
+  DELETE /connectors/{connector_id}          - delete connector (editor+)
+  POST   /connectors/{connector_id}/test     - test live connection (editor+)
+  GET    /connectors/{connector_id}/tables   - list tables/objects/endpoints (editor+)
+  GET    /connectors/{connector_id}/columns  - list columns for a postgres table (editor+)
+  POST   /connectors/{connector_id}/preview  - preview rows (editor+)
+  POST   /connectors/{connector_id}/import   - import as dataset (editor+)
 
-Supported connector types: postgres | s3
-Credentials stored Fernet-encrypted; never returned in plaintext.
+Supported connector types:
+  postgres | s3 | google_sheets | rest
 """
 from __future__ import annotations
 
 import io
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -39,9 +40,8 @@ from worker import analyze_dataset
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+SUPPORTED_CONNECTOR_TYPES = ("postgres", "s3", "google_sheets", "rest")
 
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 async def _get_connector_or_404(
     connector_id: str, org_id: str, db: AsyncSession
@@ -59,7 +59,6 @@ async def _get_connector_or_404(
 
 
 def _connector_summary(c: DataConnector) -> dict[str, Any]:
-    """Return connector metadata without credentials."""
     return {
         "connector_id": str(c.id),
         "name": c.name,
@@ -69,8 +68,6 @@ def _connector_summary(c: DataConnector) -> dict[str, Any]:
         "created_at": c.created_at.isoformat(),
     }
 
-
-# ── CRUD ───────────────────────────────────────────────────────────────────────
 
 @router.post("")
 async def create_connector(
@@ -82,28 +79,33 @@ async def create_connector(
     """
     Create a new connector. Credentials are encrypted before storage.
 
-    Body for postgres:
-      { "name": "...", "type": "postgres",
-        "host": "...", "port": 5432, "database": "...",
-        "username": "...", "password": "...", "ssl_mode": "require" }
+    postgres:
+      { "name": "...", "type": "postgres", "host": "...", "port": 5432,
+        "database": "...", "username": "...", "password": "...", "ssl_mode": "require" }
 
-    Body for s3:
-      { "name": "...", "type": "s3",
-        "bucket": "...", "region": "us-east-1",
-        "access_key_id": "...", "secret_access_key": "...",
-        "endpoint_url": "..." }   ← optional (for R2/MinIO)
+    s3:
+      { "name": "...", "type": "s3", "bucket": "...", "region": "us-east-1",
+        "access_key_id": "...", "secret_access_key": "...", "endpoint_url": "..." }
+
+    google_sheets:
+      { "name": "...", "type": "google_sheets", "sheet_url": "...", "gid": "0" }
+      or { "name": "...", "type": "google_sheets", "csv_url": "..." }
+
+    rest:
+      { "name": "...", "type": "rest", "base_url": "...", "endpoints": ["/users"],
+        "headers": { "X-API-Key": "..." }, "bearer_token": "...", "data_key": "data" }
     """
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
 
-    connector_type = body.get("type", "").lower()
-    if connector_type not in ("postgres", "s3"):
-        raise HTTPException(status_code=400, detail="type must be 'postgres' or 's3'")
+    connector_type = str(body.get("type", "")).lower().strip()
+    if connector_type not in SUPPORTED_CONNECTOR_TYPES:
+        allowed = ", ".join(SUPPORTED_CONNECTOR_TYPES)
+        raise HTTPException(status_code=400, detail=f"type must be one of: {allowed}")
 
-    name = body.get("name", "").strip()
+    name = str(body.get("name", "")).strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
 
-    # Build credential dict (strip the name/type fields)
     creds = {k: v for k, v in body.items() if k not in ("name", "type")}
     encrypted = encrypt_config(creds)
 
@@ -128,7 +130,6 @@ async def list_connectors(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all connectors for the org (credentials never returned)."""
     await validate_org_access(org_id, current_user, db)
     result = await db.execute(
         select(DataConnector)
@@ -165,8 +166,6 @@ async def delete_connector(
     logger.info(f"Deleted connector {connector_id}")
 
 
-# ── Live connection operations ─────────────────────────────────────────────────
-
 @router.post("/{connector_id}/test")
 async def test_connector(
     connector_id: str,
@@ -174,7 +173,6 @@ async def test_connector(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Test live connectivity and update last_test_ok."""
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
@@ -184,7 +182,6 @@ async def test_connector(
     c.last_tested_at = datetime.now(timezone.utc)
     c.last_test_ok = ok
     await db.commit()
-
     return {"ok": ok, "tested_at": c.last_tested_at.isoformat()}
 
 
@@ -197,9 +194,7 @@ async def list_connector_tables(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List tables (postgres) or importable objects (s3).
-    For postgres returns [{schema, name, type, estimated_rows}].
-    For s3 returns [{key, size_bytes, last_modified, extension}].
+    List importable resources for a connector.
     """
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     c = await _get_connector_or_404(connector_id, org_id, db)
@@ -207,14 +202,29 @@ async def list_connector_tables(
 
     if c.connector_type == "postgres":
         from connectors.postgres import list_tables
+
         tables = await list_tables(params)
         return {"tables": tables}
-    elif c.connector_type == "s3":
+
+    if c.connector_type == "s3":
         from connectors.s3_connector import list_objects
+
         objects = list_objects(params, prefix=prefix)
         return {"objects": objects}
-    else:
-        raise HTTPException(status_code=400, detail="Unknown connector type")
+
+    if c.connector_type == "google_sheets":
+        from connectors.google_sheets import list_tables
+
+        tables = list_tables(params)
+        return {"tables": tables}
+
+    if c.connector_type == "rest":
+        from connectors.rest_api import list_tables
+
+        tables = list_tables(params)
+        return {"tables": tables}
+
+    raise HTTPException(status_code=400, detail="Unknown connector type")
 
 
 @router.get("/{connector_id}/columns")
@@ -226,13 +236,17 @@ async def list_connector_columns(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List columns for a specific table (postgres only)."""
+    """
+    List columns for a specific table (postgres only).
+    """
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     c = await _get_connector_or_404(connector_id, org_id, db)
     if c.connector_type != "postgres":
         raise HTTPException(status_code=400, detail="Column listing only supported for postgres")
+
     params = decrypt_config(c.config_encrypted)
     from connectors.postgres import list_columns
+
     columns = await list_columns(params, schema, table)
     return {"columns": columns}
 
@@ -247,9 +261,6 @@ async def preview_connector(
 ):
     """
     Preview rows without importing.
-    postgres body: { "schema": "public", "table": "orders", "limit": 100 }
-      or:          { "query": "SELECT ...", "limit": 100 }
-    s3 body:       { "key": "data/sales.csv", "limit": 100 }
     """
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     c = await _get_connector_or_404(connector_id, org_id, db)
@@ -258,27 +269,42 @@ async def preview_connector(
 
     if c.connector_type == "postgres":
         from connectors.postgres import fetch_query_as_polars, preview_table
+
         if "query" in body:
             df = await fetch_query_as_polars(params, body["query"], limit=limit)
             cols = df.columns
             rows = df.to_pandas().fillna("").values.tolist()
             return {"columns": cols, "rows": rows, "row_count": len(rows)}
-        else:
-            return await preview_table(
-                params,
-                schema=body.get("schema", "public"),
-                table=body["table"],
-                limit=limit,
-            )
-    elif c.connector_type == "s3":
+        return await preview_table(
+            params,
+            schema=body.get("schema", "public"),
+            table=body["table"],
+            limit=limit,
+        )
+
+    if c.connector_type == "s3":
         from connectors.s3_connector import fetch_object_as_polars
+
         df, _ = fetch_object_as_polars(params, body["key"])
         df_preview = df.head(limit)
         cols = df_preview.columns
         rows = df_preview.to_pandas().fillna("").values.tolist()
         return {"columns": cols, "rows": rows, "row_count": df.height}
-    else:
-        raise HTTPException(status_code=400, detail="Unknown connector type")
+
+    if c.connector_type == "google_sheets":
+        from connectors.google_sheets import preview_table
+
+        return preview_table(params, table=body.get("table"), limit=limit)
+
+    if c.connector_type == "rest":
+        from connectors.rest_api import preview_table
+
+        endpoint = str(body.get("table") or body.get("endpoint") or "").strip()
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="table (endpoint) is required for REST preview")
+        return preview_table(params, table=endpoint, limit=limit)
+
+    raise HTTPException(status_code=400, detail="Unknown connector type")
 
 
 @router.post("/{connector_id}/import")
@@ -291,23 +317,16 @@ async def import_from_connector(
 ):
     """
     Import data from a connector as a new Dataset.
-    Saves to R2 as Parquet and enqueues a Celery analysis job.
-
-    postgres body: { "name": "My Dataset", "schema": "public", "table": "orders" }
-                or { "name": "My Dataset", "query": "SELECT ..." }
-    s3 body:       { "name": "My Dataset", "key": "data/sales.csv" }
-
-    Returns: { dataset_id, status, message }
+    Saves to object storage as Parquet and enqueues a Celery analysis job.
     """
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
-
     dataset_name = body.get("name", "").strip() or "Imported dataset"
 
-    # ── Fetch data ─────────────────────────────────────────────────────────────
     if c.connector_type == "postgres":
         from connectors.postgres import fetch_query_as_polars, fetch_table_as_polars
+
         if "query" in body:
             df = await fetch_query_as_polars(params, body["query"])
             source_label = "query"
@@ -321,15 +340,31 @@ async def import_from_connector(
 
     elif c.connector_type == "s3":
         from connectors.s3_connector import fetch_object_as_polars
+
         df, _ = fetch_object_as_polars(params, body["key"])
         source_label = body["key"].rsplit("/", 1)[-1]
+
+    elif c.connector_type == "google_sheets":
+        from connectors.google_sheets import fetch_table_as_polars
+
+        df = fetch_table_as_polars(params, table=body.get("table"))
+        source_label = "google_sheet"
+
+    elif c.connector_type == "rest":
+        from connectors.rest_api import fetch_table_as_polars
+
+        endpoint = str(body.get("table") or body.get("endpoint") or "").strip()
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="table (endpoint) is required for REST import")
+        df = fetch_table_as_polars(params, table=endpoint)
+        source_label = re.sub(r"[^a-zA-Z0-9._-]+", "_", endpoint.strip("/")) or "rest_endpoint"
+
     else:
         raise HTTPException(status_code=400, detail="Unknown connector type")
 
     if df.is_empty():
         raise HTTPException(status_code=422, detail="Imported data is empty")
 
-    # ── Serialize to Parquet and upload to R2 ──────────────────────────────────
     dataset_id = str(uuid.uuid4())
     filename = f"{source_label}.parquet"
     file_key = f"uploads/{org_id}/{dataset_id}/{filename}"
@@ -340,11 +375,10 @@ async def import_from_connector(
 
     try:
         storage.upload(org_id, dataset_id, filename, parquet_bytes)
-    except Exception as e:
-        logger.error(f"R2 upload failed for connector import: {e}")
-        raise HTTPException(status_code=500, detail="File storage failed")
+    except Exception as exc:
+        logger.error(f"Object storage upload failed for connector import: {exc}")
+        raise HTTPException(status_code=500, detail="File storage failed") from exc
 
-    # ── Persist Dataset row ────────────────────────────────────────────────────
     dataset = Dataset(
         id=dataset_id,
         org_id=org_id,
@@ -359,7 +393,6 @@ async def import_from_connector(
     db.add(dataset)
     await db.commit()
 
-    # ── Enqueue Celery analysis job ────────────────────────────────────────────
     cache.set_job_status(dataset_id, "pending")
     analyze_dataset.delay(
         dataset_id=dataset_id,
@@ -370,23 +403,35 @@ async def import_from_connector(
     )
 
     logger.info(
-        f"Connector import: connector={connector_id} → dataset={dataset_id} "
+        f"Connector import: connector={connector_id} -> dataset={dataset_id} "
         f"({df.height}r x {df.width}c)"
     )
     return {
         "dataset_id": dataset_id,
         "status": "pending",
-        "message": f"Imported {df.height:,} rows × {df.width} columns. Analysis queued.",
+        "message": f"Imported {df.height:,} rows x {df.width} columns. Analysis queued.",
     }
 
-
-# ── Internal helpers ───────────────────────────────────────────────────────────
 
 async def _run_test(connector_type: str, params: dict[str, Any]) -> bool:
     if connector_type == "postgres":
         from connectors.postgres import test_connection
+
         return await test_connection(params)
-    elif connector_type == "s3":
+
+    if connector_type == "s3":
         from connectors.s3_connector import test_connection
+
         return test_connection(params)
+
+    if connector_type == "google_sheets":
+        from connectors.google_sheets import test_connection
+
+        return test_connection(params)
+
+    if connector_type == "rest":
+        from connectors.rest_api import test_connection
+
+        return test_connection(params)
+
     return False

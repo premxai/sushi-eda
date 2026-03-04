@@ -9,6 +9,22 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
+function resolvePlotlyBundle() {
+  try {
+    return require.resolve('plotly.js-dist-min');
+  } catch {
+    return require.resolve('plotly.js');
+  }
+}
+
+function resolveOptional(specifier) {
+  try {
+    return require.resolve(specifier);
+  } catch {
+    return false;
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,20 +32,26 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'react-plotly.js'],
   },
   webpack: (config, { isServer }) => {
+    const bufferPolyfill = resolveOptional('buffer/');
+    const resolvedBufferShim = bufferPolyfill || require.resolve('./src/shims/buffer.ts');
+
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      'plotly.js$': require.resolve('plotly.js-dist-min'),
+      'plotly.js$': resolvePlotlyBundle(),
+      'buffer/': resolvedBufferShim,
     };
     if (!isServer) {
       config.resolve.fallback = {
         ...(config.resolve.fallback || {}),
-        buffer: require.resolve('buffer/'),
-      };
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          Buffer: ['buffer', 'Buffer'],
-        })
-      );
+        buffer: resolvedBufferShim,
+      }
+      if (bufferPolyfill) {
+        config.plugins.push(
+          new webpack.ProvidePlugin({
+            Buffer: ['buffer', 'Buffer'],
+          })
+        );
+      }
     }
     return config;
   },

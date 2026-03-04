@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   AlertCircle,
@@ -11,6 +11,8 @@ import {
   BoxSelect,
   Layers,
   Download,
+  Link2,
+  Wand2,
   Plus,
   ChevronDown,
 } from "lucide-react";
@@ -34,16 +36,35 @@ interface Props {
   report: EDAReport;
 }
 
-type ChartType = "bar" | "line" | "scatter" | "histogram" | "box" | "violin" | "heatmap";
+type ChartType =
+  | "auto"
+  | "bar"
+  | "line"
+  | "scatter"
+  | "histogram"
+  | "box"
+  | "violin"
+  | "treemap"
+  | "sunburst"
+  | "sankey"
+  | "choropleth"
+  | "network"
+  | "heatmap";
 type Tab = "overview" | "numeric" | "categorical" | "builder";
 
 const CHART_TYPES: { type: ChartType; label: string; icon: React.ElementType; desc: string }[] = [
+  { type: "auto",      label: "Auto",      icon: Wand2,         desc: "Suggest by selected columns" },
   { type: "bar",       label: "Bar",       icon: BarChart3,     desc: "Categorical comparison" },
   { type: "line",      label: "Line",      icon: TrendingUp,    desc: "Trends over time" },
   { type: "scatter",   label: "Scatter",   icon: ScatterChart,  desc: "Correlation between 2 numeric" },
   { type: "histogram", label: "Histogram", icon: Layers,        desc: "Single column distribution" },
   { type: "box",       label: "Box",       icon: BoxSelect,     desc: "Distribution + outliers" },
   { type: "violin",    label: "Violin",    icon: BoxSelect,     desc: "Distribution shape" },
+  { type: "treemap",   label: "Treemap",   icon: Layers,        desc: "Hierarchy by group and value" },
+  { type: "sunburst",  label: "Sunburst",  icon: Layers,        desc: "Multi-level categorical split" },
+  { type: "sankey",    label: "Sankey",    icon: TrendingUp,    desc: "Flow between categories" },
+  { type: "choropleth",label: "Map",       icon: BarChart3,     desc: "Geographic intensity map" },
+  { type: "network",   label: "Network",   icon: ScatterChart,  desc: "Entity relationship graph" },
 ];
 
 // ── Warm-styled plotly chart wrapper ──────────────────────────────────────────
@@ -138,18 +159,66 @@ function ChartCard({ title, spec, dtype }: { title: string; spec: any; dtype?: s
 
 // ── Custom chart builder ──────────────────────────────────────────────────────
 
+function toNumber(value: unknown): number {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function aggregatePairs(
+  primary: unknown[],
+  secondary: unknown[],
+  values?: unknown[]
+): Array<{ key: string; value: number }> {
+  const totals = new Map<string, number>();
+  for (let i = 0; i < primary.length; i += 1) {
+    const first = String(primary[i] ?? "null");
+    const second = String(secondary[i] ?? "null");
+    const key = `${first}|||${second}`;
+    const increment = values ? toNumber(values[i]) : 1;
+    totals.set(key, (totals.get(key) ?? 0) + increment);
+  }
+  return Array.from(totals.entries()).map(([key, value]) => ({ key, value }));
+}
+
+function aggregateSingle(
+  labels: unknown[],
+  values?: unknown[]
+): Array<{ label: string; value: number }> {
+  const totals = new Map<string, number>();
+  for (let i = 0; i < labels.length; i += 1) {
+    const label = String(labels[i] ?? "null");
+    const increment = values ? toNumber(values[i]) : 1;
+    totals.set(label, (totals.get(label) ?? 0) + increment);
+  }
+  return Array.from(totals.entries()).map(([label, value]) => ({ label, value }));
+}
+
 function ChartBuilder({ report }: { report: EDAReport }) {
   const preview = useMemo(() => report.preview ?? [], [report.preview]);
   const columns = report.column_analysis;
   const numericCols = columns.filter((c) => c.is_numeric).map((c) => c.name);
   const categoricalCols = columns.filter((c) => !c.is_numeric).map((c) => c.name);
   const allCols = columns.map((c) => c.name);
+  const numericSet = useMemo(() => new Set(numericCols), [numericCols]);
 
-  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [chartType, setChartType] = useState<ChartType>("auto");
   const [xCol, setXCol] = useState(categoricalCols[0] ?? allCols[0] ?? "");
   const [yCol, setYCol] = useState(numericCols[0] ?? "");
   const [colorCol, setColorCol] = useState("");
   const [title, setTitle] = useState("");
+  const [embedCopied, setEmbedCopied] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const resolvedChartType = useMemo<ChartType>(() => {
+    if (chartType !== "auto") return chartType;
+    const xNumeric = numericSet.has(xCol);
+    const yNumeric = numericSet.has(yCol);
+    if (!xCol) return "bar";
+    if (!yCol) return xNumeric ? "histogram" : "bar";
+    if (xNumeric && yNumeric) return "scatter";
+    if (!xNumeric && yNumeric) return "bar";
+    return "line";
+  }, [chartType, xCol, yCol, numericSet]);
 
   // Build plotly trace from preview data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,32 +232,233 @@ function ChartBuilder({ report }: { report: EDAReport }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const colorVals = colorCol ? preview.map((r: any) => r[colorCol]) : undefined;
 
-    const ct = chartType;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let trace: any = {};
+    const ct = resolvedChartType;
+    let data: any[] = [];
 
     if (ct === "bar") {
-      trace = { type: "bar", x: xVals, y: yVals, marker: { color: "#9060f8", opacity: 0.85 } };
+      if (yCol) {
+        const grouped = aggregateSingle(xVals, yVals);
+        data = [{
+          type: "bar",
+          x: grouped.map((g) => g.label),
+          y: grouped.map((g) => g.value),
+          marker: { color: "#9060f8", opacity: 0.85 },
+        }];
+      } else {
+        const grouped = aggregateSingle(xVals);
+        data = [{
+          type: "bar",
+          x: grouped.map((g) => g.label),
+          y: grouped.map((g) => g.value),
+          marker: { color: "#9060f8", opacity: 0.85 },
+        }];
+      }
     } else if (ct === "line") {
-      trace = { type: "scatter", mode: "lines+markers", x: xVals, y: yVals, line: { color: "#9060f8", width: 2 } };
+      if (!yCol) return { error: "Line chart requires a Y axis column." };
+      data = [{
+        type: "scatter",
+        mode: "lines+markers",
+        x: xVals,
+        y: yVals,
+        line: { color: "#9060f8", width: 2 },
+      }];
     } else if (ct === "scatter") {
-      trace = { type: "scatter", mode: "markers", x: xVals, y: yVals, marker: { color: colorVals ?? "#9060f8", opacity: 0.7, size: 6 } };
+      if (!yCol) return { error: "Scatter chart requires a Y axis column." };
+      data = [{
+        type: "scatter",
+        mode: "markers",
+        x: xVals,
+        y: yVals,
+        marker: { color: colorVals ?? "#9060f8", opacity: 0.7, size: 6 },
+      }];
     } else if (ct === "histogram") {
-      trace = { type: "histogram", x: xVals, marker: { color: "#9060f8", opacity: 0.85 } };
+      data = [{ type: "histogram", x: xVals, marker: { color: "#9060f8", opacity: 0.85 } }];
     } else if (ct === "box") {
-      trace = { type: "box", y: yVals, x: colorVals ?? xVals, marker: { color: "#9060f8" }, boxmean: true };
+      if (!yCol) return { error: "Box plot requires a Y axis column." };
+      data = [{ type: "box", y: yVals, x: colorVals ?? xVals, marker: { color: "#9060f8" }, boxmean: true }];
     } else if (ct === "violin") {
-      trace = { type: "violin", y: yVals, x: colorVals ?? xVals, box: { visible: true }, meanline: { visible: true }, fillcolor: "rgba(144,96,248,0.3)", line: { color: "#9060f8" } };
+      if (!yCol) return { error: "Violin chart requires a Y axis column." };
+      data = [{
+        type: "violin",
+        y: yVals,
+        x: colorVals ?? xVals,
+        box: { visible: true },
+        meanline: { visible: true },
+        fillcolor: "rgba(144,96,248,0.3)",
+        line: { color: "#9060f8" },
+      }];
+    } else if (ct === "treemap") {
+      if (colorVals) {
+        const grouped = aggregatePairs(xVals, colorVals, yCol ? yVals : undefined);
+        const parentTotals = new Map<string, number>();
+        for (const entry of grouped) {
+          const [parent] = entry.key.split("|||");
+          parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + entry.value);
+        }
+        const labels = Array.from(parentTotals.keys());
+        const parents = labels.map(() => "");
+        const values = labels.map((label) => parentTotals.get(label) ?? 0);
+        for (const entry of grouped) {
+          const [parent, child] = entry.key.split("|||");
+          labels.push(child);
+          parents.push(parent);
+          values.push(entry.value);
+        }
+        data = [{ type: "treemap", labels, parents, values, branchvalues: "total" }];
+      } else {
+        const grouped = aggregateSingle(xVals, yCol ? yVals : undefined);
+        data = [{
+          type: "treemap",
+          labels: grouped.map((g) => g.label),
+          parents: grouped.map(() => ""),
+          values: grouped.map((g) => g.value),
+          branchvalues: "total",
+        }];
+      }
+    } else if (ct === "sunburst") {
+      if (!colorVals) return { error: "Sunburst chart works best with a group column." };
+      const grouped = aggregatePairs(xVals, colorVals, yCol ? yVals : undefined);
+      const parentTotals = new Map<string, number>();
+      for (const entry of grouped) {
+        const [parent] = entry.key.split("|||");
+        parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + entry.value);
+      }
+      const labels = Array.from(parentTotals.keys());
+      const parents = labels.map(() => "");
+      const values = labels.map((label) => parentTotals.get(label) ?? 0);
+      for (const entry of grouped) {
+        const [parent, child] = entry.key.split("|||");
+        labels.push(child);
+        parents.push(parent);
+        values.push(entry.value);
+      }
+      data = [{ type: "sunburst", labels, parents, values, branchvalues: "total" }];
+    } else if (ct === "sankey") {
+      if (!colorVals) return { error: "Sankey chart requires a group column." };
+      const grouped = aggregatePairs(xVals, colorVals, yCol ? yVals : undefined);
+      const nodeIndex = new Map<string, number>();
+      const labels: string[] = [];
+      for (const entry of grouped) {
+        const [source, target] = entry.key.split("|||");
+        if (!nodeIndex.has(source)) {
+          nodeIndex.set(source, labels.length);
+          labels.push(source);
+        }
+        if (!nodeIndex.has(target)) {
+          nodeIndex.set(target, labels.length);
+          labels.push(target);
+        }
+      }
+      data = [{
+        type: "sankey",
+        node: { label: labels, pad: 14, thickness: 16 },
+        link: {
+          source: grouped.map((g) => nodeIndex.get(g.key.split("|||")[0]) ?? 0),
+          target: grouped.map((g) => nodeIndex.get(g.key.split("|||")[1]) ?? 0),
+          value: grouped.map((g) => g.value),
+        },
+      }];
+    } else if (ct === "choropleth") {
+      if (!yCol) return { error: "Map chart requires a numeric Y axis column." };
+      const locationMode = xVals.every((v) => /^[A-Z]{2}$/.test(String(v))) ? "USA-states" : "country names";
+      data = [{
+        type: "choropleth",
+        locations: xVals.map((value: unknown) => String(value ?? "")),
+        z: yVals.map((value: unknown) => toNumber(value)),
+        locationmode: locationMode,
+        colorscale: "Viridis",
+      }];
+    } else if (ct === "network") {
+      const linksTo = colorVals ?? (yCol ? yVals : undefined);
+      if (!linksTo) return { error: "Network chart requires a second column for links (Group or Y)." };
+      const grouped = aggregatePairs(xVals, linksTo);
+      const nodeIndex = new Map<string, number>();
+      const labels: string[] = [];
+      for (const entry of grouped) {
+        const [source, target] = entry.key.split("|||");
+        if (!nodeIndex.has(source)) {
+          nodeIndex.set(source, labels.length);
+          labels.push(source);
+        }
+        if (!nodeIndex.has(target)) {
+          nodeIndex.set(target, labels.length);
+          labels.push(target);
+        }
+      }
+      const nodeCount = labels.length;
+      const points = labels.map((_, idx) => {
+        const angle = (2 * Math.PI * idx) / Math.max(1, nodeCount);
+        return { x: Math.cos(angle), y: Math.sin(angle) };
+      });
+      const edgeX: Array<number | null> = [];
+      const edgeY: Array<number | null> = [];
+      for (const entry of grouped) {
+        const [source, target] = entry.key.split("|||");
+        const sIdx = nodeIndex.get(source) ?? 0;
+        const tIdx = nodeIndex.get(target) ?? 0;
+        edgeX.push(points[sIdx].x, points[tIdx].x, null);
+        edgeY.push(points[sIdx].y, points[tIdx].y, null);
+      }
+      data = [
+        {
+          type: "scatter",
+          mode: "lines",
+          x: edgeX,
+          y: edgeY,
+          line: { width: 0.8, color: "rgba(0,0,0,0.25)" },
+          hoverinfo: "none",
+        },
+        {
+          type: "scatter",
+          mode: "markers+text",
+          x: points.map((p) => p.x),
+          y: points.map((p) => p.y),
+          text: labels,
+          textposition: "top center",
+          marker: { size: 10, color: "#9060f8", line: { width: 1, color: "#ffffff" } },
+          hovertemplate: "%{text}<extra></extra>",
+        },
+      ];
     }
 
     const layout = {
-      xaxis: { title: xCol },
-      yaxis: yCol ? { title: yCol } : {},
+      xaxis: { title: xCol, visible: !["sankey"].includes(ct) },
+      yaxis: yCol ? { title: yCol } : { visible: !["sankey"].includes(ct) },
+      geo: ct === "choropleth" ? { projection: { type: "mercator" } } : undefined,
       title: title || `${ct.charAt(0).toUpperCase() + ct.slice(1)}: ${xCol}${yCol ? ` vs ${yCol}` : ""}`,
     };
 
-    return { data: [trace], layout };
-  }, [chartType, xCol, yCol, colorCol, title, preview]);
+    return { data, layout };
+  }, [resolvedChartType, xCol, yCol, colorCol, title, preview]);
+
+  const supportsYAxis = !["histogram", "sankey", "network"].includes(resolvedChartType);
+  const supportsGroup = ["scatter", "box", "violin", "treemap", "sunburst", "sankey", "network"].includes(resolvedChartType);
+
+  function downloadChart(format: "png" | "svg") {
+    const plotNode = previewRef.current?.querySelector(".js-plotly-plot");
+    if (!plotNode) return;
+    import("plotly.js").then((Plotly) => {
+      Plotly.downloadImage(plotNode as unknown as HTMLElement, {
+        format,
+        width: 1200,
+        height: 600,
+        filename: `sushi-chart-${resolvedChartType}`,
+      });
+    });
+  }
+
+  function copyEmbedSnippet() {
+    if (!builtSpec) return;
+    const html = `<div id='chart' style='width:100%;height:100%'></div><script src='https://cdn.plot.ly/plotly-2.35.2.min.js'><\/script><script>const spec=${JSON.stringify(
+      builtSpec
+    )};Plotly.newPlot('chart', spec.data, spec.layout, {responsive:true,displaylogo:false});<\/script>`;
+    const escapedHtml = html.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+    const snippet = `<iframe style="width:100%;height:520px;border:0;" srcdoc="${escapedHtml}"></iframe>`;
+    navigator.clipboard.writeText(snippet).then(() => {
+      setEmbedCopied(true);
+      setTimeout(() => setEmbedCopied(false), 1500);
+    });
+  }
 
   const selectStyle: React.CSSProperties = {
     padding: "7px 10px", borderRadius: 8, fontSize: 13,
@@ -243,7 +513,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
               {allCols.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          {chartType !== "histogram" && (
+          {supportsYAxis && (
             <div>
               <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
                 Y axis
@@ -254,7 +524,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
               </select>
             </div>
           )}
-          {(chartType === "scatter" || chartType === "box" || chartType === "violin") && (
+          {supportsGroup && (
             <div>
               <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
                 Color / Group
@@ -281,10 +551,15 @@ function ChartBuilder({ report }: { report: EDAReport }) {
         <p style={{ fontSize: 10, color: "#c0bdb8", marginTop: 12, lineHeight: 1.5 }}>
           Using first {Math.min(preview.length, 5000)} rows of preview data
         </p>
+        {chartType === "auto" && (
+          <p style={{ fontSize: 10, color: "#9060f8", marginTop: 8 }}>
+            Suggested chart type: <strong>{resolvedChartType}</strong>
+          </p>
+        )}
       </div>
 
       {/* Chart preview */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }} ref={previewRef}>
         {builtSpec ? (
           <div style={{
             background: "rgba(255,255,255,0.72)",
@@ -302,15 +577,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
                 {builtSpec.layout?.title || "Chart Preview"}
               </span>
               <button
-                onClick={() => {
-                  // Trigger plotly's download PNG
-                  const el = document.querySelector(".js-plotly-plot") as HTMLElement & { layout: unknown };
-                  if (el) {
-                    import("plotly.js").then((Plotly) => {
-                      Plotly.downloadImage(el, { format: "png", width: 1200, height: 600, filename: "sushi-chart" });
-                    });
-                  }
-                }}
+                onClick={() => downloadChart("png")}
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   padding: "5px 10px", borderRadius: 7, fontSize: 11,
@@ -321,6 +588,35 @@ function ChartBuilder({ report }: { report: EDAReport }) {
               >
                 <Download style={{ width: 11, height: 11 }} />
                 PNG
+              </button>
+              <button
+                onClick={() => downloadChart("svg")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 10px", borderRadius: 7, fontSize: 11,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  background: "rgba(255,255,255,0.8)",
+                  color: "#6b6860", cursor: "pointer",
+                  marginLeft: 6,
+                }}
+              >
+                <Download style={{ width: 11, height: 11 }} />
+                SVG
+              </button>
+              <button
+                onClick={copyEmbedSnippet}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 10px", borderRadius: 7, fontSize: 11,
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  background: "rgba(255,255,255,0.8)",
+                  color: embedCopied ? "#10b981" : "#6b6860",
+                  cursor: "pointer",
+                  marginLeft: 6,
+                }}
+              >
+                <Link2 style={{ width: 11, height: 11 }} />
+                {embedCopied ? "Copied" : "Embed"}
               </button>
             </div>
             <div style={{ padding: "0 8px 8px" }}>

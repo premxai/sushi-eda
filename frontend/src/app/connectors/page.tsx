@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Database,
   Cloud,
+  Globe,
   Loader2,
   Plus,
   RefreshCw,
@@ -37,6 +38,7 @@ type TableEntry = {
   name: string;
   type?: string;
   estimated_rows?: number;
+  resource?: string;
 };
 type S3Object = {
   key: string;
@@ -86,6 +88,10 @@ function ConnectorCard({
   const [importError, setImportError] = useState<string | null>(null);
 
   const isPostgres = connector.connector_type === "postgres";
+  const isS3 = connector.connector_type === "s3";
+  const isGoogleSheets = connector.connector_type === "google_sheets";
+  const isRest = connector.connector_type === "rest";
+  const isTabularConnector = !isS3;
 
   async function handleExpand() {
     if (expanded) { setExpanded(false); return; }
@@ -94,11 +100,11 @@ function ConnectorCard({
     setTablesLoading(true);
     try {
       const data = await listConnectorTables(connector.connector_id, ORG_ID);
-      setTables(
-        isPostgres
-          ? (data.tables as TableEntry[])
-          : (data.objects as S3Object[])
-      );
+      if (isS3) {
+        setTables((data.objects ?? []) as S3Object[]);
+      } else {
+        setTables((data.tables ?? []) as TableEntry[]);
+      }
     } catch {
       setTables([]);
     } finally {
@@ -129,19 +135,26 @@ function ConnectorCard({
   async function handleImport() {
     if (!importTarget) return;
     setImportError(null);
-    const isS3 = "key" in importTarget;
+    const selectedIsS3 = "key" in importTarget;
     const body: Record<string, unknown> = {
-      name: importName || (isS3 ? (importTarget as S3Object).key.split("/").pop() : (importTarget as TableEntry).name),
+      name: importName || (selectedIsS3 ? (importTarget as S3Object).key.split("/").pop() : (importTarget as TableEntry).name),
     };
-    if (isS3) {
+    if (selectedIsS3) {
       body.key = (importTarget as S3Object).key;
-    } else if (customQuery.trim()) {
+    } else if (isPostgres && customQuery.trim()) {
       body.query = customQuery.trim();
-    } else {
-      body.schema = (importTarget as TableEntry).schema ?? "public";
+    } else if (isRest) {
       body.table = (importTarget as TableEntry).name;
+    } else {
+      const selectedTable = importTarget as TableEntry;
+      if (isPostgres) {
+        body.schema = selectedTable.schema ?? "public";
+      }
+      body.table = selectedTable.name;
     }
-    const key = isS3 ? (importTarget as S3Object).key : `${(importTarget as TableEntry).schema}.${(importTarget as TableEntry).name}`;
+    const key = selectedIsS3
+      ? (importTarget as S3Object).key
+      : `${(importTarget as TableEntry).schema ?? ""}.${(importTarget as TableEntry).name}`;
     setImportingKey(key);
     try {
       const result = await importFromConnector(connector.connector_id, body, ORG_ID);
@@ -168,6 +181,30 @@ function ConnectorCard({
       ? "Failed"
       : "Untested";
 
+  const connectorTypeConfig = isPostgres
+    ? {
+        background: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.12))",
+        icon: <Database style={{ width: 18, height: 18, color: "#3b82f6" }} />,
+        label: "postgresql",
+      }
+    : isS3
+      ? {
+          background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(249,115,22,0.12))",
+          icon: <Cloud style={{ width: 18, height: 18, color: "#f59e0b" }} />,
+          label: "s3 / object storage",
+        }
+      : isGoogleSheets
+        ? {
+            background: "linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.12))",
+            icon: <Table2 style={{ width: 18, height: 18, color: "#10b981" }} />,
+            label: "google sheets",
+          }
+        : {
+            background: "linear-gradient(135deg, rgba(14,165,233,0.1), rgba(59,130,246,0.12))",
+            icon: <Globe style={{ width: 18, height: 18, color: "#0ea5e9" }} />,
+            label: "rest api",
+          };
+
   return (
     <div style={{
       background: "rgba(255,255,255,0.72)",
@@ -183,14 +220,10 @@ function ConnectorCard({
         {/* Type icon */}
         <div style={{
           width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-          background: isPostgres
-            ? "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.12))"
-            : "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(249,115,22,0.12))",
+          background: connectorTypeConfig.background,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          {isPostgres
-            ? <Database style={{ width: 18, height: 18, color: "#3b82f6" }} />
-            : <Cloud style={{ width: 18, height: 18, color: "#f59e0b" }} />}
+          {connectorTypeConfig.icon}
         </div>
 
         {/* Name + type */}
@@ -204,7 +237,7 @@ function ConnectorCard({
             letterSpacing: "0.04em",
             textTransform: "uppercase",
           }}>
-            {isPostgres ? "postgresql" : "s3 / object storage"}
+            {connectorTypeConfig.label}
           </p>
         </div>
 
@@ -307,7 +340,9 @@ function ConnectorCard({
           ) : !tables || tables.length === 0 ? (
             <div style={{ textAlign: "center", padding: "24px 0" }}>
               <Table2 style={{ width: 28, height: 28, color: "rgba(255,255,255,0.2)", margin: "0 auto 10px" }} />
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>No tables found</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                {isS3 ? "No objects found" : "No resources found"}
+              </p>
             </div>
           ) : (
             <div>
@@ -316,10 +351,10 @@ function ConnectorCard({
                 letterSpacing: "2px", textTransform: "uppercase",
                 color: "rgba(255,255,255,0.3)", marginBottom: 12,
               }}>
-                {isPostgres ? `${tables.length} tables available` : `${tables.length} objects`}
+                {isS3 ? `${tables.length} objects` : `${tables.length} resources`}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 320, overflowY: "auto" }}>
-                {isPostgres
+                {isTabularConnector
                   ? (tables as TableEntry[]).map((t, i) => (
                       <div
                         key={i}
@@ -338,22 +373,22 @@ function ConnectorCard({
                         onClick={() => {
                           setImportTarget(t);
                           setImportName(t.name);
-                          setCustomQuery("");
+                          if (isPostgres) setCustomQuery("");
                           setImportError(null);
                         }}
                       >
                         <Table2 style={{ width: 13, height: 13, color: "rgba(255,255,255,0.35)", flexShrink: 0 }} />
                         <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, color: "rgba(255,255,255,0.8)", flex: 1 }}>
-                          {t.schema !== "public" ? `${t.schema}.` : ""}{t.name}
+                          {isPostgres && t.schema && t.schema !== "public" ? `${t.schema}.` : ""}{t.name}
                         </span>
                         {t.estimated_rows != null && t.estimated_rows > 0 && (
                           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "ui-monospace, Menlo, monospace" }}>
                             ~{t.estimated_rows.toLocaleString()} rows
                           </span>
                         )}
-                        {t.type === "VIEW" && (
+                        {t.type && (
                           <span style={{ padding: "2px 6px", borderRadius: 5, fontSize: 10, background: "rgba(0,212,232,0.15)", color: "#00d4e8" }}>
-                            VIEW
+                            {t.type}
                           </span>
                         )}
                       </div>
@@ -439,6 +474,16 @@ function ConnectorCard({
                         boxSizing: "border-box",
                       }}
                     />
+                  )}
+                  {isGoogleSheets && (
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>
+                      Import reads the selected sheet resource as tabular data.
+                    </p>
+                  )}
+                  {isRest && (
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>
+                      Import fetches the selected endpoint and normalizes JSON into rows.
+                    </p>
                   )}
                   {importError && (
                     <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
@@ -570,10 +615,10 @@ export default function ConnectorsPage() {
           </h1>
           <p style={{ fontSize: 14, color: "#6b6860" }}>
             {loading
-              ? "Loading…"
+              ? "Loading..."
               : connectors.length > 0
                 ? `${connectors.length} data source${connectors.length !== 1 ? "s" : ""} connected`
-                : "Connect your databases and object storage directly. No CSV exports needed."}
+                : "Connect databases, cloud files, sheets, and APIs directly. No CSV export loop."}
           </p>
         </div>
 
@@ -595,12 +640,14 @@ export default function ConnectorsPage() {
               No connections yet
             </p>
             <p style={{ fontSize: 13, color: "#6b6860", marginBottom: 24, maxWidth: 360, margin: "0 auto 24px" }}>
-              Connect PostgreSQL, S3, or other sources to import data directly without downloading files.
+              Connect PostgreSQL, S3, Google Sheets, and REST APIs to import data directly without downloading files.
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
               {[
                 { icon: Database, label: "PostgreSQL", color: "#3b82f6" },
                 { icon: Cloud, label: "S3 / R2", color: "#f59e0b" },
+                { icon: Table2, label: "Google Sheets", color: "#10b981" },
+                { icon: Globe, label: "REST API", color: "#0ea5e9" },
               ].map(({ icon: Icon, label, color }) => (
                 <button
                   key={label}
@@ -655,7 +702,7 @@ export default function ConnectorsPage() {
             {[
               { icon: CheckCircle2, label: "PostgreSQL", desc: "Connect to any Postgres database. Browse tables, run custom queries, import directly.", color: "#3b82f6" },
               { icon: Cloud, label: "S3 / R2 / MinIO", desc: "Import CSV, Parquet, TSV, or JSON files from any S3-compatible object storage.", color: "#f59e0b" },
-              { icon: Database, label: "More coming soon", desc: "MySQL, BigQuery, Snowflake, Google Sheets, and REST APIs — in the roadmap.", color: "#9a9690" },
+              { icon: Globe, label: "Sheets + REST", desc: "Ingest Google Sheets and REST API JSON payloads directly as datasets.", color: "#10b981" },
             ].map(({ icon: Icon, label, desc, color }) => (
               <div key={label} style={{
                 padding: "16px 18px", borderRadius: 14,

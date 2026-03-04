@@ -20,13 +20,17 @@ import polars as pl
 _conn = duckdb.connect()
 
 
-def run_query(df: pl.DataFrame, sql: str, limit: int = 10_000) -> dict[str, Any]:
+def run_query(
+    df: pl.DataFrame,
+    sql: str,
+    limit: int = 10_000,
+    offset: int = 0,
+) -> dict[str, Any]:
     """
     Execute a SQL query against a Polars DataFrame.
 
     The DataFrame is registered as the virtual table `df` for the duration
-    of the query.  A LIMIT is injected automatically if the query is a
-    bare SELECT without one, to prevent runaway result sets.
+    of the query. Query results are paginated server-side using LIMIT/OFFSET.
 
     Args:
         df:    Polars DataFrame to query.
@@ -47,8 +51,11 @@ def run_query(df: pl.DataFrame, sql: str, limit: int = 10_000) -> dict[str, Any]
     """
     _validate_sql(sql)
 
-    # Inject limit if missing
-    sql_exec = _inject_limit(sql.strip(), limit + 1)
+    sql_clean = _normalize_sql(sql)
+    sql_exec = (
+        f"SELECT * FROM ({sql_clean}) __q "
+        f"LIMIT {max(1, int(limit)) + 1} OFFSET {max(0, int(offset))}"
+    )
 
     try:
         result = _conn.execute(sql_exec, {"df": df}).fetchall()
@@ -67,7 +74,28 @@ def run_query(df: pl.DataFrame, sql: str, limit: int = 10_000) -> dict[str, Any]
         "rows": rows,
         "row_count": len(rows),
         "truncated": truncated,
+        "offset": max(0, int(offset)),
+        "limit": max(1, int(limit)),
+        "has_more": truncated,
     }
+
+
+def explain_query(df: pl.DataFrame, sql: str) -> dict[str, Any]:
+    """
+    Return DuckDB's logical/physical plan for a SELECT query.
+
+    Response shape:
+      { "plan": "..." }
+    """
+    _validate_sql(sql)
+    sql_clean = _normalize_sql(sql)
+    try:
+        rows = _conn.execute(f"EXPLAIN {sql_clean}", {"df": df}).fetchall()
+    except Exception as exc:
+        raise RuntimeError(str(exc)) from exc
+
+    plan = "\n".join(str(r[-1]) for r in rows if r)
+    return {"plan": plan}
 
 
 def get_schema(df: pl.DataFrame) -> list[dict[str, str]]:
@@ -103,12 +131,9 @@ def _validate_sql(sql: str) -> None:
             raise ValueError(f"Forbidden keyword in query: {keyword.upper()!r}")
 
 
-def _inject_limit(sql: str, limit: int) -> str:
-    """Add LIMIT clause if one is not already present."""
-    lower = sql.rstrip(";").lower()
-    if "limit" not in lower:
-        return f"{sql.rstrip(';')} LIMIT {limit}"
-    return sql
+def _normalize_sql(sql: str) -> str:
+    """Normalize SQL text before execution."""
+    return sql.strip().rstrip(";")
 
 
 def _serialize(value: Any) -> Any:

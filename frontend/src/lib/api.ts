@@ -272,7 +272,7 @@ export async function fetchDatasetAnalysis(
 export interface ConnectorSummary {
   connector_id: string;
   name: string;
-  connector_type: "postgres" | "s3";
+  connector_type: "postgres" | "s3" | "google_sheets" | "rest";
   last_tested_at: string | null;
   last_test_ok: boolean | null;
   created_at: string;
@@ -311,7 +311,7 @@ export async function deleteConnector(connectorId: string, orgId: string = "defa
 export async function listConnectorTables(
   connectorId: string,
   orgId: string = "default"
-): Promise<{ tables?: any[]; objects?: any[] }> {
+): Promise<{ tables?: Record<string, unknown>[]; objects?: Record<string, unknown>[] }> {
   const { data } = await client.get(`/connectors/${connectorId}/tables?org_id=${orgId}`);
   return data;
 }
@@ -626,10 +626,10 @@ export async function fetchQuerySchema(
   datasetId: string,
   orgId: string = "default"
 ): Promise<QuerySchemaColumn[]> {
-  const { data } = await client.get<{ schema: QuerySchemaColumn[] }>(
+  const { data } = await client.get<{ schema: Array<{ column: string; type: string }> }>(
     `/datasets/${datasetId}/query/schema?org_id=${orgId}`
   );
-  return data.schema;
+  return data.schema.map((col) => ({ name: col.column, dtype: col.type }));
 }
 
 export interface QueryResult {
@@ -637,6 +637,9 @@ export interface QueryResult {
   rows: unknown[][];
   row_count: number;
   truncated: boolean;
+  offset: number;
+  limit: number;
+  has_more: boolean;
   execution_time_ms?: number;
 }
 
@@ -644,11 +647,28 @@ export async function runSQLQuery(
   datasetId: string,
   sql: string,
   limit: number = 1000,
+  offset: number = 0,
   orgId: string = "default"
 ): Promise<QueryResult> {
   const { data } = await client.post<QueryResult>(
     `/datasets/${datasetId}/query?org_id=${orgId}`,
-    { sql, limit }
+    { sql, limit, offset }
+  );
+  return data;
+}
+
+export interface QueryExplainResult {
+  plan: string;
+}
+
+export async function explainSQLQuery(
+  datasetId: string,
+  sql: string,
+  orgId: string = "default"
+): Promise<QueryExplainResult> {
+  const { data } = await client.post<QueryExplainResult>(
+    `/datasets/${datasetId}/query/explain?org_id=${orgId}`,
+    { sql }
   );
   return data;
 }

@@ -22,6 +22,7 @@ Routes:
   POST /datasets/{dataset_id}/stats/ttest
   GET  /datasets/{dataset_id}/query/schema
   POST /datasets/{dataset_id}/query
+  POST /datasets/{dataset_id}/query/explain
   GET  /datasets/{dataset_id}/export/excel
   GET  /datasets/{dataset_id}/export/markdown
 """
@@ -37,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from advanced_stats import AdvancedStatistics
 from auth import get_current_user, validate_org_access
-from duckdb_query import get_schema, run_query
+from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
 from polars_loader import parse_to_polars
 from storage import storage
@@ -803,6 +804,7 @@ async def query_dataset(
     org_id: str = Query(default="default"),
     sql: str = Body(..., embed=True),
     limit: int = Body(default=1000, ge=1, le=10_000, embed=True),
+    offset: int = Body(default=0, ge=0, le=1_000_000, embed=True),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -816,7 +818,27 @@ async def query_dataset(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
-        return run_query(pl_df, sql, limit=limit)
+        return run_query(pl_df, sql, limit=limit, offset=offset)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.post("/{dataset_id}/query/explain")
+async def explain_dataset_query(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    sql: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return DuckDB EXPLAIN plan for a SELECT query (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+    try:
+        return explain_query(pl_df, sql)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
