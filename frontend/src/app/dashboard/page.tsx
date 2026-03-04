@@ -20,6 +20,7 @@ import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations, archiveDataset } from "@/lib/api";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { CommentsSection } from "@/components/dashboard/CommentsSection";
 
 const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
@@ -206,6 +207,7 @@ export default function DashboardPage() {
     transforms: "Feature Engineering",
     sql: "SQL Editor",
     monitors: "Monitors",
+    comments: "Comments",
     report: "Report",
     data: "Data Table",
   };
@@ -268,6 +270,13 @@ export default function DashboardPage() {
           )}
           {activeSection === "monitors" && (
             <MonitoringSection datasetId={datasetId} orgId="default" />
+          )}
+          {activeSection === "comments" && (
+            <CommentsSection
+              datasetId={datasetId}
+              orgId="default"
+              columns={report.column_analysis.map((c) => c.name)}
+            />
           )}
           {activeSection === "report" && (
             <ReportSection report={report} fileName={fileName} />

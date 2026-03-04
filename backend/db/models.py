@@ -67,6 +67,7 @@ class Organization(Base):
     pipelines: Mapped[list["PipelineRecipe"]] = relationship("PipelineRecipe", back_populates="org", cascade="all, delete-orphan")
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship("PipelineRun", back_populates="org", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="org", cascade="all, delete-orphan")
+    comments: Mapped[list["DatasetComment"]] = relationship("DatasetComment", back_populates="org", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Organization {self.slug} plan={self.plan}>"
@@ -148,6 +149,7 @@ class Dataset(Base):
     created_by_user: Mapped["User"] = relationship("User", back_populates="datasets")
     analyses: Mapped[list["Analysis"]] = relationship("Analysis", back_populates="dataset", cascade="all, delete-orphan")
     monitors: Mapped[list["Monitor"]] = relationship("Monitor", back_populates="dataset", cascade="all, delete-orphan")
+    comments: Mapped[list["DatasetComment"]] = relationship("DatasetComment", back_populates="dataset", cascade="all, delete-orphan")
     source_pipelines: Mapped[list["PipelineRecipe"]] = relationship("PipelineRecipe", back_populates="source_dataset")
 
     def __repr__(self) -> str:
@@ -364,6 +366,36 @@ class PipelineRun(Base):
 
     def __repr__(self) -> str:
         return f"<PipelineRun pipeline={self.pipeline_id} status={self.status}>"
+
+
+# ─── Dataset Comments ─────────────────────────────────────────────────────────
+
+class DatasetComment(Base):
+    """Threaded annotation comments attached to a dataset or a specific column."""
+    __tablename__ = "dataset_comments"
+    __table_args__ = (
+        Index("ix_dataset_comments_dataset_id", "dataset_id"),
+        Index("ix_dataset_comments_org_id", "org_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    dataset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dataset_comments.id", ondelete="CASCADE"), nullable=True)
+    column_name: Mapped[str | None] = mapped_column(Text, nullable=True)   # null → dataset-level comment
+    author_name: Mapped[str | None] = mapped_column(Text, nullable=True)   # cached display name
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="comments")
+    org: Mapped["Organization"] = relationship("Organization", back_populates="comments")
+    replies: Mapped[list["DatasetComment"]] = relationship("DatasetComment", foreign_keys=[parent_id], cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<DatasetComment dataset={self.dataset_id} col={self.column_name}>"
 
 
 # ─── Audit Logs ───────────────────────────────────────────────────────────────

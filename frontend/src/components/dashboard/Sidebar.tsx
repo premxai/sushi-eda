@@ -22,6 +22,7 @@ import {
   Workflow,
   FileText,
   BookOpen,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import CreditsUsageBar from "@/components/CreditsUsageBar";
@@ -40,6 +41,7 @@ export type NavSection =
   | "transforms"
   | "sql"
   | "monitors"
+  | "comments"
   | "data";
 
 interface NavItem {
@@ -62,6 +64,7 @@ const navItems: NavItem[] = [
   { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
   { id: "sql",            label: "SQL Editor",     icon: TerminalSquare,      group: "Engineering" },
   { id: "monitors",       label: "Monitors",       icon: Bell,                group: "Engineering" },
+  { id: "comments",       label: "Comments",       icon: MessageCircle,       group: "Engineering" },
   { id: "data",           label: "Data Table",     icon: Table2,              group: "Data" },
 ];
 

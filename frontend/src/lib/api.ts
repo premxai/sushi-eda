@@ -709,3 +709,73 @@ export async function explainSQLQuery(
   return data;
 }
 
+// ── Comments / Collaboration (Task 33) ────────────────────────────────────────
+
+export interface CommentReply {
+  comment_id: string;
+  parent_id: string;
+  column_name: string | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+  edited_at: string | null;
+  user_id: string | null;
+}
+
+export interface CommentThread {
+  comment_id: string;
+  dataset_id: string;
+  parent_id: null;
+  column_name: string | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+  edited_at: string | null;
+  user_id: string | null;
+  replies: CommentReply[];
+}
+
+export async function listComments(
+  datasetId: string,
+  orgId: string = "default",
+  columnName?: string
+): Promise<CommentThread[]> {
+  const params = new URLSearchParams({ org_id: orgId });
+  if (columnName) params.set("column_name", columnName);
+  const { data } = await client.get<CommentThread[]>(
+    `/datasets/${datasetId}/comments?${params}`
+  );
+  return data;
+}
+
+export async function createComment(
+  datasetId: string,
+  body: { content: string; column_name?: string; parent_id?: string; author_name?: string },
+  orgId: string = "default"
+): Promise<CommentThread> {
+  const { data } = await client.post<CommentThread>(
+    `/datasets/${datasetId}/comments?org_id=${orgId}`,
+    body
+  );
+  return data;
+}
+
+export async function editComment(
+  commentId: string,
+  content: string,
+  orgId: string = "default"
+): Promise<CommentThread> {
+  const { data } = await client.patch<CommentThread>(
+    `/comments/${commentId}?org_id=${orgId}`,
+    { content }
+  );
+  return data;
+}
+
+export async function deleteComment(
+  commentId: string,
+  orgId: string = "default"
+): Promise<void> {
+  await client.delete(`/comments/${commentId}?org_id=${orgId}`);
+}
+

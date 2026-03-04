@@ -26,6 +26,7 @@ from storage import storage
 from worker import analyze_dataset
 from routers import webhooks, jobs as jobs_router
 from routers.billing import router as billing_router
+from routers.comments import router as comments_router
 from routers.connectors import router as connectors_router
 from routers.datasets import router as datasets_router, analyses_router, credits_router
 from routers.integrations import router as integrations_router
@@ -87,6 +88,7 @@ app.include_router(shares_router)
 app.include_router(connectors_router)
 app.include_router(integrations_router)
 app.include_router(monitors_router)
+app.include_router(comments_router)
 app.include_router(pipelines_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)

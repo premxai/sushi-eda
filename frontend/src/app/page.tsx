@@ -12,6 +12,7 @@ import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
 import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { MonitoringSection } from "@/components/dashboard/MonitoringSection";
+import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { ReportSection } from "@/components/dashboard/ReportSection";
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
@@ -243,6 +244,7 @@ export default function Home() {
       transforms: "Feature Engineering",
       sql: "SQL Editor",
       monitors: "Monitors",
+      comments: "Comments",
       report: "Report",
       data: "Data Table",
     };
@@ -329,6 +331,13 @@ export default function Home() {
               {activeSection === "monitors" && (
                 <MonitoringSection datasetId={openDatasetId} orgId="default" />
               )}
+              {activeSection === "comments" && (
+                <CommentsSection
+                  datasetId={openDatasetId}
+                  orgId="default"
+                  columns={report.column_analysis.map((c) => c.name)}
+                />
+              )}
               {activeSection === "report" && (
                 <ReportSection report={report} fileName={fileName} />
               )}
@@ -338,7 +347,7 @@ export default function Home() {
           <KeyboardShortcuts />
             <CommandPalette
             onSectionChange={(section) => handleSectionChange(section as NavSection)}
-            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "monitors", "data"]}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "monitors", "comments", "data"]}
           />
         </div>
       </div>
