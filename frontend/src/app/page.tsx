@@ -166,17 +166,18 @@ export default function Home() {
       } catch (err: unknown) {
           clearInterval(interval);
           setUploadProgress(0);
-          const message =
-            err instanceof Error
-              ? err.message
-              : "Failed to analyze file. Check that the backend is running on port 8000.";
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const detail = (err as any)?.response?.data?.detail;
+          const message = detail || (err instanceof Error ? err.message : "Failed to analyze file. Check that the backend is running.");
           setError(message);
         } finally {
           setIsUploading(false);
         }
     } catch (err: unknown) {
       setUploadProgress(0);
-      setError(err instanceof Error ? err.message : "Upload failed");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const detail = (err as any)?.response?.data?.detail;
+      setError(detail || (err instanceof Error ? err.message : "Upload failed"));
       setIsUploading(false);
     }
   }, []);

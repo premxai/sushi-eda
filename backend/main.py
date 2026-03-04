@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import tempfile
 import uuid
 from typing import Optional, Any
 
@@ -57,8 +58,10 @@ if _SENTRY_DSN:
 else:
     logger.info("SENTRY_DSN not set — Sentry disabled")
 
-# Configure logging
-logger.add("logs/app.log", rotation="500 MB", retention="10 days", level="INFO")
+# Configure logging — use temp dir so it works on read-only filesystems (Render)
+_LOG_PATH = os.path.join(tempfile.gettempdir(), "sushi", "app.log")
+os.makedirs(os.path.dirname(_LOG_PATH), exist_ok=True)
+logger.add(_LOG_PATH, rotation="500 MB", retention="10 days", level="INFO")
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -104,18 +107,22 @@ _current_df: Optional[pd.DataFrame] = None
 _analysis_cache: dict[str, Any] = {}
 
 # Persistent temp file so the DataFrame survives backend restarts
-_LAST_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), ".last_upload")
+# Use system temp dir so it works on read-only filesystems (e.g. Render)
+_LAST_UPLOAD_DIR = os.path.join(tempfile.gettempdir(), ".sushi_upload")
 _LAST_UPLOAD_DATA = os.path.join(_LAST_UPLOAD_DIR, "data")
 _LAST_UPLOAD_META = os.path.join(_LAST_UPLOAD_DIR, "meta.json")
 
 
 def _persist_upload(contents: bytes, filename: str) -> None:
     """Save uploaded file bytes + metadata to disk for recovery after restart."""
-    os.makedirs(_LAST_UPLOAD_DIR, exist_ok=True)
-    with open(_LAST_UPLOAD_DATA, "wb") as f:
-        f.write(contents)
-    with open(_LAST_UPLOAD_META, "w") as f:
-        json.dump({"filename": filename}, f)
+    try:
+        os.makedirs(_LAST_UPLOAD_DIR, exist_ok=True)
+        with open(_LAST_UPLOAD_DATA, "wb") as f:
+            f.write(contents)
+        with open(_LAST_UPLOAD_META, "w") as f:
+            json.dump({"filename": filename}, f)
+    except Exception as e:
+        logger.warning(f"Could not persist upload to disk: {e}")
 
 
 def _read_bytes_as_df(raw: bytes, filename: str) -> pd.DataFrame:

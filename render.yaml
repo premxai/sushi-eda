@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: devwhisperer-api
+    name: sushi-api
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
