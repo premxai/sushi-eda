@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,6 @@ import {
   ArrowRight,
   BarChart3,
   Folder,
-  Plus,
 } from "lucide-react";
 import { DatasetSummary, listDatasets } from "@/lib/api";
 import { useDropzone } from "react-dropzone";
@@ -73,7 +72,6 @@ export function UserDashboard({
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
