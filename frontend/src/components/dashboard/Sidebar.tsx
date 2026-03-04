@@ -78,6 +78,8 @@ interface SidebarProps {
   activeSection: NavSection;
   onSectionChange: (section: NavSection) => void;
   onNewFile: () => void;
+  onNewFileRequest?: () => void;
+  onDatasetPick?: (id: string, filename: string) => void;
   datasetId?: string | null;
   orgId?: string;
   onArchive?: () => void;
@@ -88,6 +90,7 @@ export function Sidebar({
   activeSection,
   onSectionChange,
   onNewFile,
+  onNewFileRequest,
   datasetId,
   orgId = "default",
   onArchive,
@@ -165,7 +168,7 @@ export function Sidebar({
             Home
           </button>
           <button
-            onClick={onNewFile}
+            onClick={() => onNewFileRequest ? onNewFileRequest() : onNewFile()}
             title="Analyze a new file"
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 5,

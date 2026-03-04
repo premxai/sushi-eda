@@ -20,9 +20,10 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { GitCompare, Lock } from "lucide-react";
+import { GitCompare, Lock, Star, ArrowRight, FileSpreadsheet } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -92,6 +93,161 @@ function LockedPreview({ feature }: { feature: string }) {
   );
 }
 
+const FILE_EXTS: Record<string, { bg: string; color: string }> = {
+  csv:     { bg: "rgba(144,96,248,0.12)", color: "#7a40e8" },
+  xlsx:    { bg: "rgba(64,128,255,0.12)", color: "#3060e0" },
+  xls:     { bg: "rgba(64,128,255,0.12)", color: "#3060e0" },
+  json:    { bg: "rgba(232,160,32,0.12)", color: "#c88010" },
+  parquet: { bg: "rgba(232,64,200,0.12)", color: "#c030a8" },
+  tsv:     { bg: "rgba(0,212,232,0.12)",  color: "#00a0b8" },
+  sqlite:  { bg: "rgba(32,192,96,0.12)",  color: "#189050" },
+  db:      { bg: "rgba(32,192,96,0.12)",  color: "#189050" },
+};
+
+function NewFileModal({
+  onClose, onFileAccepted, onDatasetPick, isUploading,
+}: {
+  onClose: () => void;
+  onFileAccepted: (file: File) => void;
+  onDatasetPick: (id: string, filename: string) => void;
+  isUploading: boolean;
+}) {
+  const [tab, setTab] = React.useState<"upload" | "datasets">("upload");
+  const [datasets, setDatasets] = React.useState<DatasetSummary[]>([]);
+  const [dsLoading, setDsLoading] = React.useState(false);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (accepted) => {
+      if (accepted.length > 0) { onFileAccepted(accepted[0]); onClose(); }
+    },
+    accept: {
+      "text/csv": [".csv"],
+      "text/tab-separated-values": [".tsv"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/json": [".json"],
+      "application/vnd.apache.parquet": [".parquet"],
+      "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
+    },
+    maxFiles: 1,
+    disabled: isUploading,
+    maxSize: 100 * 1024 * 1024,
+  });
+
+  React.useEffect(() => {
+    if (tab === "datasets") {
+      setDsLoading(true);
+      listDatasets("default", { archived: false })
+        .then(setDatasets)
+        .catch(() => {})
+        .finally(() => setDsLoading(false));
+    }
+  }, [tab]);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }} onClick={onClose} />
+      <div style={{
+        position: "relative", zIndex: 1, width: 480, maxWidth: "calc(100vw - 48px)",
+        background: "#fff", borderRadius: 18, border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.22)", overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111010", margin: 0 }}>New File</h3>
+            <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>Upload a file or open an existing dataset</p>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#6b6860", flexShrink: 0 }}>×</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", padding: "10px 20px 0", gap: 2, background: "#f9f8f6", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          {(["upload", "datasets"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: "8px 16px", borderRadius: "8px 8px 0 0", fontSize: 13,
+              fontWeight: tab === t ? 600 : 400,
+              background: tab === t ? "#fff" : "transparent",
+              border: tab === t ? "1px solid rgba(0,0,0,0.07)" : "none",
+              borderBottom: tab === t ? "1px solid #fff" : "none",
+              color: tab === t ? "#111010" : "#9a9690",
+              cursor: "pointer", position: "relative", top: "1px",
+            }}>
+              {t === "upload" ? "Upload File" : "My Datasets"}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: 20 }}>
+          {tab === "upload" && (
+            <div {...getRootProps()} style={{
+              background: isDragActive ? "rgba(144,96,248,0.07)" : "#f9f8f6",
+              border: isDragActive ? "2px dashed rgba(144,96,248,0.55)" : "1.5px dashed rgba(0,0,0,0.13)",
+              borderRadius: 14, padding: "40px 24px",
+              textAlign: "center", cursor: "pointer",
+              transition: "all 0.2s ease",
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}>
+              <input {...getInputProps()} />
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                {[["CSV","#9060f8"],["XLS","#4080ff"],["JSON","#e8a020"],["PARQ","#e840c8"]].map(([l, c]) => (
+                  <span key={l} style={{ padding: "4px 9px", borderRadius: 6, fontSize: 10, fontWeight: 700, color: "#fff", background: c }}>{l}</span>
+                ))}
+              </div>
+              <p style={{ fontSize: 14, color: "#111010" }}>Drop files or <span style={{ color: "#9060f8", fontWeight: 600 }}>browse</span></p>
+              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>CSV, JSON, Excel, Parquet, SQLite — up to 100 MB</p>
+            </div>
+          )}
+
+          {tab === "datasets" && (
+            <div style={{ maxHeight: 320, overflowY: "auto" }}>
+              {dsLoading ? (
+                <div style={{ padding: "48px 0", textAlign: "center" }}>
+                  <div style={{ width: 20, height: 20, border: "2px solid rgba(144,96,248,0.2)", borderTopColor: "#9060f8", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
+                </div>
+              ) : datasets.length === 0 ? (
+                <div style={{ padding: "48px 24px", textAlign: "center" }}>
+                  <FileSpreadsheet style={{ width: 28, height: 28, color: "#c8c4be", margin: "0 auto 10px" }} />
+                  <p style={{ fontSize: 13, color: "#9a9690" }}>No datasets yet — upload your first file</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {datasets.map((ds) => {
+                    const ext = ds.original_filename.split(".").pop()?.toLowerCase() || "csv";
+                    const s = FILE_EXTS[ext] || FILE_EXTS.csv;
+                    return (
+                      <button key={ds.id}
+                        onClick={() => { onDatasetPick(ds.id, ds.original_filename); onClose(); }}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: "transparent", border: "1px solid transparent", textAlign: "left", cursor: "pointer", transition: "all 0.13s", width: "100%" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(144,96,248,0.05)"; e.currentTarget.style.borderColor = "rgba(144,96,248,0.18)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+                      >
+                        <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: s.color, textTransform: "uppercase" }}>{ext}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ds.original_filename}</p>
+                          <p style={{ fontSize: 11, color: "#9a9690" }}>
+                            {ds.row_count != null ? `${ds.row_count.toLocaleString()} rows · ` : ""}
+                            {new Date(ds.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {ds.is_starred && <Star style={{ width: 12, height: 12, color: "#e8a020", fill: "#e8a020", flexShrink: 0 }} />}
+                        <ArrowRight style={{ width: 13, height: 13, color: "#c8c4be", flexShrink: 0 }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { isSignedIn, isLoaded: userLoaded } = useUser();
   const [report, setReport] = useState<EDAReport | null>(null);
@@ -107,6 +263,8 @@ export default function Home() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
   const [vizLoading, setVizLoading] = useState(false);
+  const [showFileModal, setShowFileModal] = useState(false);
+  const [dashboardKey, setDashboardKey] = useState(0);
 
   // Pre-warm backend on page load to reduce cold-start delay on first upload
   useEffect(() => { prewarmBackend(); }, []);
@@ -175,6 +333,8 @@ export default function Home() {
   }, [jobStream.status, jobStream.analysisId, jobStream.error, jobStream.progress, datasetId, fileName]);
 
   const handleFileAccepted = useCallback(async (file: File) => {
+    setReport(null);
+    setShowFileModal(false);
     setIsUploading(true);
     setUploadProgress(0);
     setError(null);
@@ -267,6 +427,21 @@ export default function Home() {
     }
   }, [visualizations, vizLoading]);
 
+  const handleOpenDataset = useCallback(async (id: string, filename = "dataset") => {
+    try {
+      const result = await fetchDatasetAnalysis(id, "default");
+      setReport(result.report);
+      setFileName(filename);
+      setOpenDatasetId(id);
+      setShowFileModal(false);
+      sessionStorage.setItem(REPORT_KEY, JSON.stringify(result.report));
+      sessionStorage.setItem(FILE_KEY, filename);
+      sessionStorage.setItem(DATASET_KEY, id);
+    } catch {
+      setError("Failed to load dataset");
+    }
+  }, []);
+
   const handleNewFile = () => {
     setReport(null);
     setFileName("");
@@ -275,6 +450,8 @@ export default function Home() {
     setActiveSection("overview");
     setVisualizations(null);
     setOpenDatasetId(null);
+    setShowFileModal(false);
+    setDashboardKey((k) => k + 1);
     sessionStorage.removeItem(REPORT_KEY);
     sessionStorage.removeItem(FILE_KEY);
     sessionStorage.removeItem(DATASET_KEY);
@@ -308,6 +485,8 @@ export default function Home() {
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
           onNewFile={handleNewFile}
+          onNewFileRequest={() => setShowFileModal(true)}
+          onDatasetPick={handleOpenDataset}
           datasetId={openDatasetId}
           onArchive={handleArchive}
         />
@@ -416,6 +595,14 @@ export default function Home() {
       </div>
       <OnboardingChecklist activeSection={activeSection} hasDataset={!!report} />
       <ProductTour />
+      {showFileModal && (
+        <NewFileModal
+          onClose={() => setShowFileModal(false)}
+          onFileAccepted={handleFileAccepted}
+          onDatasetPick={handleOpenDataset}
+          isUploading={isUploading}
+        />
+      )}
       </>
     );
   }
@@ -431,6 +618,8 @@ export default function Home() {
         error={error}
         onClearError={handleClearError}
         onLoadSample={handleTryDemo}
+        onOpenDataset={handleOpenDataset}
+        refreshKey={dashboardKey}
       />
     );
   }

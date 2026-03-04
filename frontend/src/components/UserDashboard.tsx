@@ -30,6 +30,8 @@ interface UserDashboardProps {
   error: string | null;
   onClearError: () => void;
   onLoadSample: () => void;
+  onOpenDataset?: (id: string, filename?: string) => void;
+  refreshKey?: number;
 }
 
 /* ─── Helpers ─────────────────────────────────────────────── */
@@ -177,7 +179,7 @@ function DatasetCard({ ds, onClick }: { ds: DatasetSummary; onClick: () => void 
 /* ─── Upload Panel ─────────────────────────────────────────── */
 interface UploadPanelProps extends UserDashboardProps {
   datasets: DatasetSummary[];
-  onDatasetPick: (id: string) => void;
+  onDatasetPick: (id: string, filename?: string) => void;
 }
 
 function UploadPanel({
@@ -332,7 +334,7 @@ function UploadPanel({
               {datasets.map((ds) => {
                 const fmt = getFormatStyle(ds.original_filename);
                 return (
-                  <button key={ds.id} onClick={() => onDatasetPick(ds.id)}
+                  <button key={ds.id} onClick={() => onDatasetPick(ds.id, ds.original_filename)}
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
                       padding: "10px 12px", borderRadius: 9,
@@ -477,7 +479,7 @@ function GettingStarted({ onStepClick }: { onStepClick: (label: string) => void 
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
 export function UserDashboard(props: UserDashboardProps) {
-  const { onFileAccepted, isUploading, uploadProgress, error, onClearError, onLoadSample } = props;
+  const { onFileAccepted, isUploading, uploadProgress, error, onClearError, onLoadSample, onOpenDataset, refreshKey } = props;
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
@@ -505,11 +507,19 @@ export function UserDashboard(props: UserDashboardProps) {
 
   useEffect(() => {
     if (isLoaded && user) loadDatasets();
-  }, [isLoaded, user, loadDatasets]);
+  }, [isLoaded, user, loadDatasets, refreshKey]);
 
   const firstName = user?.firstName || user?.username || "there";
 
-  const handleDatasetClick = (id: string) => router.push(`/datasets/${id}`);
+  const handleDatasetClick = (id: string, filename?: string) => {
+    if (onOpenDataset) {
+      onOpenDataset(id, filename);
+    } else {
+      sessionStorage.setItem("eda_dataset_id", id);
+      if (filename) sessionStorage.setItem("eda_filename", filename);
+      router.push("/");
+    }
+  };
 
   // Aggregate stats
   const totalRows = datasets.reduce((s, d) => s + (d.row_count ?? 0), 0);
@@ -684,7 +694,7 @@ export function UserDashboard(props: UserDashboardProps) {
                   {datasets.slice(0, 4).map((ds) => {
                     const fmt = getFormatStyle(ds.original_filename);
                     return (
-                      <button key={ds.id} onClick={() => handleDatasetClick(ds.id)}
+                      <button key={ds.id} onClick={() => handleDatasetClick(ds.id, ds.original_filename)}
                         style={{
                           display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
                           background: "transparent", border: "1px solid transparent",
@@ -742,7 +752,7 @@ export function UserDashboard(props: UserDashboardProps) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
                 {datasets.map((ds) => (
-                  <DatasetCard key={ds.id} ds={ds} onClick={() => handleDatasetClick(ds.id)} />
+                  <DatasetCard key={ds.id} ds={ds} onClick={() => handleDatasetClick(ds.id, ds.original_filename)} />
                 ))}
               </div>
             </div>
