@@ -353,6 +353,112 @@ async def perform_ttest(col1: str, col2: str):
     return stats_analyzer.t_test_independent(col1, col2)
 
 
+@app.post("/stats/mann_whitney")
+async def perform_mann_whitney(col1: str, col2: str, alternative: str = "two-sided"):
+    """Mann-Whitney U test between two numeric columns."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).mann_whitney_u(col1, col2, alternative=alternative)
+
+
+@app.post("/stats/chi_square")
+async def perform_chi_square(col1: str, col2: str):
+    """Chi-square test of independence between two categorical columns."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).chi_square_test(col1, col2)
+
+
+@app.post("/stats/anova")
+async def perform_anova(numeric_col: str, group_col: str):
+    """One-way ANOVA: numeric_col grouped by group_col."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).anova_one_way(numeric_col, group_col)
+
+
+@app.post("/stats/correlation")
+async def perform_correlation(col1: str, col2: str, method: str = "pearson"):
+    """Correlation coefficient + significance between two numeric columns."""
+    from scipy import stats as scipy_stats
+    if method not in ("pearson", "spearman", "kendall"):
+        raise HTTPException(status_code=400, detail="method must be pearson | spearman | kendall")
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    data = _current_df[[col1, col2]].dropna()
+    if len(data) < 3:
+        raise HTTPException(status_code=422, detail="Insufficient data")
+    fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
+    stat, p = fn(data[col1], data[col2])
+    return {
+        "test": f"{method.title()} correlation",
+        "column1": col1, "column2": col2,
+        "coefficient": float(stat), "p_value": float(p),
+        "significant": p < 0.05, "n": int(len(data)),
+    }
+
+
+@app.post("/stats/regression/logistic")
+async def perform_logistic_regression(x_col: str, y_col: str, positive_class: str | None = None):
+    """Logistic regression for a binary target column."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).logistic_regression(x_col, y_col, positive_class=positive_class)
+
+
+@app.post("/stats/regression/polynomial")
+async def perform_polynomial_regression(x_col: str, y_col: str, degree: int = 2):
+    """Polynomial regression for numeric predictor/target pairs."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).polynomial_regression(x_col, y_col, degree=degree)
+
+
+@app.post("/stats/time_series/decompose")
+async def perform_ts_decomposition(date_col: str, value_col: str, period: int | None = None, model: str = "additive"):
+    """Time-series decomposition into trend/seasonality/residual."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).time_series_decomposition(
+        date_col=date_col, value_col=value_col, period=period, model=model,
+    )
+
+
+@app.post("/stats/time_series/arima")
+async def perform_arima_forecast(
+    date_col: str, value_col: str,
+    periods: int = 12, p: int = 1, d: int = 1, q: int = 1, alpha: float = 0.05,
+):
+    """ARIMA forecast endpoint for a date/value series."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).arima_forecast(
+        date_col=date_col, value_col=value_col,
+        periods=periods, p=p, d=d, q=q, alpha=alpha,
+    )
+
+
+@app.post("/stats/cohort")
+async def perform_cohort_analysis(entity_col: str, date_col: str, freq: str = "M"):
+    """Cohort retention analysis by entity and activity date."""
+    if _current_df is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    return AdvancedStatistics(_current_df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
+
+
+@app.post("/stats/ab_test")
+async def perform_ab_test(
+    control_conversions: int, control_total: int,
+    variant_conversions: int, variant_total: int, alpha: float = 0.05,
+):
+    """A/B test significance calculator using two-proportion z-test."""
+    return AdvancedStatistics(pd.DataFrame()).ab_test_significance(
+        control_conversions=control_conversions, control_total=control_total,
+        variant_conversions=variant_conversions, variant_total=variant_total,
+        alpha=alpha,
+    )
+
+
 @app.get("/export/excel")
 async def export_to_excel():
     """Export current dataset and analysis to Excel."""

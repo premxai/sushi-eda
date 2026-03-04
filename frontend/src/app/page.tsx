@@ -155,8 +155,10 @@ export default function Home() {
         setUploadProgress(100);
         await new Promise((r) => setTimeout(r, 200));
         setReport(data);
+        setOpenDatasetId("local");
         sessionStorage.setItem(REPORT_KEY, JSON.stringify(data));
         sessionStorage.setItem(FILE_KEY, file.name);
+        sessionStorage.setItem(DATASET_KEY, "local");
       } catch (err: unknown) {
           clearInterval(interval);
           setUploadProgress(0);

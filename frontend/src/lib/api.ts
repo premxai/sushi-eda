@@ -499,6 +499,10 @@ export async function fetchAdvancedStats(
   orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.get(`/stats/advanced`);
+    return data;
+  }
   const { data } = await client.get(`/datasets/${datasetId}/stats/advanced?org_id=${orgId}`);
   return data;
 }
@@ -507,6 +511,10 @@ export async function runTTest(
   datasetId: string, col1: string, col2: string, orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(`/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`);
+    return data;
+  }
   const { data } = await client.post(`/datasets/${datasetId}/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`);
   return data;
 }
@@ -515,6 +523,10 @@ export async function runChiSquare(
   datasetId: string, col1: string, col2: string, orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(`/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`);
+    return data;
+  }
   const { data } = await client.post(`/datasets/${datasetId}/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`);
   return data;
 }
@@ -523,6 +535,10 @@ export async function runANOVA(
   datasetId: string, numericCol: string, groupCol: string, orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(`/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}`);
+    return data;
+  }
   const { data } = await client.post(`/datasets/${datasetId}/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}&org_id=${orgId}`);
   return data;
 }
@@ -531,6 +547,10 @@ export async function runCorrelation(
   datasetId: string, col1: string, col2: string, method: string = "pearson", orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(`/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}`);
+    return data;
+  }
   const { data } = await client.post(`/datasets/${datasetId}/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}&org_id=${orgId}`);
   return data;
 }
@@ -539,6 +559,10 @@ export async function runRegression(
   datasetId: string, xCol: string, yCol: string, orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(`/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}`);
+    return data;
+  }
   const { data } = await client.post(`/datasets/${datasetId}/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&org_id=${orgId}`);
   return data;
 }
@@ -552,6 +576,12 @@ export async function runLogisticRegression(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   const positiveParam = positiveClass ? `&positive_class=${encodeURIComponent(positiveClass)}` : "";
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}&org_id=${orgId}`
   );
@@ -566,6 +596,12 @@ export async function runPolynomialRegression(
   orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}&org_id=${orgId}`
   );
@@ -580,6 +616,12 @@ export async function runMannWhitney(
   orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}&org_id=${orgId}`
   );
@@ -596,6 +638,12 @@ export async function runTimeSeriesDecomposition(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   const periodPart = period ? `&period=${period}` : "";
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}&org_id=${orgId}`
   );
@@ -615,6 +663,12 @@ export async function runArimaForecast(
   const d = options.d ?? 1;
   const q = options.q ?? 1;
   const alpha = options.alpha ?? 0.05;
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}&org_id=${orgId}`
   );
@@ -629,6 +683,12 @@ export async function runCohortAnalysis(
   orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}&org_id=${orgId}`
   );
@@ -645,6 +705,12 @@ export async function runABTestSignificance(
   orgId: string = "default"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
+  if (datasetId === "local") {
+    const { data } = await client.post(
+      `/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}`
+    );
+    return data;
+  }
   const { data } = await client.post(
     `/datasets/${datasetId}/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}&org_id=${orgId}`
   );
