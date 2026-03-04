@@ -324,11 +324,12 @@ export function MonitoringSection({ datasetId, orgId = "default" }: Props) {
     setMonitors((prev) => prev.map((m) => m.monitor_id === updated.monitor_id ? updated : m));
   }
 
-  if (!datasetId) {
+  if (!datasetId || datasetId === "local") {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#9a9690" }}>
         <Bell size={32} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
-        <p style={{ fontSize: 14 }}>Open a dataset to manage monitors.</p>
+        <p style={{ fontSize: 14 }}>Monitors require a backend connection.</p>
+        <p style={{ fontSize: 12, marginTop: 6, color: "#c8c4be" }}>Upload your dataset with the backend running to create monitors.</p>
       </div>
     );
   }

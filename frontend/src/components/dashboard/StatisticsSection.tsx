@@ -368,12 +368,15 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   const inputClass =
     "w-[130px] rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none";
 
-  if (!datasetId) {
-    return <p className="py-10 text-center text-sm text-zinc-500">No dataset loaded.</p>;
-  }
+  const needsBackend = !datasetId || datasetId === "local";
 
   return (
     <div className="space-y-4">
+      {needsBackend && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠️ Statistical tests require a live backend connection. Upload your file with the backend running to enable t-tests, regression, and ANOVA.
+        </div>
+      )}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-600">Auto Analysis</p>
         {autoLoading ? (
@@ -706,7 +709,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
           <button
             type="button"
             onClick={handleRun}
-            disabled={running}
+            disabled={running || needsBackend}
             className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />} Run

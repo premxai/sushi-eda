@@ -241,16 +241,16 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
     );
   }
 
-  if (!datasetId) {
-    return (
-      <div style={{ textAlign: "center", padding: "80px 0" }}>
-        <p style={{ fontSize: 14, color: "#9a9690" }}>No dataset loaded. Upload or open a dataset first.</p>
-      </div>
-    );
-  }
+  const needsBackend = !datasetId || datasetId === "local";
 
   return (
-    <div style={{ display: "flex", gap: 16, height: "calc(100vh - 120px)", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "calc(100vh - 120px)", overflow: "hidden" }}>
+      {needsBackend && (
+        <div style={{ padding: "10px 16px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fcd34d", fontSize: 13, color: "#92400e", flexShrink: 0 }}>
+          ⚠️ SQL queries require a live backend connection. Upload your file with the backend running to enable the SQL Editor.
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden" }}>
 
       {/* ── Left: Editor + Results ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, minWidth: 0, overflow: "hidden" }}>
@@ -342,7 +342,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
               <button
                 ref={runBtnRef}
                 onClick={() => void handleRun(0)}
-                disabled={running}
+                disabled={running || needsBackend}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "5px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500,
@@ -778,6 +778,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

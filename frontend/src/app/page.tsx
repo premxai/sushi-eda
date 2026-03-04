@@ -66,7 +66,8 @@ export default function Home() {
       const storedFileName = sessionStorage.getItem(FILE_KEY);
       const storedDatasetId = sessionStorage.getItem(DATASET_KEY);
       if (storedFileName) setFileName(storedFileName);
-      if (storedDatasetId) setOpenDatasetId(storedDatasetId);
+      // Fall back to "local" so API sections show a helpful message instead of "No dataset loaded"
+      setOpenDatasetId(storedDatasetId || "local");
     } catch {
       sessionStorage.removeItem(REPORT_KEY);
       sessionStorage.removeItem(FILE_KEY);
