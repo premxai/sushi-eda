@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BookOpen,
-  ChevronDown,
-  ChevronRight,
   Database,
   FileSpreadsheet,
   Loader2,
@@ -22,7 +20,6 @@ import {
   listPipelines,
   PipelineSummary,
 } from "@/lib/api";
-import Image from "next/image";
 
 const FORMAT_COLOR: Record<string, string> = {
   csv: "#059669", xlsx: "#2563eb", xls: "#2563eb", parquet: "#7c3aed",

@@ -233,7 +233,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
     const colorVals = colorCol ? preview.map((r: any) => r[colorCol]) : undefined;
 
     const ct = resolvedChartType;
-    let data: any[] = [];
+    let data: Record<string, unknown>[] = [];
 
     if (ct === "bar") {
       if (yCol) {

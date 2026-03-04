@@ -13,7 +13,6 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { EDAReport } from "@/lib/types";
-import jsPDF from "jspdf";
 
 interface Props {
   report: EDAReport;

@@ -390,7 +390,7 @@ export default function IntegrationsPage() {
                 Chrome Extension — launching Q2 2026
               </p>
               <p style={{ fontSize: 13, color: "#9a9690", margin: 0, lineHeight: 1.5 }}>
-                Right-click any table or CSV link → "Analyze with Sushi"
+                Right-click any table or CSV link → &quot;Analyze with Sushi&quot;
               </p>
             </div>
             <div>

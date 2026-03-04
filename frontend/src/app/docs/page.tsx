@@ -8,12 +8,6 @@ export const metadata: Metadata = {
     "Quick-start guide for Sushi EDA. Learn how to upload datasets, run AI analysis, use the SQL editor, set up monitors, and connect your data sources.",
 };
 
-interface Section {
-  id: string;
-  title: string;
-  emoji: string;
-  content: React.ReactNode;
-}
 
 function Code({ children }: { children: string }) {
   return (
