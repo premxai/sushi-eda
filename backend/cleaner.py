@@ -349,6 +349,46 @@ class DataTransformer:
                 self.log.append(f"Failed datetime extraction for '{col}': {e}")
         return self
 
+    def interaction_product(self, col1: str, col2: str) -> "DataTransformer":
+        """Create a new column as the product of two numeric columns."""
+        if col1 not in self.df.columns or col2 not in self.df.columns:
+            return self
+        new_col = f"{col1}_x_{col2}"
+        self.df[new_col] = self.df[col1] * self.df[col2]
+        self.log.append(f"Interaction product '{col1}' × '{col2}' → '{new_col}'")
+        return self
+
+    def interaction_ratio(self, col1: str, col2: str) -> "DataTransformer":
+        """Create col1 / col2 (zero-denominator safe)."""
+        if col1 not in self.df.columns or col2 not in self.df.columns:
+            return self
+        new_col = f"{col1}_div_{col2}"
+        denom = self.df[col2].replace(0, np.nan)
+        self.df[new_col] = self.df[col1] / denom
+        self.log.append(f"Interaction ratio '{col1}' / '{col2}' → '{new_col}'")
+        return self
+
+    def rolling_stats(self, column: str, window: int = 3) -> "DataTransformer":
+        """Add rolling mean and std for a numeric column."""
+        if column not in self.df.columns:
+            return self
+        window = max(2, min(window, len(self.df)))
+        self.df[f"{column}_roll_mean_{window}"] = self.df[column].rolling(window, min_periods=1).mean()
+        self.df[f"{column}_roll_std_{window}"] = self.df[column].rolling(window, min_periods=1).std()
+        self.log.append(f"Rolling stats (w={window}) for '{column}' → '{column}_roll_mean_{window}', '{column}_roll_std_{window}'")
+        return self
+
+    def lag_features(self, column: str, lags: list[int] | None = None) -> "DataTransformer":
+        """Add lag features for a numeric column."""
+        if column not in self.df.columns:
+            return self
+        if lags is None:
+            lags = [1, 2, 3]
+        for lag in lags:
+            self.df[f"{column}_lag{lag}"] = self.df[column].shift(lag)
+            self.log.append(f"Lag-{lag} for '{column}' → '{column}_lag{lag}'")
+        return self
+
     def result(self) -> dict[str, Any]:
         from analyzer import EDAAnalyzer
         analyzer = EDAAnalyzer(self.df)

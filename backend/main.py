@@ -553,6 +553,18 @@ async def transform_dataset(operations: dict):
             transformer.label_encode(operations["label_encode"])
         if operations.get("extract_datetime"):
             transformer.extract_datetime_features(operations["extract_datetime"])
+        if operations.get("interaction_product"):
+            cfg = operations["interaction_product"]
+            transformer.interaction_product(cfg["col1"], cfg["col2"])
+        if operations.get("interaction_ratio"):
+            cfg = operations["interaction_ratio"]
+            transformer.interaction_ratio(cfg["col1"], cfg["col2"])
+        if operations.get("rolling_stats"):
+            cfg = operations["rolling_stats"]
+            transformer.rolling_stats(cfg["column"], window=cfg.get("window", 3))
+        if operations.get("lag_features"):
+            cfg = operations["lag_features"]
+            transformer.lag_features(cfg["column"], lags=cfg.get("lags", [1, 2, 3]))
 
         result = transformer.result()
         _current_df = transformer.df
