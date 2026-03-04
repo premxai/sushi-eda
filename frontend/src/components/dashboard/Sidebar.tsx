@@ -25,6 +25,7 @@ import {
   MessageCircle,
   Shield,
   Zap,
+  Home,
 } from "lucide-react";
 import Link from "next/link";
 import CreditsUsageBar from "@/components/CreditsUsageBar";
@@ -108,13 +109,17 @@ export function Sidebar({
       overflowX: "hidden",
     }}>
 
-      {/* ── Logo ── */}
-      <Link href="/" style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "20px 20px",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
-        textDecoration: "none",
-      }}>
+      {/* ── Logo (click = go home) ── */}
+      <button
+        onClick={onNewFile}
+        style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "20px 20px",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          background: "transparent", border: "none", cursor: "pointer",
+          width: "100%", textAlign: "left",
+        }}
+      >
         <div style={{
           width: 30, height: 30, borderRadius: 8,
           background: "linear-gradient(135deg, #1a1a1a, #333)",
@@ -122,20 +127,62 @@ export function Sidebar({
           fontSize: 16, flexShrink: 0,
         }}>🍣</div>
         <span style={{ fontWeight: 600, fontSize: 16, color: "#111010", letterSpacing: "-0.2px" }}>Sushi</span>
-      </Link>
+      </button>
 
-      {/* ── Active file chip ── */}
-      <div style={{ padding: "10px 12px 4px" }}>
+      {/* ── Active file chip + actions ── */}
+      <div style={{ padding: "10px 12px 8px" }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "8px 10px", borderRadius: 8,
           background: "rgba(144,96,248,0.07)",
           border: "1px solid rgba(144,96,248,0.14)",
+          marginBottom: 8,
         }}>
           <FileSpreadsheet style={{ width: 13, height: 13, color: "#9060f8", flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {fileName}
           </span>
+        </div>
+
+        {/* Home + Analyze New File buttons */}
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={onNewFile}
+            title="Back to Home"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              flex: 1, padding: "7px 10px", borderRadius: 7,
+              fontSize: 12.5, fontWeight: 500,
+              background: "rgba(0,0,0,0.05)",
+              border: "1px solid rgba(0,0,0,0.08)",
+              color: "#6b6860", cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.09)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+          >
+            <Home style={{ width: 13, height: 13 }} />
+            Home
+          </button>
+          <button
+            onClick={onNewFile}
+            title="Analyze a new file"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              flex: 1, padding: "7px 10px", borderRadius: 7,
+              fontSize: 12.5, fontWeight: 500,
+              background: "linear-gradient(135deg, #9060f8, #e840c8)",
+              border: "none",
+              color: "#fff", cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(144,96,248,0.3)",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            <Plus style={{ width: 13, height: 13 }} />
+            New File
+          </button>
         </div>
       </div>
 
@@ -322,21 +369,6 @@ export function Sidebar({
           </button>
         )}
 
-        <button
-          onClick={onNewFile}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            width: "100%", padding: "9px 12px", borderRadius: 8, marginTop: 6,
-            fontSize: 13.5, fontWeight: 500,
-            background: "linear-gradient(135deg, #9060f8, #e840c8)",
-            color: "white", border: "none", cursor: "pointer",
-            boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
-            transition: "opacity 0.15s, transform 0.15s",
-          }}
-        >
-          <Plus style={{ width: 13, height: 13 }} />
-          Analyze New File
-        </button>
       </div>
 
       {datasetId && (
