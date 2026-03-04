@@ -102,15 +102,8 @@ export function LandingPage({
           uploadProgress={uploadProgress}
           error={error}
           onClearError={onClearError}
+          onLoadSample={onTryDemo}
         />
-
-        <button
-          onClick={onTryDemo}
-          disabled={isDemoLoading}
-          style={{ marginTop: 16, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#6b6860", display: "flex", alignItems: "center", gap: 6 }}
-        >
-          {isDemoLoading ? "Loading sample..." : "▶ Try with sample sales data"}
-        </button>
       </section>
 
       {/* ── TRANSFORM VISUAL ── */}

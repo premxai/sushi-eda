@@ -8,6 +8,7 @@ interface UploadCardProps {
   uploadProgress: number;
   error: string | null;
   onClearError: () => void;
+  onLoadSample?: () => void;
 }
 
 export default function UploadCard({ 
@@ -15,29 +16,18 @@ export default function UploadCard({
   isUploading, 
   uploadProgress, 
   error, 
-  onClearError 
+  onClearError,
+  onLoadSample 
 }: UploadCardProps) {
   return (
-    <div className="
-      mt-16
-      w-full
-      max-w-[640px]
-      rounded-[24px]
-      border
-      border-neutral-200
-      bg-white/80
-      backdrop-blur-xl
-      shadow-[0_10px_30px_rgba(0,0,0,0.08)]
-      hover:scale-[1.01]
-      transition-all
-      overflow-hidden
-    ">
+    <div className="mt-8 w-full max-w-[520px]">
       <FileUpload
         onFileAccepted={onFileAccepted}
         isUploading={isUploading}
         uploadProgress={uploadProgress}
         error={error}
         onClearError={onClearError}
+        onLoadSample={onLoadSample}
       />
     </div>
   );

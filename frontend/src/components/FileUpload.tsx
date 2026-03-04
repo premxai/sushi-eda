@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileUp, FileSpreadsheet, X, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, X, AlertCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -12,6 +12,7 @@ interface FileUploadProps {
   uploadProgress: number;
   error: string | null;
   onClearError: () => void;
+  onLoadSample?: () => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -22,12 +23,44 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+// File type icon components
+function CsvIcon({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative", className)}>
+      <div className="w-14 h-16 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-lg shadow-cyan-500/30 flex items-center justify-center transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+        <span className="text-white font-bold text-sm tracking-tight">CSV</span>
+      </div>
+    </div>
+  );
+}
+
+function XlsIcon({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative", className)}>
+      <div className="w-14 h-16 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+        <span className="text-white font-bold text-sm tracking-tight">XLS</span>
+      </div>
+    </div>
+  );
+}
+
+function SqlIcon({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative", className)}>
+      <div className="w-14 h-16 rounded-lg bg-gradient-to-br from-violet-400 to-violet-600 shadow-lg shadow-violet-500/30 flex items-center justify-center transform rotate-6 hover:rotate-0 transition-transform duration-300">
+        <span className="text-white font-bold text-sm tracking-tight">SQL</span>
+      </div>
+    </div>
+  );
+}
+
 export function FileUpload({
   onFileAccepted,
   isUploading,
   uploadProgress,
   error,
   onClearError,
+  onLoadSample,
 }: FileUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -55,7 +88,7 @@ export function FileUpload({
     },
     maxFiles: 1,
     disabled: isUploading,
-    maxSize: 100 * 1024 * 1024,
+    maxSize: 2 * 1024 * 1024 * 1024, // 2GB
     onDropRejected: (rejections) => {
       const rejection = rejections[0];
       if (rejection?.errors[0]?.code === "file-too-large") {
@@ -74,119 +107,177 @@ export function FileUpload({
   };
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-4">
+      {/* Main upload area */}
       <div
         {...getRootProps()}
         className={cn(
-          "group relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-16 transition-all duration-200",
-          isDragActive && !isDragReject &&
-            "border-indigo-500 bg-indigo-50",
-          isDragReject &&
-            "border-red-400 bg-red-50",
-          !isDragActive && !isDragReject && !error &&
-            "border-slate-300 hover:border-slate-400 hover:bg-slate-50",
-          error &&
-            "border-red-300 bg-red-50/50",
-          isUploading &&
-            "pointer-events-none"
+          "group relative flex cursor-pointer flex-col items-center justify-center transition-all duration-300",
+          isUploading && "pointer-events-none"
         )}
       >
         <input {...getInputProps()} />
 
-        {/* Icon */}
-        <div
-          className={cn(
-            "mb-4 flex h-12 w-12 items-center justify-center rounded-lg transition-colors duration-200",
-            isDragActive && !isDragReject
-              ? "bg-indigo-100 text-indigo-600"
-              : error
-                ? "bg-red-100 text-red-500"
-                : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-500"
-          )}
-        >
-          {isDragActive ? (
-            <FileSpreadsheet className="h-6 w-6" />
-          ) : error ? (
-            <AlertCircle className="h-6 w-6" />
-          ) : (
-            <FileUp className="h-6 w-6" />
-          )}
-        </div>
-
-        {/* Text content */}
-        {isUploading && selectedFile ? (
-          <div className="w-full max-w-xs space-y-3 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
-              <span className="text-sm font-medium text-slate-900 truncate max-w-[200px]">
-                {selectedFile.name}
-              </span>
-              <span className="text-xs text-slate-500">
-                {formatBytes(selectedFile.size)}
-              </span>
-            </div>
-            <Progress value={uploadProgress} className="h-1.5" />
-            <p className="text-xs text-slate-500">
-              {uploadProgress === 0
-                ? "Connecting to server…"
-                : uploadProgress < 50
-                  ? `Uploading… ${uploadProgress}%`
-                  : uploadProgress < 90
-                    ? "Analyzing your data…"
-                    : "Almost done…"}
-            </p>
-          </div>
-        ) : error ? (
-          <div className="text-center">
-            <p className="text-sm font-medium text-red-600">Upload failed</p>
-            <p className="mt-1 max-w-sm text-xs text-red-500">{error}</p>
-          </div>
-        ) : isDragActive ? (
-          <div className="text-center">
-            <p className="text-sm font-medium text-indigo-700">
-              Drop to analyze
-            </p>
-          </div>
-        ) : selectedFile && !error ? (
-          <div className="flex items-center gap-3">
-            <FileSpreadsheet className="h-4 w-4 text-indigo-600" />
-            <span className="text-sm font-medium text-slate-900">
-              {selectedFile.name}
-            </span>
-            <span className="text-xs text-slate-500">
-              {formatBytes(selectedFile.size)}
-            </span>
-            <button
-              onClick={handleClear}
-              className="ml-1 rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-sm font-medium text-slate-700">
-              Drop your file here, or{" "}
-              <span className="text-indigo-600">browse</span>
-            </p>
-            <p className="mt-1.5 text-xs text-slate-400">
-                CSV, TSV, XLSX, JSON, Parquet, SQLite — up to 100 MB
-            </p>
+        {/* Floating file icons */}
+        {!isUploading && !selectedFile && !error && (
+          <div className="flex items-end justify-center gap-3 mb-4 animate-float">
+            <CsvIcon className="transform translate-y-2" />
+            <XlsIcon className="transform -translate-y-1" />
+            <SqlIcon className="transform translate-y-2" />
           </div>
         )}
+
+        {/* Glass platform */}
+        <div
+          className={cn(
+            "relative w-full max-w-md rounded-2xl p-1 transition-all duration-300",
+            isDragActive && !isDragReject
+              ? "bg-gradient-to-r from-cyan-500 via-emerald-500 to-violet-500"
+              : "bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700"
+          )}
+        >
+          {/* Inner glass container */}
+          <div
+            className={cn(
+              "relative rounded-xl backdrop-blur-xl px-8 py-8 transition-all duration-300",
+              isDragActive && !isDragReject
+                ? "bg-slate-900/80"
+                : isDragReject
+                  ? "bg-red-900/80"
+                  : error
+                    ? "bg-red-900/60"
+                    : "bg-slate-900/90"
+            )}
+          >
+            {/* Mesh pattern overlay */}
+            <div 
+              className="absolute inset-0 rounded-xl opacity-30"
+              style={{
+                backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
+                backgroundSize: '16px 16px'
+              }}
+            />
+
+            {/* Glow effect */}
+            <div
+              className={cn(
+                "absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300",
+                isDragActive && "opacity-100"
+              )}
+              style={{
+                background: 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%)'
+              }}
+            />
+
+            {/* Content */}
+            <div className="relative z-10">
+              {isUploading && selectedFile ? (
+                <div className="w-full space-y-4 text-center">
+                  <div className="flex items-center justify-center gap-3">
+                    <FileSpreadsheet className="h-5 w-5 text-cyan-400" />
+                    <span className="text-sm font-medium text-white truncate max-w-[200px]">
+                      {selectedFile.name}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {formatBytes(selectedFile.size)}
+                    </span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-2 bg-slate-700" />
+                  <p className="text-xs text-slate-400">
+                    {uploadProgress === 0
+                      ? "Connecting to server…"
+                      : uploadProgress < 50
+                        ? `Uploading… ${uploadProgress}%`
+                        : uploadProgress < 90
+                          ? "Analyzing your data…"
+                          : "Almost done…"}
+                  </p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-2">
+                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-red-400">Upload failed</p>
+                  <p className="mt-1 max-w-sm text-xs text-red-300/70">{error}</p>
+                </div>
+              ) : isDragActive ? (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center animate-pulse">
+                    <FileSpreadsheet className="h-8 w-8 text-white" />
+                  </div>
+                  <p className="text-lg font-semibold text-white">
+                    Drop to analyze
+                  </p>
+                </div>
+              ) : selectedFile && !error ? (
+                <div className="flex items-center justify-center gap-3 py-2">
+                  <FileSpreadsheet className="h-5 w-5 text-cyan-400" />
+                  <span className="text-sm font-medium text-white">
+                    {selectedFile.name}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {formatBytes(selectedFile.size)}
+                  </span>
+                  <button
+                    onClick={handleClear}
+                    className="ml-1 rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-base font-semibold text-white tracking-wide uppercase">
+                    Drop files or{" "}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
+                      Browse
+                    </span>
+                    <span className="text-slate-400 font-normal normal-case text-sm ml-2">
+                      (up to 2GB)
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom reflection */}
+            <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          </div>
+        </div>
       </div>
+
+      {/* Sample data prompt */}
+      {!isUploading && !selectedFile && onLoadSample && (
+        <button
+          onClick={onLoadSample}
+          className="flex items-center justify-center gap-2 mx-auto text-sm text-slate-500 hover:text-slate-700 transition-colors group"
+        >
+          <Sparkles className="h-4 w-4 group-hover:text-violet-500 transition-colors" />
+          <span>Try with our sample <span className="font-medium text-slate-600 group-hover:text-violet-600">&quot;Customer Behavior&quot;</span> dataset.</span>
+        </button>
+      )}
 
       {/* Error with dismiss */}
       {error && !isUploading && (
         <button
           onClick={handleClear}
-          className="flex w-full items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-left text-xs text-red-600 transition-colors hover:bg-red-100"
+          className="flex w-full items-center gap-2 rounded-xl border border-red-800/50 bg-red-900/20 px-4 py-3 text-left text-xs text-red-400 transition-colors hover:bg-red-900/30"
         >
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
-          <X className="h-3.5 w-3.5 shrink-0 text-red-400" />
+          <X className="h-4 w-4 shrink-0 text-red-500" />
         </button>
       )}
+
+      {/* CSS for floating animation */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
