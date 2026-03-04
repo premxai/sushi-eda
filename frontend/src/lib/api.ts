@@ -6,9 +6,40 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefine
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 300_000, // 5 min — accounts for Render cold start + large file processing
+  timeout: 300_000, // 5 min - accounts for Render cold start + large file processing
 });
 
+type ClerkSessionLike = {
+  getToken?: () => Promise<string | null>;
+};
+
+type ClerkLike = {
+  session?: ClerkSessionLike | null;
+};
+
+type WindowWithClerk = Window & {
+  Clerk?: ClerkLike;
+};
+
+async function getClerkToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const clerk = (window as WindowWithClerk).Clerk;
+  const getToken = clerk?.session?.getToken;
+  if (!getToken) return null;
+  try {
+    return await getToken();
+  } catch {
+    return null;
+  }
+}
+
+client.interceptors.request.use(async (config) => {
+  const token = await getClerkToken();
+  if (!token) return config;
+  config.headers = config.headers ?? {};
+  (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+  return config;
+});
 export async function uploadFile(file: File): Promise<EDAReport> {
   const formData = new FormData();
   formData.append("file", file);
@@ -621,3 +652,4 @@ export async function runSQLQuery(
   );
   return data;
 }
+

@@ -152,11 +152,11 @@ async def validate_org_access(
     Check that `current_user` is a member of `org_id` and (optionally) has
     one of the `allowed_roles`.
 
-    - If `org_id == "default"` and Clerk is unconfigured (dev mode), skips check.
+    - If `org_id == "default"` (legacy single-org mode), skips membership checks.
     - Returns the OrgMember row on success; raises HTTP 403 on failure.
     """
-    if org_id == "default" and not CLERK_SECRET_KEY:
-        return None  # dev bypass — no auth configured
+    if org_id == "default":
+        return None  # legacy single-org bypass used by current frontend routes
 
     query = select(OrgMember).where(
         OrgMember.org_id == org_id,
@@ -235,3 +235,4 @@ def verify_clerk_webhook(payload: bytes, svix_id: str, svix_timestamp: str, svix
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     return json.loads(payload)
+

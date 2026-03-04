@@ -98,7 +98,7 @@ export function Sidebar({
     }}>
 
       {/* ── Logo ── */}
-      <Link href="/" style={{
+      <Link href="/dashboard" style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "20px 20px",
         borderBottom: "1px solid rgba(0,0,0,0.06)",

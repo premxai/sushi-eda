@@ -307,7 +307,7 @@ export default function PipelinesPage() {
     <div className="min-h-screen bg-[#f0eee9]">
       <nav className="sticky top-0 z-20 border-b border-black/10 bg-[#f0eee9]/90 px-8 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link href="/" className="text-lg font-semibold text-zinc-900">Sushi</Link>
+          <Link href="/dashboard" className="text-lg font-semibold text-zinc-900">Sushi</Link>
           <div className="flex items-center gap-4 text-sm text-zinc-600">
             <Link href="/datasets">Datasets</Link>
             <Link href="/connectors">Connectors</Link>
@@ -563,4 +563,3 @@ export default function PipelinesPage() {
     </div>
   );
 }
-

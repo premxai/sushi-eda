@@ -122,7 +122,7 @@ export default function DatasetsPage() {
       sessionStorage.setItem("eda_report", JSON.stringify(analysis.report));
       sessionStorage.setItem("eda_filename", dataset.original_filename);
       sessionStorage.setItem("eda_dataset_id", dataset.id);
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       setOpeningId(null);
     }
@@ -151,7 +151,7 @@ export default function DatasetsPage() {
         {/* Purple accent line */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #9060f8, #e840c8)" }} />
 
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <Image src="/sushi-logo.png" alt="Sushi" width={28} height={28} />
           <span style={{ fontWeight: 600, fontSize: 17, color: "#111010", letterSpacing: "-0.3px" }}>Sushi</span>
         </Link>
@@ -163,7 +163,7 @@ export default function DatasetsPage() {
           <Link href="/pipelines" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
             Pipelines
           </Link>
-          <Link href="/" style={{
+          <Link href="/dashboard" style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "7px 14px", borderRadius: 8, fontSize: 13,
             color: "#6b6860", textDecoration: "none",
@@ -243,7 +243,7 @@ export default function DatasetsPage() {
               <ArrowUpDown size={13} />
               Build pipeline
             </Link>
-            <Link href="/" style={{
+            <Link href="/dashboard" style={{
               display: "flex", alignItems: "center", gap: 7,
               padding: "8px 18px", borderRadius: 10,
               fontSize: 13.5, fontWeight: 500,
@@ -286,7 +286,7 @@ export default function DatasetsPage() {
               {tab === "all" ? "Upload a file to get started with AI-powered analysis." : ""}
             </p>
             {tab === "all" && (
-              <Link href="/" style={{
+              <Link href="/dashboard" style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 padding: "8px 20px", borderRadius: 10,
                 fontSize: 13.5, fontWeight: 500,

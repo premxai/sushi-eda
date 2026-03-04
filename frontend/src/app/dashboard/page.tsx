@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { ColumnCard } from "@/components/dashboard/ColumnCard";
@@ -17,32 +18,49 @@ import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations, archiveDataset } from "@/lib/api";
 
+const REPORT_KEY = "eda_report";
+const FILE_KEY = "eda_filename";
+const DATASET_KEY = "eda_dataset_id";
+
 export default function DashboardPage() {
   const router = useRouter();
   const [report, setReport] = useState<EDAReport | null>(null);
   const [fileName, setFileName] = useState("");
   const [datasetId, setDatasetId] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [activeSection, setActiveSection] = useState<NavSection>("overview");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visualizations, setVisualizations] = useState<Record<string, any> | null>(null);
   const [vizLoading, setVizLoading] = useState(false);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("eda_report");
-    const name = sessionStorage.getItem("eda_filename");
-    const id = sessionStorage.getItem("eda_dataset_id");
+    const stored = sessionStorage.getItem(REPORT_KEY);
+    const name = sessionStorage.getItem(FILE_KEY);
+    const id = sessionStorage.getItem(DATASET_KEY);
     if (stored) {
       try {
         setReport(JSON.parse(stored));
         setFileName(name || "dataset");
         setDatasetId(id);
       } catch {
-        router.push("/");
+        sessionStorage.removeItem(REPORT_KEY);
+        sessionStorage.removeItem(FILE_KEY);
+        sessionStorage.removeItem(DATASET_KEY);
       }
-    } else {
-      router.push("/");
     }
-  }, [router]);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!report) return;
+    sessionStorage.setItem(REPORT_KEY, JSON.stringify(report));
+    sessionStorage.setItem(FILE_KEY, fileName || "dataset");
+    if (datasetId) {
+      sessionStorage.setItem(DATASET_KEY, datasetId);
+    } else {
+      sessionStorage.removeItem(DATASET_KEY);
+    }
+  }, [report, fileName, datasetId]);
 
   const handleReportUpdate = useCallback((newReport: EDAReport, newPreview: Record<string, unknown>[]) => {
     setReport({ ...newReport, preview: newPreview });
@@ -65,25 +83,108 @@ export default function DashboardPage() {
   }, [visualizations, vizLoading]);
 
   const handleNewFile = () => {
-    sessionStorage.removeItem("eda_report");
-    sessionStorage.removeItem("eda_filename");
-    sessionStorage.removeItem("eda_dataset_id");
-    router.push("/");
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
+    setReport(null);
+    setFileName("");
+    setDatasetId(null);
+    setActiveSection("overview");
+    setVisualizations(null);
   };
 
   const handleArchive = async () => {
     if (!datasetId) return;
     await archiveDataset(datasetId);
-    sessionStorage.removeItem("eda_report");
-    sessionStorage.removeItem("eda_filename");
-    sessionStorage.removeItem("eda_dataset_id");
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
     router.push("/datasets");
   };
 
-  if (!report) {
+  if (!hydrated) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
+        <nav style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          background: "rgba(240,238,233,0.88)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(0,0,0,0.07)",
+          padding: "0 32px",
+          height: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <Link href="/dashboard" style={{ fontSize: 18, fontWeight: 600, color: "#111010", textDecoration: "none" }}>
+            Sushi
+          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Link href="/datasets" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+              My Datasets
+            </Link>
+            <Link href="/" style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "7px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              textDecoration: "none",
+              background: "linear-gradient(135deg, #9060f8, #e840c8)",
+              color: "#fff",
+            }}>
+              Upload file
+            </Link>
+          </div>
+        </nav>
+        <main style={{ maxWidth: 860, margin: "0 auto", padding: "56px 24px" }}>
+          <h1 className="font-display" style={{ fontSize: 38, color: "#111010", marginBottom: 8 }}>
+            Dashboard
+          </h1>
+          <p style={{ fontSize: 14, color: "#6b6860", marginBottom: 22 }}>
+            No dataset is currently open. Upload a file or open one from your datasets list.
+          </p>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Link href="/" style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "9px 16px",
+              borderRadius: 10,
+              fontSize: 13.5,
+              fontWeight: 500,
+              textDecoration: "none",
+              background: "linear-gradient(135deg, #9060f8, #e840c8)",
+              color: "#fff",
+            }}>
+              Upload new dataset
+            </Link>
+            <Link href="/datasets" style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "9px 16px",
+              borderRadius: 10,
+              fontSize: 13.5,
+              fontWeight: 500,
+              textDecoration: "none",
+              border: "1px solid rgba(0,0,0,0.12)",
+              color: "#6b6860",
+              background: "rgba(255,255,255,0.7)",
+            }}>
+              Open from My Datasets
+            </Link>
+          </div>
+        </main>
       </div>
     );
   }

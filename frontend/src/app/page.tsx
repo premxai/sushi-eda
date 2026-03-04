@@ -17,7 +17,7 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { GitCompare } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +27,10 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { ColumnSearch } from "@/components/ColumnSearch";
 import { SlideUp } from "@/components/PageTransition";
 import { LandingPage } from "@/components/LandingPage";
+
+const REPORT_KEY = "eda_report";
+const FILE_KEY = "eda_filename";
+const DATASET_KEY = "eda_dataset_id";
 
 export default function Home() {
   const [report, setReport] = useState<EDAReport | null>(null);
@@ -46,18 +50,47 @@ export default function Home() {
   // Pre-warm backend on page load to reduce cold-start delay on first upload
   useEffect(() => { prewarmBackend(); }, []);
 
+  useEffect(() => {
+    const stored = sessionStorage.getItem(REPORT_KEY);
+    if (!stored) return;
+    try {
+      setReport(JSON.parse(stored));
+      const storedFileName = sessionStorage.getItem(FILE_KEY);
+      const storedDatasetId = sessionStorage.getItem(DATASET_KEY);
+      if (storedFileName) setFileName(storedFileName);
+      if (storedDatasetId) setOpenDatasetId(storedDatasetId);
+    } catch {
+      sessionStorage.removeItem(REPORT_KEY);
+      sessionStorage.removeItem(FILE_KEY);
+      sessionStorage.removeItem(DATASET_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!report) return;
+    sessionStorage.setItem(REPORT_KEY, JSON.stringify(report));
+    sessionStorage.setItem(FILE_KEY, fileName || "dataset");
+    if (openDatasetId) {
+      sessionStorage.setItem(DATASET_KEY, openDatasetId);
+    } else {
+      sessionStorage.removeItem(DATASET_KEY);
+    }
+  }, [report, fileName, openDatasetId]);
+
   // Real-time job stream — activates when datasetId is set after async upload
   const jobStream = useJobStream(datasetId);
 
   // When the async job finishes, fetch the full report
   useEffect(() => {
     if (jobStream.status === "done" && jobStream.analysisId && datasetId) {
-      // Fetch the completed analysis from the backend
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api";
-      fetch(`${apiBase}/analyses/${jobStream.analysisId}`)
-        .then((r) => r.json())
+      fetchAnalysis(jobStream.analysisId)
         .then((data) => {
-          setReport(data.report ?? data);
+          const nextReport = data.report ?? (data as unknown as EDAReport);
+          setReport(nextReport);
+          setOpenDatasetId(datasetId);
+          sessionStorage.setItem(REPORT_KEY, JSON.stringify(nextReport));
+          sessionStorage.setItem(FILE_KEY, fileName || "dataset");
+          sessionStorage.setItem(DATASET_KEY, datasetId);
           setUploadProgress(100);
           setIsUploading(false);
           setDatasetId(null);
@@ -77,7 +110,7 @@ export default function Home() {
     if (jobStream.status === "processing") {
       setUploadProgress(jobStream.progress);
     }
-  }, [jobStream.status, jobStream.analysisId, jobStream.error, jobStream.progress, datasetId]);
+  }, [jobStream.status, jobStream.analysisId, jobStream.error, jobStream.progress, datasetId, fileName]);
 
   const handleFileAccepted = useCallback(async (file: File) => {
     setIsUploading(true);
@@ -85,6 +118,10 @@ export default function Home() {
     setError(null);
     setFileName(file.name);
     setDatasetId(null);
+    setOpenDatasetId(null);
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
 
     try {
       // Try async (Celery-backed) upload first; fall back to legacy sync
@@ -93,6 +130,8 @@ export default function Home() {
         // Async path: SSE hook drives progress from here
         setDatasetId(asyncResult.dataset_id);
         setOpenDatasetId(asyncResult.dataset_id);
+        sessionStorage.setItem(DATASET_KEY, asyncResult.dataset_id);
+        sessionStorage.setItem(FILE_KEY, file.name);
         setUploadProgress(10);
         return;
       }
@@ -111,6 +150,8 @@ export default function Home() {
         setUploadProgress(100);
         await new Promise((r) => setTimeout(r, 200));
         setReport(data);
+        sessionStorage.setItem(REPORT_KEY, JSON.stringify(data));
+        sessionStorage.setItem(FILE_KEY, file.name);
       } catch (err: unknown) {
           clearInterval(interval);
           setUploadProgress(0);
@@ -169,11 +210,17 @@ export default function Home() {
     setActiveSection("overview");
     setVisualizations(null);
     setOpenDatasetId(null);
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
   };
 
   const handleArchive = async () => {
     if (!openDatasetId) return;
     await archiveDataset(openDatasetId);
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
     handleNewFile();
   };
 
