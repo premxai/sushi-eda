@@ -779,3 +779,62 @@ export async function deleteComment(
   await client.delete(`/comments/${commentId}?org_id=${orgId}`);
 }
 
+// ── Admin / Enterprise (Task 35) ──────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  log_id: string;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  user_id: string | null;
+  ip_address: string | null;
+  extra: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface OrgMemberEntry {
+  member_id: string;
+  user_id: string;
+  email: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  role: "viewer" | "editor" | "admin";
+  joined_at: string;
+}
+
+export async function listAuditLogs(
+  orgId: string = "default",
+  opts: { action?: string; resource_type?: string; limit?: number; offset?: number } = {}
+): Promise<{ logs: AuditLogEntry[]; count: number }> {
+  const p = new URLSearchParams();
+  if (opts.action) p.set("action", opts.action);
+  if (opts.resource_type) p.set("resource_type", opts.resource_type);
+  if (opts.limit) p.set("limit", String(opts.limit));
+  if (opts.offset) p.set("offset", String(opts.offset));
+  const { data } = await client.get<{ logs: AuditLogEntry[]; count: number }>(
+    `/orgs/${orgId}/audit-logs?${p}`
+  );
+  return data;
+}
+
+export async function listOrgMembers(orgId: string = "default"): Promise<OrgMemberEntry[]> {
+  const { data } = await client.get<OrgMemberEntry[]>(`/orgs/${orgId}/members`);
+  return data;
+}
+
+export async function updateMemberRole(
+  orgId: string,
+  userId: string,
+  role: string
+): Promise<OrgMemberEntry> {
+  const { data } = await client.patch<OrgMemberEntry>(
+    `/orgs/${orgId}/members/${userId}`,
+    { role }
+  );
+  return data;
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  await client.delete(`/orgs/${orgId}/members/${userId}`);
+}
+

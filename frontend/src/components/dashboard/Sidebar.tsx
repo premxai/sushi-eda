@@ -23,6 +23,7 @@ import {
   FileText,
   BookOpen,
   MessageCircle,
+  Shield,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -248,6 +249,19 @@ export function Sidebar({
         >
           <Zap style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
           Integrations
+        </Link>
+
+        <Link
+          href="/settings"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+            fontWeight: 400,
+          }}
+        >
+          <Shield style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+          Settings
         </Link>
 
         <Link

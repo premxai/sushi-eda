@@ -25,6 +25,7 @@ from cache import cache
 from storage import storage
 from worker import analyze_dataset
 from routers import webhooks, jobs as jobs_router
+from routers.admin import router as admin_router
 from routers.billing import router as billing_router
 from routers.comments import router as comments_router
 from routers.connectors import router as connectors_router
@@ -89,6 +90,7 @@ app.include_router(connectors_router)
 app.include_router(integrations_router)
 app.include_router(monitors_router)
 app.include_router(comments_router)
+app.include_router(admin_router)
 app.include_router(pipelines_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
