@@ -20,6 +20,7 @@ import {
   Unplug,
   TerminalSquare,
   Workflow,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import CreditsUsageBar from "@/components/CreditsUsageBar";
@@ -33,6 +34,7 @@ export type NavSection =
   | "outliers"
   | "insights"
   | "visualizations"
+  | "report"
   | "cleaning"
   | "transforms"
   | "sql"
@@ -54,6 +56,7 @@ const navItems: NavItem[] = [
   { id: "outliers",       label: "Outliers",       icon: AlertTriangle,       group: "Analysis" },
   { id: "insights",       label: "Insights",       icon: Lightbulb,           group: "Analysis" },
   { id: "visualizations", label: "Visualizations", icon: ChartNoAxesCombined, group: "Analysis" },
+  { id: "report",         label: "Report",         icon: FileText,            group: "Analysis" },
   { id: "cleaning",       label: "Data Cleaning",  icon: Sparkles,            group: "Engineering" },
   { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
   { id: "sql",            label: "SQL Editor",     icon: TerminalSquare,      group: "Engineering" },

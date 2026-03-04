@@ -9,6 +9,7 @@ import { ColumnCard } from "@/components/dashboard/ColumnCard";
 import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
 import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { MonitoringSection } from "@/components/dashboard/MonitoringSection";
+import { ReportSection } from "@/components/dashboard/ReportSection";
 import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
@@ -204,6 +205,7 @@ export default function DashboardPage() {
     transforms: "Feature Engineering",
     sql: "SQL Editor",
     monitors: "Monitors",
+    report: "Report",
     data: "Data Table",
   };
 
@@ -264,6 +266,9 @@ export default function DashboardPage() {
           )}
           {activeSection === "monitors" && (
             <MonitoringSection datasetId={datasetId} orgId="default" />
+          )}
+          {activeSection === "report" && (
+            <ReportSection report={report} fileName={fileName} />
           )}
           {activeSection === "data" && <DataTable preview={report.preview} />}
         </main>
