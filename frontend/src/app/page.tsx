@@ -12,7 +12,6 @@ import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
 import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { MonitoringSection } from "@/components/dashboard/MonitoringSection";
-import { CommentsSection } from "@/components/dashboard/CommentsSection";
 import { ReportSection } from "@/components/dashboard/ReportSection";
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
@@ -20,7 +19,7 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, fetchAnalysis } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { GitCompare, Lock, FileSpreadsheet, Plus } from "lucide-react";
 import Link from "next/link";
@@ -270,15 +269,6 @@ export default function Home() {
     sessionStorage.removeItem(REPORT_KEY);
     sessionStorage.removeItem(FILE_KEY);
     sessionStorage.removeItem(DATASET_KEY);
-  };
-
-  const handleArchive = async () => {
-    if (!openDatasetId) return;
-    await archiveDataset(openDatasetId);
-    sessionStorage.removeItem(REPORT_KEY);
-    sessionStorage.removeItem(FILE_KEY);
-    sessionStorage.removeItem(DATASET_KEY);
-    handleNewFile();
   };
 
   // ─── Dashboard View — single scrollable page ──────────────────────
