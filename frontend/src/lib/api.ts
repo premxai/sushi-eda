@@ -375,6 +375,42 @@ export async function triggerMonitorRun(
   return data;
 }
 
+export async function updateMonitor(
+  monitorId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body: Record<string, any>,
+  orgId: string = "default"
+): Promise<MonitorSummary> {
+  const { data } = await client.patch<MonitorSummary>(`/monitors/${monitorId}?org_id=${orgId}`, body);
+  return data;
+}
+
+export async function deleteMonitor(
+  monitorId: string,
+  orgId: string = "default"
+): Promise<void> {
+  await client.delete(`/monitors/${monitorId}?org_id=${orgId}`);
+}
+
+export interface MonitorRun {
+  run_id: string;
+  status: string;
+  actual_value: number | null;
+  message: string | null;
+  ran_at: string;
+}
+
+export async function getMonitorRuns(
+  monitorId: string,
+  orgId: string = "default",
+  limit: number = 20
+): Promise<MonitorRun[]> {
+  const { data } = await client.get<{ monitor_id: string; runs: MonitorRun[] }>(
+    `/monitors/${monitorId}/runs?org_id=${orgId}&limit=${limit}`
+  );
+  return data.runs;
+}
+
 // ── Pipelines (Task 27) ───────────────────────────────────────────────────────
 
 export interface PipelineSummary {

@@ -11,6 +11,7 @@ import { OutliersSection } from "@/components/dashboard/OutliersSection";
 import { InsightsSection } from "@/components/dashboard/InsightsSection";
 import { VisualizationsSection } from "@/components/dashboard/VisualizationsSection";
 import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
+import { MonitoringSection } from "@/components/dashboard/MonitoringSection";
 import { CleaningSection } from "@/components/dashboard/CleaningSection";
 import { TransformSection } from "@/components/dashboard/TransformSection";
 import { DataTable } from "@/components/dashboard/DataTable";
@@ -238,6 +239,7 @@ export default function Home() {
       cleaning: "Data Cleaning",
       transforms: "Feature Engineering",
       sql: "SQL Editor",
+      monitors: "Monitors",
       data: "Data Table",
     };
 
@@ -319,13 +321,16 @@ export default function Home() {
               {activeSection === "sql" && (
                 <SQLQuerySection datasetId={openDatasetId} orgId="default" />
               )}
+              {activeSection === "monitors" && (
+                <MonitoringSection datasetId={openDatasetId} orgId="default" />
+              )}
               {activeSection === "data" && <DataTable preview={report.preview} />}
             </ErrorBoundary>
           </main>
           <KeyboardShortcuts />
             <CommandPalette
             onSectionChange={(section) => handleSectionChange(section as NavSection)}
-            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "sql", "data"]}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "cleaning", "transforms", "sql", "monitors", "data"]}
           />
         </div>
       </div>

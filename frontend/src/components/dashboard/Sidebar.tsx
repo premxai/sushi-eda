@@ -36,6 +36,7 @@ export type NavSection =
   | "cleaning"
   | "transforms"
   | "sql"
+  | "monitors"
   | "data";
 
 interface NavItem {
@@ -56,6 +57,7 @@ const navItems: NavItem[] = [
   { id: "cleaning",       label: "Data Cleaning",  icon: Sparkles,            group: "Engineering" },
   { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
   { id: "sql",            label: "SQL Editor",     icon: TerminalSquare,      group: "Engineering" },
+  { id: "monitors",       label: "Monitors",       icon: Bell,                group: "Engineering" },
   { id: "data",           label: "Data Table",     icon: Table2,              group: "Data" },
 ];
 
