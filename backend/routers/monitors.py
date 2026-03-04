@@ -185,7 +185,7 @@ async def update_monitor(
     return _monitor_dict(m)
 
 
-@router.delete("/monitors/{monitor_id}", status_code=204)
+@router.delete("/monitors/{monitor_id}", status_code=204, response_model=None)
 async def delete_monitor(
     monitor_id: str,
     org_id: str = Query(default="default"),

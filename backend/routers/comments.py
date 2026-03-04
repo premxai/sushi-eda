@@ -188,7 +188,7 @@ async def edit_comment(
 
 # ─── Delete ───────────────────────────────────────────────────────────────────
 
-@router.delete("/comments/{comment_id}", status_code=204)
+@router.delete("/comments/{comment_id}", status_code=204, response_model=None)
 async def delete_comment(
     comment_id: str,
     org_id: str = Query(DEV_ORG),

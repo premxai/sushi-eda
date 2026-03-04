@@ -214,7 +214,7 @@ async def get_dataset(
     }
 
 
-@router.delete("/{dataset_id}", status_code=204)
+@router.delete("/{dataset_id}", status_code=204, response_model=None)
 async def delete_dataset(
     dataset_id: str,
     org_id: str = Query(default="default"),

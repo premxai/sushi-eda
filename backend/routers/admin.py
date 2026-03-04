@@ -175,7 +175,7 @@ async def update_member_role(
     return _member_dict(member)
 
 
-@router.delete("/orgs/{org_id}/members/{user_id}", status_code=204)
+@router.delete("/orgs/{org_id}/members/{user_id}", status_code=204, response_model=None)
 async def remove_member(
     org_id: str,
     user_id: str,

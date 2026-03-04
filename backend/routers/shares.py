@@ -138,7 +138,7 @@ async def get_shared_report(
     }
 
 
-@router.delete("/datasets/{dataset_id}/share/{token}", status_code=204)
+@router.delete("/datasets/{dataset_id}/share/{token}", status_code=204, response_model=None)
 async def revoke_share(
     dataset_id: str,
     token: str,

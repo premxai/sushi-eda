@@ -224,7 +224,7 @@ async def update_pipeline(
     return _pipeline_dict(pipeline)
 
 
-@router.delete("/pipelines/{pipeline_id}", status_code=204)
+@router.delete("/pipelines/{pipeline_id}", status_code=204, response_model=None)
 async def delete_pipeline(
     pipeline_id: str,
     org_id: str = Query(default="default"),

@@ -152,7 +152,7 @@ async def get_connector(
     return _connector_summary(c)
 
 
-@router.delete("/{connector_id}", status_code=204)
+@router.delete("/{connector_id}", status_code=204, response_model=None)
 async def delete_connector(
     connector_id: str,
     org_id: str = Query(default="default"),
