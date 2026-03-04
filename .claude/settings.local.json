@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install -r requirements.txt --quiet)",
+      "Bash(pip install supabase --quiet)",
+      "Bash(pip show supabase)",
+      "Bash(pip show httpx)",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/pip install -r requirements.txt --quiet)",
+      "Bash(npm install @clerk/nextjs --save --legacy-peer-deps)",
+      "Bash(docker --version)",
+      "Bash(docker compose version)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(pip install polars celery duckdb stripe croniter python-jose asyncpg --quiet)",
+      "Bash(python -c \"import main\")",
+      "Bash(netstat -ano)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(npm install @sentry/nextjs --save)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(git config --global user.name)",
+      "Bash(git config --global user.email)",
+      "Bash(npx next lint)",
+      "Bash(npm install @uiw/react-codemirror @codemirror/lang-sql @codemirror/theme-one-dark)",
+      "Bash(xargs grep -l \"DataTransformer\\\\|class.*Transformer\")",
+      "Bash(npm ls @liveblocks/react)",
+      "Bash(grep -l \"slack\\\\|webhook\\\\|integration\" c:/Users/kanap/OneDrive/Desktop/DevWhisperer/backend/routers/*.py)",
+      "Bash(xargs grep -l \"slack\\\\|integration\\\\|webhook\\\\|chrome\")",
+      "Bash(ls c:/Users/kanap/OneDrive/Desktop/DevWhisperer/frontend/src/app/sitemap* c:/Users/kanap/OneDrive/Desktop/DevWhisperer/frontend/src/app/robots*)"
+    ]
+  }
+}

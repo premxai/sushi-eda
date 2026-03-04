@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import { useJobStream } from "@/hooks/useJobStream";
 import { Button } from "@/components/ui/button";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
@@ -30,6 +31,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { ColumnSearch } from "@/components/ColumnSearch";
 import { SlideUp } from "@/components/PageTransition";
 import { LandingPage } from "@/components/LandingPage";
+import { UserDashboard } from "@/components/UserDashboard";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ProductTour } from "@/components/ProductTour";
 
@@ -38,6 +40,7 @@ const FILE_KEY = "eda_filename";
 const DATASET_KEY = "eda_dataset_id";
 
 export default function Home() {
+  const { isSignedIn, isLoaded: userLoaded } = useUser();
   const [report, setReport] = useState<EDAReport | null>(null);
   const [fileName, setFileName] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -359,7 +362,21 @@ export default function Home() {
     );
   }
 
-  // ─── Landing Page ─────────────────────────────────────────────────
+  // ─── Landing Page or User Dashboard ─────────────────────────────
+  // Show user dashboard for signed-in users, landing page for guests
+  if (userLoaded && isSignedIn) {
+    return (
+      <UserDashboard
+        onFileAccepted={handleFileAccepted}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        error={error}
+        onClearError={handleClearError}
+        onLoadSample={handleTryDemo}
+      />
+    );
+  }
+
   return (
     <LandingPage
       onFileAccepted={handleFileAccepted}
