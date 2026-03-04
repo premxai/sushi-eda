@@ -265,6 +265,19 @@ export function Sidebar({
         </Link>
 
         <Link
+          href="/docs"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+            fontWeight: 400,
+          }}
+        >
+          <BookOpen style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+          Docs
+        </Link>
+
+        <Link
           href="/pipelines"
           style={{
             display: "flex", alignItems: "center", gap: 10,
