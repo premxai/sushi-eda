@@ -29,6 +29,8 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { ColumnSearch } from "@/components/ColumnSearch";
 import { SlideUp } from "@/components/PageTransition";
 import { LandingPage } from "@/components/LandingPage";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { ProductTour } from "@/components/ProductTour";
 
 const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
@@ -246,6 +248,7 @@ export default function Home() {
     };
 
     return (
+      <>
       <div className="flex h-screen" style={{ background: "#f0eee9" }}>
         <Sidebar
           fileName={fileName}
@@ -339,6 +342,9 @@ export default function Home() {
           />
         </div>
       </div>
+      <OnboardingChecklist activeSection={activeSection} hasDataset={!!report} />
+      <ProductTour />
+      </>
     );
   }
 

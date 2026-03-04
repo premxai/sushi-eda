@@ -19,6 +19,7 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { EDAReport } from "@/lib/types";
 import { fetchVisualizations, archiveDataset } from "@/lib/api";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
@@ -210,6 +211,7 @@ export default function DashboardPage() {
   };
 
   return (
+    <>
     <div className="flex h-screen" style={{ background: "#f0eee9" }}>
       <Sidebar
         fileName={fileName}
@@ -274,5 +276,7 @@ export default function DashboardPage() {
         </main>
       </div>
     </div>
+    <OnboardingChecklist activeSection={activeSection} hasDataset={true} />
+    </>
   );
 }

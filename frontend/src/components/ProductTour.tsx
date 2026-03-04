@@ -1,31 +1,69 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Upload, Sparkles, Share2, ChevronRight } from "lucide-react";
+import {
+  BarChart2,
+  Bell,
+  ChevronRight,
+  FlaskConical,
+  Share2,
+  Sparkles,
+  TerminalSquare,
+  Upload,
+  X,
+} from "lucide-react";
 
-const TOUR_KEY = "sushi_tour_v1_done";
+const TOUR_KEY = "sushi_tour_v2_done";
 
 const STEPS = [
   {
     icon: Upload,
-    color: "bg-indigo-100 text-indigo-600",
+    accent: "#9060f8",
     title: "Drop your data, get instant insights",
     description:
-      "Upload CSV, Excel, JSON, Parquet, or SQLite — up to 100 MB. Sushi runs a full exploratory analysis in seconds. No code, no setup.",
+      "Upload CSV, Excel, JSON, Parquet, or SQLite — up to 100 MB. Sushi runs a full EDA in seconds: quality score, column stats, outliers, and a plain-English narrative.",
   },
   {
     icon: Sparkles,
-    color: "bg-violet-100 text-violet-600",
+    accent: "#e840c8",
     title: "AI that reads your data for you",
     description:
-      "Get quality scores, outlier detection, column stats, and a plain-English narrative. Ask questions in natural language — Sushi writes and runs the SQL.",
+      "Ask questions in natural language — Sushi writes and runs the SQL. Get AI-powered cleaning suggestions and column explanations, all credit-metered per org.",
+  },
+  {
+    icon: TerminalSquare,
+    accent: "#9060f8",
+    title: "SQL Editor powered by DuckDB",
+    description:
+      "Write ad-hoc SQL directly against your dataset. Results render in a live table with column types. Save and re-run queries from history.",
+  },
+  {
+    icon: BarChart2,
+    accent: "#00d4e8",
+    title: "Statistics, Visualizations & Feature Engineering",
+    description:
+      "Run t-tests, regressions, and correlations. Generate 10+ chart types. Apply log transforms, normalization, lag features, and interaction products — no code needed.",
+  },
+  {
+    icon: Bell,
+    accent: "#f97316",
+    title: "Monitors & drift alerts",
+    description:
+      "Set thresholds on row count, null rates, quality score, or column drift. Monitors run on a schedule and alert you the moment something changes.",
+  },
+  {
+    icon: FlaskConical,
+    accent: "#e840c8",
+    title: "Data Connectors & Catalog",
+    description:
+      "Connect PostgreSQL, Google Sheets, S3, or REST APIs. Browse all your datasets in the Data Catalog with pipeline lineage and profile snapshots.",
   },
   {
     icon: Share2,
-    color: "bg-emerald-100 text-emerald-600",
+    accent: "#22c55e",
     title: "Share reports with one link",
     description:
-      "Generate a shareable link anyone can view — no login required. Perfect for sending analysis to clients or teammates instantly.",
+      "Generate a shareable link anyone can view — no login required. Export as PDF, Markdown, or JSON. Perfect for clients and teammates.",
   },
 ];
 
@@ -39,8 +77,7 @@ export function ProductTour({ onDismiss }: ProductTourProps) {
 
   useEffect(() => {
     if (typeof window !== "undefined" && !localStorage.getItem(TOUR_KEY)) {
-      // Small delay so page renders first
-      const t = setTimeout(() => setVisible(true), 800);
+      const t = setTimeout(() => setVisible(true), 900);
       return () => clearTimeout(t);
     }
   }, []);
@@ -52,11 +89,8 @@ export function ProductTour({ onDismiss }: ProductTourProps) {
   };
 
   const next = () => {
-    if (step < STEPS.length - 1) {
-      setStep((s) => s + 1);
-    } else {
-      dismiss();
-    }
+    if (step < STEPS.length - 1) setStep((s) => s + 1);
+    else dismiss();
   };
 
   if (!visible) return null;
@@ -66,68 +100,117 @@ export function ProductTour({ onDismiss }: ProductTourProps) {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 300,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 16,
+    }}>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={dismiss}
+        style={{
+          position: "absolute", inset: 0,
+          background: "rgba(0,0,0,0.35)",
+          backdropFilter: "blur(6px)",
+        }}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:bg-neutral-900 dark:border-neutral-800">
+      <div style={{
+        position: "relative",
+        width: "100%", maxWidth: 440,
+        borderRadius: 20,
+        background: "rgba(255,255,255,0.97)",
+        border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+        overflow: "hidden",
+      }}>
+        <style>{`@keyframes shimmer { 0%{background-position:0% 0} 100%{background-position:200% 0} }`}</style>
+
+        {/* Iridescent top stripe */}
+        <div style={{
+          height: 3,
+          background: "linear-gradient(90deg, #9060f8, #e840c8, #00d4e8, #9060f8)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer 4s linear infinite",
+        }} />
+
         {/* Close */}
         <button
           onClick={dismiss}
-          className="absolute right-4 top-4 rounded-lg p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800"
+          style={{
+            position: "absolute", top: 14, right: 14,
+            background: "none", border: "none", cursor: "pointer",
+            color: "#9a9690", padding: 4, borderRadius: 8,
+          }}
         >
-          <X className="h-4 w-4" />
+          <X size={16} />
         </button>
 
-        <div className="p-6 pt-5">
+        <div style={{ padding: "20px 24px 24px" }}>
           {/* Step dots */}
-          <div className="mb-5 flex gap-1.5">
+          <div style={{ display: "flex", gap: 5, marginBottom: 20 }}>
             {STEPS.map((_, i) => (
               <div
                 key={i}
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  i === step
-                    ? "w-6 bg-indigo-500"
-                    : i < step
-                      ? "w-2 bg-indigo-200"
-                      : "w-2 bg-neutral-200 dark:bg-neutral-700"
-                }`}
+                style={{
+                  height: 4, borderRadius: 99,
+                  transition: "all 0.3s",
+                  width: i === step ? 24 : 8,
+                  background: i <= step ? current.accent : "rgba(0,0,0,0.1)",
+                }}
               />
             ))}
           </div>
 
           {/* Icon */}
-          <div className={`mb-4 inline-flex rounded-xl p-3 ${current.color}`}>
-            <Icon className="h-6 w-6" />
+          <div style={{
+            display: "inline-flex", padding: 12, borderRadius: 14, marginBottom: 16,
+            background: `${current.accent}18`,
+          }}>
+            <Icon size={24} style={{ color: current.accent }} />
           </div>
 
           {/* Content */}
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#111010", margin: "0 0 8px", lineHeight: 1.3 }}>
             {current.title}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+          <p style={{ fontSize: 13.5, color: "#6b6860", lineHeight: 1.6, margin: 0 }}>
             {current.description}
           </p>
 
+          {/* Step indicator */}
+          <p style={{
+            fontSize: 11, color: "#c8c4be", marginTop: 12,
+            fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
+          }}>
+            {step + 1} / {STEPS.length}
+          </p>
+
           {/* Actions */}
-          <div className="mt-6 flex items-center justify-between">
+          <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button
               onClick={dismiss}
-              className="text-xs text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 12, color: "#9a9690",
+              }}
             >
               Skip tour
             </button>
 
             <button
               onClick={next}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "9px 18px", borderRadius: 10,
+                background: `linear-gradient(135deg, ${current.accent}, ${isLast ? "#22c55e" : "#e840c8"})`,
+                color: "#fff", fontSize: 13, fontWeight: 600,
+                border: "none", cursor: "pointer",
+              }}
             >
               {isLast ? "Get started" : "Next"}
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
