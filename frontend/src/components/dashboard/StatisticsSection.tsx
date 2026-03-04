@@ -368,13 +368,19 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   const inputClass =
     "w-[130px] rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none";
 
-  const needsBackend = !datasetId || datasetId === "local";
+  const isLocal = datasetId === "local";
+  const noDataset = !datasetId;
 
   return (
     <div className="space-y-4">
-      {needsBackend && (
+      {noDataset && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          ⚠️ Statistical tests require a live backend connection. Upload your file with the backend running to enable t-tests, regression, and ANOVA.
+          ⚠️ Upload a dataset to run statistical tests.
+        </div>
+      )}
+      {isLocal && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          ℹ️ Tests run against your in-session upload. Results will be lost on page refresh. Use async upload (backend configured) for persistent datasets.
         </div>
       )}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -385,7 +391,9 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             Running normality and correlation tests...
           </div>
         ) : !autoStats ? (
-          <p className="text-sm text-zinc-500">Could not load auto stats.</p>
+          <p className="text-sm text-zinc-500">
+            {isLocal ? "Auto stats unavailable — select a test below and click Run." : "Could not load auto stats."}
+          </p>
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
@@ -709,7 +717,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
           <button
             type="button"
             onClick={handleRun}
-            disabled={running || needsBackend}
+            disabled={running || noDataset}
             className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />} Run
