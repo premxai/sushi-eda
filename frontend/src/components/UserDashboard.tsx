@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Upload,
   FileSpreadsheet,
@@ -12,27 +11,12 @@ import {
   TrendingUp,
   Database,
   ArrowRight,
-  BarChart3,
   Folder,
   Layers,
   Zap,
   AlertCircle,
   X,
   Clock,
-  Columns3,
-  Sigma,
-  GitCompareArrows,
-  AlertTriangle,
-  Lightbulb,
-  ChartNoAxesCombined,
-  FileText,
-  Sparkles,
-  FlaskConical,
-  TerminalSquare,
-  Bell,
-  MessageCircle,
-  Table2,
-  Plus,
 } from "lucide-react";
 import { DatasetSummary, listDatasets } from "@/lib/api";
 import { useDropzone } from "react-dropzone";
@@ -47,28 +31,6 @@ interface UserDashboardProps {
   onClearError: () => void;
   onLoadSample: () => void;
 }
-
-/* ─── Nav definition (mirrors Sidebar.tsx) ────────────────── */
-const NAV_ANALYSIS = [
-  { id: "overview",       label: "Overview",       Icon: BarChart3 },
-  { id: "columns",        label: "Columns",        Icon: Columns3 },
-  { id: "statistics",     label: "Statistics",     Icon: Sigma },
-  { id: "correlations",   label: "Correlations",   Icon: GitCompareArrows },
-  { id: "outliers",       label: "Outliers",       Icon: AlertTriangle },
-  { id: "insights",       label: "Insights",       Icon: Lightbulb },
-  { id: "visualizations", label: "Visualizations", Icon: ChartNoAxesCombined },
-  { id: "report",         label: "Report",         Icon: FileText },
-];
-const NAV_ENGINEERING = [
-  { id: "cleaning",   label: "Data Cleaning", Icon: Sparkles },
-  { id: "transforms", label: "Transforms",    Icon: FlaskConical },
-  { id: "sql",        label: "SQL Editor",    Icon: TerminalSquare },
-  { id: "monitors",   label: "Monitors",      Icon: Bell },
-  { id: "comments",   label: "Comments",      Icon: MessageCircle },
-];
-const NAV_DATA = [
-  { id: "data", label: "Data Table", Icon: Table2 },
-];
 
 /* ─── Helpers ─────────────────────────────────────────────── */
 function formatBytes(bytes: number): string {
@@ -146,106 +108,6 @@ function Toast({ msg }: { msg: string }) {
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#00c8d8", flexShrink: 0 }} />
       {msg}
     </div>
-  );
-}
-
-/* ─── Home Sidebar ─────────────────────────────────────────── */
-function HomeSidebar({ onNavClick }: { onNavClick: (label: string) => void }) {
-  return (
-    <aside style={{
-      width: 220, height: "100vh", position: "fixed", left: 0, top: 0,
-      zIndex: 50, overflowY: "auto", overflowX: "hidden",
-      background: "rgba(255,255,255,0.55)",
-      borderRight: "1px solid rgba(0,0,0,0.08)",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      display: "flex", flexDirection: "column",
-    }}>
-      {/* Logo */}
-      <Link href="/" style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "17px 18px",
-        borderBottom: "1px solid rgba(0,0,0,0.07)",
-        textDecoration: "none",
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 9,
-          background: "linear-gradient(135deg,#1a1a1a,#333)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          overflow: "hidden", flexShrink: 0,
-        }}>
-          <Image src="/sushi-logo.png" alt="Sushi" width={22} height={22} />
-        </div>
-        <span style={{ fontWeight: 700, fontSize: 17, color: "#1a1a1a", letterSpacing: "-0.3px" }}>Sushi</span>
-      </Link>
-
-      {/* Nav content */}
-      <div style={{ flex: 1, padding: "10px 10px 4px", overflowY: "auto" }}>
-        {[
-          { title: "ANALYSIS",    items: NAV_ANALYSIS },
-          { title: "ENGINEERING", items: NAV_ENGINEERING },
-          { title: "DATA",        items: NAV_DATA },
-        ].map((sec) => (
-          <div key={sec.title} style={{ marginBottom: 16 }}>
-            <p style={{
-              fontSize: 9,
-              fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-              letterSpacing: "2px", textTransform: "uppercase",
-              color: "#b0ada8", padding: "0 8px", marginBottom: 4,
-            }}>
-              {sec.title}
-            </p>
-            {sec.items.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                onClick={() => onNavClick(label)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 9,
-                  padding: "7px 10px", borderRadius: 7,
-                  width: "100%", textAlign: "left",
-                  fontSize: 13, color: "#888580",
-                  background: "transparent",
-                  fontWeight: 400, border: "none", cursor: "pointer",
-                  marginBottom: 1, transition: "background 0.12s, color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(0,0,0,0.04)";
-                  e.currentTarget.style.color = "#1a1a1a";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "#888580";
-                }}
-              >
-                <Icon style={{ width: 15, height: 15, flexShrink: 0, opacity: 0.45 }} />
-                {label}
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* Footer: Analyze New File CTA */}
-      <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "12px 12px 16px" }}>
-        <button
-          onClick={() => onNavClick("upload")}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            width: "100%", padding: "9px 12px", borderRadius: 8,
-            fontSize: 13, fontWeight: 500,
-            background: "linear-gradient(135deg,#9060f8,#e840c8)",
-            color: "#fff", border: "none", cursor: "pointer",
-            boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
-            transition: "opacity 0.15s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        >
-          <Plus style={{ width: 13, height: 13 }} />
-          Analyze New File
-        </button>
-      </div>
-    </aside>
   );
 }
 
@@ -649,10 +511,6 @@ export function UserDashboard(props: UserDashboardProps) {
 
   const handleDatasetClick = (id: string) => router.push(`/datasets/${id}`);
 
-  const handleNavClick = (label: string) => {
-    notify(`Upload a dataset to use ${label}`);
-  };
-
   // Aggregate stats
   const totalRows = datasets.reduce((s, d) => s + (d.row_count ?? 0), 0);
   const totalSize = datasets.reduce((s, d) => s + d.file_size_bytes, 0);
@@ -669,7 +527,7 @@ export function UserDashboard(props: UserDashboardProps) {
   const fmtEntries = Object.entries(fmtMap).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#e8e6df", overflow: "hidden" }}>
+    <div style={{ height: "100vh", background: "#e8e6df", overflow: "hidden" }}>
       <style>{`
         @keyframes toastSlide { from { opacity:0; transform:translateX(-50%) translateY(8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -677,11 +535,8 @@ export function UserDashboard(props: UserDashboardProps) {
 
       {toast && <Toast msg={toast} />}
 
-      {/* ── Sidebar ── */}
-      <HomeSidebar onNavClick={handleNavClick} />
-
-      {/* ── Right content ── */}
-      <div style={{ marginLeft: 220, flex: 1, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* ── Content ── */}
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* Top bar */}
         <div style={{
