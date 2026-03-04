@@ -16,6 +16,7 @@ interface LandingPageProps {
   uploadProgress: number;
   error: string | null;
   onClearError: () => void;
+  isSignedIn?: boolean;
 }
 
 export function LandingPage({
@@ -26,6 +27,7 @@ export function LandingPage({
   uploadProgress,
   error,
   onClearError,
+  isSignedIn = false,
 }: LandingPageProps) {
   // Scroll-reveal observer
   useEffect(() => {
@@ -103,6 +105,7 @@ export function LandingPage({
           error={error}
           onClearError={onClearError}
           onLoadSample={onTryDemo}
+          isSignedIn={isSignedIn}
         />
       </section>
 

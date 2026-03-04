@@ -243,6 +243,11 @@
   box-shadow: 0 0 8px var(--lp-cyan);
   animation: lpFlowParticle 1.8s linear infinite;
 }
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
 @keyframes lpFlowParticle {
   0% { left: -4px; opacity: 0; }
   10% { opacity: 1; }

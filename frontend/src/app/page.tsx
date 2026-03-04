@@ -23,7 +23,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
 import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { GitCompare } from "lucide-react";
+import { GitCompare, Lock } from "lucide-react";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -38,6 +38,61 @@ import { ProductTour } from "@/components/ProductTour";
 const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
 const DATASET_KEY = "eda_dataset_id";
+
+function LockedPreview({ feature }: { feature: string }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center rounded-2xl"
+      style={{
+        minHeight: 360,
+        background: "rgba(240,238,233,0.6)",
+        border: "1px dashed rgba(0,0,0,0.12)",
+        gap: 16,
+      }}
+    >
+      <div
+        style={{
+          width: 56, height: 56, borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(144,96,248,0.15), rgba(232,64,200,0.15))",
+          border: "1px solid rgba(144,96,248,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <Lock style={{ width: 24, height: 24, color: "#9060f8" }} />
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: 17, fontWeight: 600, color: "#111010", marginBottom: 6 }}>
+          {feature} requires an account
+        </p>
+        <p style={{ fontSize: 13, color: "#6b6860", maxWidth: 320 }}>
+          Sign up for free to unlock {feature}, AI chat, SQL query, and more.
+        </p>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+        <Link
+          href="/sign-up"
+          style={{
+            padding: "9px 22px", borderRadius: 9, fontSize: 13.5, fontWeight: 500,
+            background: "linear-gradient(135deg, #9060f8, #e840c8)",
+            color: "#fff", textDecoration: "none",
+            boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
+          }}
+        >
+          Get started free →
+        </Link>
+        <Link
+          href="/sign-in"
+          style={{
+            padding: "9px 22px", borderRadius: 9, fontSize: 13.5,
+            border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860", textDecoration: "none",
+          }}
+        >
+          Sign in
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { isSignedIn, isLoaded: userLoaded } = useUser();
@@ -239,6 +294,7 @@ export default function Home() {
   // ─── Dashboard View ───────────────────────────────────────────────
   if (report) {
     const { basic_info } = report;
+    const isPreviewMode = !isSignedIn;
     const sectionTitles: Record<NavSection, string> = {
       overview: "Overview",
       columns: "Column Analysis",
@@ -292,6 +348,39 @@ export default function Home() {
               <ExportButton report={report} fileName={fileName} />
             </div>
           </header>
+          {isPreviewMode && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 32px",
+              background: "linear-gradient(90deg, rgba(144,96,248,0.08), rgba(232,64,200,0.08))",
+              borderBottom: "1px solid rgba(144,96,248,0.15)",
+              gap: 12,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Lock style={{ width: 14, height: 14, color: "#9060f8", flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, color: "#6b6860" }}>
+                  <strong style={{ color: "#111010" }}>Preview mode</strong> — You&apos;re exploring with sample data.
+                  SQL, Statistics, Monitoring and AI features require an account.
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <Link href="/sign-up" style={{
+                  padding: "6px 16px", borderRadius: 7, fontSize: 12.5, fontWeight: 500,
+                  background: "linear-gradient(135deg, #9060f8, #e840c8)",
+                  color: "#fff", textDecoration: "none", whiteSpace: "nowrap",
+                }}>
+                  Get started free
+                </Link>
+                <Link href="/sign-in" style={{
+                  padding: "6px 14px", borderRadius: 7, fontSize: 12.5,
+                  border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860",
+                  textDecoration: "none", whiteSpace: "nowrap",
+                }}>
+                  Sign in
+                </Link>
+              </div>
+            </div>
+          )}
           <main className="flex-1 overflow-y-auto p-6">
             <ErrorBoundary>
               {isUploading && activeSection === "overview" && <DashboardSkeleton />}
@@ -317,13 +406,19 @@ export default function Home() {
               {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
               {activeSection === "insights" && <InsightsSection report={report} />}
               {activeSection === "statistics" && (
-                <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
+                isPreviewMode
+                  ? <LockedPreview feature="Statistical Analysis" />
+                  : <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "cleaning" && (
-                <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
+                isPreviewMode
+                  ? <LockedPreview feature="Data Cleaning" />
+                  : <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
               )}
               {activeSection === "transforms" && (
-                <TransformSection report={report} onReportUpdate={handleReportUpdate} />
+                isPreviewMode
+                  ? <LockedPreview feature="Feature Engineering" />
+                  : <TransformSection report={report} onReportUpdate={handleReportUpdate} />
               )}
               {activeSection === "visualizations" && (
                 <VisualizationsSection
@@ -333,10 +428,14 @@ export default function Home() {
                 />
               )}
               {activeSection === "sql" && (
-                <SQLQuerySection datasetId={openDatasetId} orgId="default" />
+                isPreviewMode
+                  ? <LockedPreview feature="SQL Editor" />
+                  : <SQLQuerySection datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "monitors" && (
-                <MonitoringSection datasetId={openDatasetId} orgId="default" />
+                isPreviewMode
+                  ? <LockedPreview feature="Monitors" />
+                  : <MonitoringSection datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "comments" && (
                 <CommentsSection
@@ -388,6 +487,7 @@ export default function Home() {
       uploadProgress={uploadProgress}
       error={error}
       onClearError={handleClearError}
+      isSignedIn={false}
     />
   );
 }

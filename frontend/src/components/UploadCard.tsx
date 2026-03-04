@@ -9,15 +9,17 @@ interface UploadCardProps {
   error: string | null;
   onClearError: () => void;
   onLoadSample?: () => void;
+  isSignedIn?: boolean;
 }
 
-export default function UploadCard({ 
-  onFileAccepted, 
-  isUploading, 
-  uploadProgress, 
-  error, 
+export default function UploadCard({
+  onFileAccepted,
+  isUploading,
+  uploadProgress,
+  error,
   onClearError,
-  onLoadSample 
+  onLoadSample,
+  isSignedIn,
 }: UploadCardProps) {
   return (
     <div className="mt-8 w-full flex justify-center">
@@ -28,6 +30,7 @@ export default function UploadCard({
         error={error}
         onClearError={onClearError}
         onLoadSample={onLoadSample}
+        isSignedIn={isSignedIn}
       />
     </div>
   );
