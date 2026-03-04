@@ -61,7 +61,7 @@ export function FileUpload({
     },
     maxFiles: 1,
     disabled: isUploading,
-    maxSize: 2 * 1024 * 1024 * 1024, // 2GB
+    maxSize: 100 * 1024 * 1024, // 100 MB
   });
 
   const handleClear = (e: React.MouseEvent) => {
@@ -162,7 +162,7 @@ export function FileUpload({
             <p className="upload-text mt-3 text-[14px] tracking-wide text-white">
               DROP FILES OR{" "}
               <span className="browse text-[#7dd3fc] font-bold">BROWSE</span>
-              <span className="limit text-[#aaa] ml-1">(up to 2GB)</span>
+              <span className="limit text-[#aaa] ml-1">(up to 100 MB)</span>
             </p>
           </>
         )}
@@ -174,7 +174,7 @@ export function FileUpload({
           onClick={onLoadSample}
           className="sample-text mt-4 text-[13px] text-[#aaa] hover:text-white transition-colors bg-transparent border-none cursor-pointer"
         >
-          ✎ Try with our sample <span className="text-white">&quot;Customer Behavior&quot;</span> dataset.
+          ✎ Try with our sample <span className="text-white">&quot;Sales Data&quot;</span> dataset.
         </button>
       )}
 
