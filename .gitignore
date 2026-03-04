@@ -59,3 +59,6 @@ coverage/
 *.bak
 *.tmp
 .cache/
+
+# Sushi local dev state
+backend/.last_upload/

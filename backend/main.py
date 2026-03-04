@@ -103,6 +103,68 @@ _current_df: Optional[pd.DataFrame] = None
 # Simple in-memory cache for analysis results (file hash -> report)
 _analysis_cache: dict[str, Any] = {}
 
+# Persistent temp file so the DataFrame survives backend restarts
+_LAST_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), ".last_upload")
+_LAST_UPLOAD_DATA = os.path.join(_LAST_UPLOAD_DIR, "data")
+_LAST_UPLOAD_META = os.path.join(_LAST_UPLOAD_DIR, "meta.json")
+
+
+def _persist_upload(contents: bytes, filename: str) -> None:
+    """Save uploaded file bytes + metadata to disk for recovery after restart."""
+    os.makedirs(_LAST_UPLOAD_DIR, exist_ok=True)
+    with open(_LAST_UPLOAD_DATA, "wb") as f:
+        f.write(contents)
+    with open(_LAST_UPLOAD_META, "w") as f:
+        json.dump({"filename": filename}, f)
+
+
+def _read_bytes_as_df(raw: bytes, filename: str) -> pd.DataFrame:
+    """Parse raw bytes into a DataFrame using the filename extension."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext == "csv":
+        return pd.read_csv(io.BytesIO(raw))
+    elif ext == "tsv":
+        return pd.read_csv(io.BytesIO(raw), sep="\t")
+    elif ext in ("xls", "xlsx"):
+        return pd.read_excel(io.BytesIO(raw), engine="openpyxl")
+    elif ext == "parquet":
+        return pd.read_parquet(io.BytesIO(raw))
+    elif ext == "json":
+        data = json.loads(raw.decode("utf-8"))
+        if isinstance(data, list):
+            df = pd.json_normalize(data, max_level=1) if data else pd.DataFrame()
+        elif isinstance(data, dict):
+            df = pd.json_normalize([data], max_level=1)
+        else:
+            return pd.DataFrame()
+        for col in df.columns:
+            if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
+                df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+        return df
+    else:
+        return pd.read_csv(io.BytesIO(raw))  # best-effort fallback
+
+
+def _get_current_df() -> Optional[pd.DataFrame]:
+    """Return the current DataFrame, reloading from disk if needed."""
+    global _current_df
+    if _current_df is not None:
+        return _current_df
+    # Try to recover from persistent temp file
+    if os.path.exists(_LAST_UPLOAD_DATA) and os.path.exists(_LAST_UPLOAD_META):
+        try:
+            with open(_LAST_UPLOAD_META) as f:
+                meta = json.load(f)
+            with open(_LAST_UPLOAD_DATA, "rb") as f:
+                raw = f.read()
+            _current_df = _read_bytes_as_df(raw, meta.get("filename", "data.csv"))
+            logger.info(f"Recovered DataFrame from disk: {meta.get('filename')}, shape: {_current_df.shape}")
+            return _current_df
+        except Exception as e:
+            logger.warning(f"Failed to recover DataFrame from disk: {e}")
+    return None
+
+
 def get_file_hash(contents: bytes) -> str:
     """Generate hash for file contents for caching."""
     import hashlib
@@ -184,6 +246,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         contents = file.file.read()
         file_hash = get_file_hash(contents)
         
+        # Persist to disk so stats survive backend restarts
+        _persist_upload(contents, file.filename or "data.csv")
+        
         # Check cache
         if file_hash in _analysis_cache:
             logger.info(f"Cache hit for file: {file.filename}")
@@ -249,14 +314,15 @@ async def analyze_file(file: UploadFile = File(...)):
 @app.get("/visualize/{column_name}")
 async def visualize_column(column_name: str, chart_type: str = "auto"):
     """On-demand chart generation for a single column."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
 
-    if column_name not in _current_df.columns:
+    if column_name not in df.columns:
         raise HTTPException(status_code=404, detail=f"Column '{column_name}' not found")
 
-    viz = Visualizer(_current_df)
-    is_numeric = pd.api.types.is_numeric_dtype(_current_df[column_name])
+    viz = Visualizer(df)
+    is_numeric = pd.api.types.is_numeric_dtype(df[column_name])
 
     if chart_type == "auto":
         chart_type = "distribution" if is_numeric else "categorical_bar"
@@ -275,10 +341,11 @@ async def visualize_column(column_name: str, chart_type: str = "auto"):
 @app.get("/visualize")
 async def visualize_all():
     """Generate all visualizations for the currently loaded dataset."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
 
-    viz = Visualizer(_current_df)
+    viz = Visualizer(df)
     return viz.generate_all_visualizations()
 
 
@@ -326,55 +393,61 @@ async def compare_datasets(file1: UploadFile = File(...), file2: UploadFile = Fi
 @app.get("/stats/advanced")
 async def get_advanced_stats():
     """Get advanced statistical tests for the current dataset."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
-    stats_analyzer = AdvancedStatistics(_current_df)
+    stats_analyzer = AdvancedStatistics(df)
     return stats_analyzer.generate_all_tests()
 
 
 @app.post("/stats/regression")
 async def perform_regression(x_col: str, y_col: str):
     """Perform linear regression between two columns."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
-    stats_analyzer = AdvancedStatistics(_current_df)
+    stats_analyzer = AdvancedStatistics(df)
     return stats_analyzer.linear_regression(x_col, y_col)
 
 
 @app.post("/stats/ttest")
 async def perform_ttest(col1: str, col2: str):
     """Perform independent t-test between two columns."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
-    stats_analyzer = AdvancedStatistics(_current_df)
+    stats_analyzer = AdvancedStatistics(df)
     return stats_analyzer.t_test_independent(col1, col2)
 
 
 @app.post("/stats/mann_whitney")
 async def perform_mann_whitney(col1: str, col2: str, alternative: str = "two-sided"):
     """Mann-Whitney U test between two numeric columns."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).mann_whitney_u(col1, col2, alternative=alternative)
+    return AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
 
 
 @app.post("/stats/chi_square")
 async def perform_chi_square(col1: str, col2: str):
     """Chi-square test of independence between two categorical columns."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).chi_square_test(col1, col2)
+    return AdvancedStatistics(df).chi_square_test(col1, col2)
 
 
 @app.post("/stats/anova")
 async def perform_anova(numeric_col: str, group_col: str):
     """One-way ANOVA: numeric_col grouped by group_col."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).anova_one_way(numeric_col, group_col)
+    return AdvancedStatistics(df).anova_one_way(numeric_col, group_col)
 
 
 @app.post("/stats/correlation")
@@ -383,9 +456,10 @@ async def perform_correlation(col1: str, col2: str, method: str = "pearson"):
     from scipy import stats as scipy_stats
     if method not in ("pearson", "spearman", "kendall"):
         raise HTTPException(status_code=400, detail="method must be pearson | spearman | kendall")
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    data = _current_df[[col1, col2]].dropna()
+    data = df[[col1, col2]].dropna()
     if len(data) < 3:
         raise HTTPException(status_code=422, detail="Insufficient data")
     fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
@@ -401,25 +475,28 @@ async def perform_correlation(col1: str, col2: str, method: str = "pearson"):
 @app.post("/stats/regression/logistic")
 async def perform_logistic_regression(x_col: str, y_col: str, positive_class: str | None = None):
     """Logistic regression for a binary target column."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).logistic_regression(x_col, y_col, positive_class=positive_class)
+    return AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class)
 
 
 @app.post("/stats/regression/polynomial")
 async def perform_polynomial_regression(x_col: str, y_col: str, degree: int = 2):
     """Polynomial regression for numeric predictor/target pairs."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).polynomial_regression(x_col, y_col, degree=degree)
+    return AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
 
 
 @app.post("/stats/time_series/decompose")
 async def perform_ts_decomposition(date_col: str, value_col: str, period: int | None = None, model: str = "additive"):
     """Time-series decomposition into trend/seasonality/residual."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).time_series_decomposition(
+    return AdvancedStatistics(df).time_series_decomposition(
         date_col=date_col, value_col=value_col, period=period, model=model,
     )
 
@@ -430,9 +507,10 @@ async def perform_arima_forecast(
     periods: int = 12, p: int = 1, d: int = 1, q: int = 1, alpha: float = 0.05,
 ):
     """ARIMA forecast endpoint for a date/value series."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).arima_forecast(
+    return AdvancedStatistics(df).arima_forecast(
         date_col=date_col, value_col=value_col,
         periods=periods, p=p, d=d, q=q, alpha=alpha,
     )
@@ -441,9 +519,10 @@ async def perform_arima_forecast(
 @app.post("/stats/cohort")
 async def perform_cohort_analysis(entity_col: str, date_col: str, freq: str = "M"):
     """Cohort retention analysis by entity and activity date."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(_current_df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
+    return AdvancedStatistics(df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
 
 
 @app.post("/stats/ab_test")
@@ -462,24 +541,25 @@ async def perform_ab_test(
 @app.get("/export/excel")
 async def export_to_excel():
     """Export current dataset and analysis to Excel."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
     # Get the cached report
     file_hash = None
     report = None
     for hash_key, cache_data in _analysis_cache.items():
-        if cache_data["df"].equals(_current_df):
+        if cache_data["df"].equals(df):
             file_hash = hash_key
             report = cache_data["report"]
             break
     
     if report is None:
         # Generate report if not cached
-        analyzer = EDAAnalyzer(_current_df)
+        analyzer = EDAAnalyzer(df)
         report = analyzer.generate_full_report()
     
-    exporter = DataExporter(_current_df, report)
+    exporter = DataExporter(df, report)
     excel_data = exporter.to_excel()
     
     from fastapi.responses import Response
@@ -493,21 +573,22 @@ async def export_to_excel():
 @app.get("/export/markdown")
 async def export_to_markdown():
     """Export analysis report as markdown."""
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
     # Get the cached report
     report = None
     for cache_data in _analysis_cache.values():
-        if cache_data["df"].equals(_current_df):
+        if cache_data["df"].equals(df):
             report = cache_data["report"]
             break
     
     if report is None:
-        analyzer = EDAAnalyzer(_current_df)
+        analyzer = EDAAnalyzer(df)
         report = analyzer.generate_full_report()
     
-    exporter = DataExporter(_current_df, report)
+    exporter = DataExporter(df, report)
     markdown_content = exporter.generate_markdown_report()
     
     from fastapi.responses import Response
@@ -545,11 +626,12 @@ async def clean_dataset(operations: dict):
     }
     """
     global _current_df
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
 
     try:
-        cleaner = DataCleaner(_current_df)
+        cleaner = DataCleaner(df)
 
         if operations.get("drop_missing_rows"):
             cleaner.drop_missing_rows(threshold=operations.get("drop_missing_rows_threshold", 0.0))
@@ -639,11 +721,12 @@ async def transform_dataset(operations: dict):
     }
     """
     global _current_df
-    if _current_df is None:
+    df = _get_current_df()
+    if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
 
     try:
-        transformer = DataTransformer(_current_df)
+        transformer = DataTransformer(df)
 
         if operations.get("log_transform"):
             transformer.log_transform(operations["log_transform"])
