@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Upload,
   FileSpreadsheet,
@@ -12,13 +14,14 @@ import {
   TrendingUp,
   Database,
   ArrowRight,
-  Sparkles,
   BarChart3,
-  Loader2,
+  Folder,
+  Plus,
 } from "lucide-react";
-import { FileUpload } from "@/components/FileUpload";
 import { DatasetSummary, listDatasets } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { useDropzone } from "react-dropzone";
+import { Progress } from "@/components/ui/progress";
+import { AlertCircle, X } from "lucide-react";
 
 interface UserDashboardProps {
   onFileAccepted: (file: File) => void;
@@ -56,17 +59,6 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-const FORMAT_COLORS: Record<string, { bg: string; text: string }> = {
-  csv: { bg: "bg-emerald-500/10", text: "text-emerald-500" },
-  xlsx: { bg: "bg-blue-500/10", text: "text-blue-500" },
-  xls: { bg: "bg-blue-500/10", text: "text-blue-500" },
-  parquet: { bg: "bg-violet-500/10", text: "text-violet-500" },
-  json: { bg: "bg-amber-500/10", text: "text-amber-500" },
-  tsv: { bg: "bg-teal-500/10", text: "text-teal-500" },
-  sqlite: { bg: "bg-orange-500/10", text: "text-orange-500" },
-  db: { bg: "bg-orange-500/10", text: "text-orange-500" },
-};
-
 export function UserDashboard({
   onFileAccepted,
   isUploading,
@@ -78,266 +70,435 @@ export function UserDashboard({
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [recentDatasets, setRecentDatasets] = useState<DatasetSummary[]>([]);
-  const [starredDatasets, setStarredDatasets] = useState<DatasetSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, starred: 0, thisWeek: 0 });
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
     try {
-      const [all, starred] = await Promise.all([
-        listDatasets("default", { archived: false }),
-        listDatasets("default", { starred: true }),
-      ]);
-      setRecentDatasets(all.slice(0, 5));
-      setStarredDatasets(starred.slice(0, 3));
-      
-      // Calculate stats
-      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const thisWeek = all.filter(d => new Date(d.created_at).getTime() > weekAgo).length;
-      setStats({
-        total: all.length,
-        starred: starred.length,
-        thisWeek,
-      });
+      const all = await listDatasets("default", { archived: false });
+      setRecentDatasets(all.slice(0, 6));
+      setTotalCount(all.length);
     } catch {
-      // Silently fail - user might not have any datasets yet
+      // Silently fail
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isLoaded && user) {
-      loadDatasets();
-    }
+    if (isLoaded && user) loadDatasets();
   }, [isLoaded, user, loadDatasets]);
 
   const firstName = user?.firstName || user?.username || "there";
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        setSelectedFile(file);
+        onFileAccepted(file);
+      }
+    },
+    [onFileAccepted]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "text/csv": [".csv"],
+      "text/tab-separated-values": [".tsv"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/json": [".json"],
+      "application/vnd.apache.parquet": [".parquet"],
+      "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
+    },
+    maxFiles: 1,
+    disabled: isUploading,
+    maxSize: 100 * 1024 * 1024,
+  });
 
   const handleDatasetClick = (id: string) => {
     router.push(`/datasets/${id}`);
   };
 
+  const handleClearError = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    onClearError();
+  };
+
   return (
-    <div className="min-h-screen bg-[#0f1117]">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-[#0f1117]/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-white">Sushi</span>
+    <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
+      {/* ── Nav ── */}
+      <nav style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        background: "rgba(240,238,233,0.88)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.07)",
+        padding: "0 48px",
+        height: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        {/* Gradient line */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: "linear-gradient(90deg, transparent, rgba(144,96,248,0.5), rgba(232,64,200,0.5), transparent)",
+        }} />
+
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 9,
+            background: "linear-gradient(135deg, #1a1a1a 0%, #333 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            overflow: "hidden",
+          }}>
+            <Image src="/sushi-logo.png" alt="Sushi" width={22} height={22} />
+          </div>
+          <span style={{ fontWeight: 600, fontSize: 17, color: "#111010", letterSpacing: "-0.3px" }}>Sushi</span>
+        </Link>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/datasets" style={{
+            fontSize: 13, color: "#6b6860", textDecoration: "none",
+            padding: "7px 14px", borderRadius: 7,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <Folder size={14} />
+            My Datasets
           </Link>
-          <nav className="flex items-center gap-4">
-            <Link 
-              href="/datasets" 
-              className="text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              All Datasets
-            </Link>
-            <Link 
-              href="/connectors" 
-              className="text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Connectors
-            </Link>
-            <Link 
-              href="/settings" 
-              className="text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              Settings
-            </Link>
-          </nav>
+          <Link href="/connectors" style={{
+            fontSize: 13, color: "#6b6860", textDecoration: "none",
+            padding: "7px 14px", borderRadius: 7,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <Database size={14} />
+            Connectors
+          </Link>
+          <UserButton appearance={{ elements: { avatarBox: "w-8 h-8" } }} />
         </div>
-      </header>
+      </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        {/* Welcome Section */}
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {getGreeting()}, {firstName}! 👋
-          </h1>
-          <p className="text-slate-400">
-            Upload a dataset to get instant AI-powered insights, or continue where you left off.
-          </p>
-        </div>
+      {/* ── Main ── */}
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 32px" }}>
+        {/* Greeting */}
+        <h1 className="font-display" style={{ fontSize: 42, color: "#111010", marginBottom: 6, letterSpacing: "-0.5px" }}>
+          {getGreeting()}, <em>{firstName}</em>.
+        </h1>
+        <p style={{ fontSize: 15, color: "#6b6860", marginBottom: 40, lineHeight: 1.5 }}>
+          Upload a dataset to get instant AI-powered insights, or pick up where you left off.
+        </p>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-cyan-500/50 transition-colors">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                <Database className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{stats.total}</p>
-                <p className="text-xs text-slate-400">Total Datasets</p>
-              </div>
+        {/* ── Two-column layout ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>
+
+          {/* Left: Upload */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <Upload size={16} style={{ color: "#9060f8" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#111010", letterSpacing: "0.02em", textTransform: "uppercase" }}>
+                Upload New
+              </span>
             </div>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-amber-500/50 transition-colors">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Star className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{stats.starred}</p>
-                <p className="text-xs text-slate-400">Starred</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-emerald-500/50 transition-colors">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{stats.thisWeek}</p>
-                <p className="text-xs text-slate-400">This Week</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Upload Section */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Upload className="w-5 h-5 text-cyan-400" />
-              <h2 className="text-lg font-semibold text-white">Upload New Dataset</h2>
-            </div>
-            
-            <FileUpload
-              onFileAccepted={onFileAccepted}
-              isUploading={isUploading}
-              uploadProgress={uploadProgress}
-              error={error}
-              onClearError={onClearError}
-              onLoadSample={onLoadSample}
-            />
+            {/* Drop zone */}
+            <div
+              {...getRootProps()}
+              style={{
+                background: isDragActive
+                  ? "rgba(144,96,248,0.06)"
+                  : "rgba(255,255,255,0.72)",
+                border: isDragActive
+                  ? "2px dashed rgba(144,96,248,0.5)"
+                  : "1.5px dashed rgba(0,0,0,0.12)",
+                borderRadius: 16,
+                padding: "40px 24px",
+                textAlign: "center",
+                cursor: isUploading ? "default" : "pointer",
+                transition: "all 0.2s ease",
+                minHeight: 180,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <input {...getInputProps()} />
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              <Link
-                href="/connectors"
-                className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-violet-500/50 hover:bg-white/[0.07] transition-all group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
-                  <Database className="w-5 h-5 text-violet-400" />
+              {isUploading && selectedFile ? (
+                <div style={{ width: "100%", maxWidth: 340 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+                    <FileSpreadsheet size={16} style={{ color: "#9060f8" }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#111010" }}>{selectedFile.name}</span>
+                    <span style={{ fontSize: 11, color: "#9a9690" }}>{formatBytes(selectedFile.size)}</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-[6px]" />
+                  <p style={{ fontSize: 12, color: "#9a9690", marginTop: 8 }}>
+                    {uploadProgress === 0 ? "Connecting…" : uploadProgress < 50 ? `Uploading… ${uploadProgress}%` : uploadProgress < 90 ? "Analyzing…" : "Almost done…"}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Connect Database</p>
-                  <p className="text-xs text-slate-500">PostgreSQL, MySQL</p>
-                </div>
-              </Link>
-              <Link
-                href="/pipelines"
-                className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-emerald-500/50 hover:bg-white/[0.07] transition-all group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                  <BarChart3 className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Pipelines</p>
-                  <p className="text-xs text-slate-500">Automate workflows</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Recent & Starred Datasets */}
-          <div className="space-y-6">
-            {/* Recent Datasets */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-slate-400" />
-                  <h2 className="text-lg font-semibold text-white">Recent Datasets</h2>
-                </div>
-                <Link 
-                  href="/datasets" 
-                  className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                >
-                  View All <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
-                </div>
-              ) : recentDatasets.length === 0 ? (
-                <div className="bg-white/5 border border-dashed border-white/20 rounded-xl p-8 text-center">
-                  <FileSpreadsheet className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm">No datasets yet</p>
-                  <p className="text-slate-500 text-xs mt-1">Upload your first file to get started</p>
+              ) : error ? (
+                <div style={{ textAlign: "center" }}>
+                  <AlertCircle size={28} style={{ color: "#e85454", margin: "0 auto 8px" }} />
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "#e85454" }}>Upload failed</p>
+                  <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4, maxWidth: 300, margin: "4px auto 0" }}>{error}</p>
+                  <button
+                    onClick={handleClearError}
+                    style={{ fontSize: 12, color: "#9060f8", background: "none", border: "none", cursor: "pointer", marginTop: 10, fontWeight: 500 }}
+                  >
+                    Try again
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {recentDatasets.map((dataset) => {
-                    const ext = dataset.original_filename.split(".").pop()?.toLowerCase() || "csv";
-                    const colors = FORMAT_COLORS[ext] || FORMAT_COLORS.csv;
-                    return (
-                      <button
-                        key={dataset.id}
-                        onClick={() => handleDatasetClick(dataset.id)}
-                        className="w-full flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:border-cyan-500/50 hover:bg-white/[0.07] transition-all text-left group"
-                      >
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", colors.bg)}>
-                          <span className={cn("text-xs font-bold uppercase", colors.text)}>
-                            {ext}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
-                            {dataset.original_filename}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {formatBytes(dataset.file_size_bytes)} • {timeAgo(dataset.created_at)}
-                          </p>
-                        </div>
-                        {dataset.is_starred && (
-                          <Star className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                        )}
-                        <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #9060f8, #7c4ddb)" }}>CSV</span>
+                    <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #e840c8, #c836ab)" }}>XLS</span>
+                    <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #00d4e8, #00b8cc)" }}>JSON</span>
+                  </div>
+                  <p style={{ fontSize: 14, color: "#111010", fontWeight: 400 }}>
+                    Drop files or <span style={{ color: "#9060f8", fontWeight: 600, cursor: "pointer" }}>browse</span>
+                  </p>
+                  <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>CSV, JSON, Excel, Parquet — up to 100 MB</p>
+                </>
               )}
             </div>
 
-            {/* Starred Datasets */}
-            {starredDatasets.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Star className="w-5 h-5 text-amber-400" />
-                  <h2 className="text-lg font-semibold text-white">Starred</h2>
+            {/* Sample link */}
+            {!isUploading && !selectedFile && (
+              <button
+                onClick={onLoadSample}
+                style={{
+                  display: "block",
+                  margin: "12px auto 0",
+                  fontSize: 12.5, color: "#9a9690",
+                  background: "none", border: "none", cursor: "pointer",
+                }}
+              >
+                or try with our sample <span style={{ color: "#9060f8", fontWeight: 500 }}>&quot;Sales Data&quot;</span> dataset
+              </button>
+            )}
+
+            {/* Error banner */}
+            {error && !isUploading && (
+              <button
+                onClick={handleClearError}
+                style={{
+                  display: "flex", width: "100%", marginTop: 12,
+                  alignItems: "center", gap: 8,
+                  borderRadius: 12,
+                  border: "1px solid rgba(232,84,84,0.2)",
+                  background: "rgba(232,84,84,0.06)",
+                  padding: "10px 14px",
+                  textAlign: "left", fontSize: 12, color: "#e85454",
+                  cursor: "pointer",
+                }}
+              >
+                <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{error}</span>
+                <X size={14} style={{ flexShrink: 0 }} />
+              </button>
+            )}
+
+            {/* Quick actions */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 24 }}>
+              <Link href="/connectors" style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "14px 16px",
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 12,
+                textDecoration: "none",
+                transition: "border-color 0.2s",
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: "linear-gradient(135deg, rgba(144,96,248,0.1), rgba(232,64,200,0.1))",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Database size={16} style={{ color: "#9060f8" }} />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {starredDatasets.map((dataset) => {
-                    const ext = dataset.original_filename.split(".").pop()?.toLowerCase() || "csv";
-                    const colors = FORMAT_COLORS[ext] || FORMAT_COLORS.csv;
-                    return (
-                      <button
-                        key={dataset.id}
-                        onClick={() => handleDatasetClick(dataset.id)}
-                        className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full hover:border-amber-500/50 hover:bg-amber-500/20 transition-all group"
-                      >
-                        <span className={cn("text-xs font-bold uppercase", colors.text)}>
-                          {ext}
-                        </span>
-                        <span className="text-sm text-white truncate max-w-[120px]">
-                          {dataset.original_filename.replace(/\.[^/.]+$/, "")}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "#111010" }}>Connect DB</p>
+                  <p style={{ fontSize: 11, color: "#9a9690" }}>PostgreSQL, MySQL</p>
                 </div>
+              </Link>
+              <Link href="/pipelines" style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "14px 16px",
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 12,
+                textDecoration: "none",
+                transition: "border-color 0.2s",
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: "linear-gradient(135deg, rgba(0,212,232,0.1), rgba(0,232,160,0.1))",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <BarChart3 size={16} style={{ color: "#00d4e8" }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "#111010" }}>Pipelines</p>
+                  <p style={{ fontSize: 11, color: "#9a9690" }}>Automate workflows</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Right: Recent Datasets */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={16} style={{ color: "#9a9690" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#111010", letterSpacing: "0.02em", textTransform: "uppercase" }}>
+                  Recent
+                </span>
+                {totalCount > 0 && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: "#9060f8",
+                    background: "rgba(144,96,248,0.08)",
+                    padding: "2px 8px", borderRadius: 20,
+                  }}>
+                    {totalCount}
+                  </span>
+                )}
+              </div>
+              <Link href="/datasets" style={{
+                fontSize: 12, color: "#9060f8", textDecoration: "none",
+                display: "flex", alignItems: "center", gap: 4, fontWeight: 500,
+              }}>
+                View all <ArrowRight size={12} />
+              </Link>
+            </div>
+
+            {loading ? (
+              <div style={{
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 14,
+                padding: "48px 24px",
+                textAlign: "center",
+              }}>
+                <div style={{
+                  width: 20, height: 20,
+                  border: "2px solid rgba(144,96,248,0.2)",
+                  borderTopColor: "#9060f8",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                  margin: "0 auto",
+                }} />
+              </div>
+            ) : recentDatasets.length === 0 ? (
+              <div style={{
+                background: "rgba(255,255,255,0.72)",
+                border: "1.5px dashed rgba(0,0,0,0.1)",
+                borderRadius: 14,
+                padding: "48px 24px",
+                textAlign: "center",
+              }}>
+                <FileSpreadsheet size={32} style={{ color: "#c8c4be", margin: "0 auto 12px" }} />
+                <p style={{ fontSize: 14, color: "#6b6860", fontWeight: 500 }}>No datasets yet</p>
+                <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>Upload your first file to get started</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {recentDatasets.map((dataset) => {
+                  const ext = dataset.original_filename.split(".").pop()?.toLowerCase() || "csv";
+                  const extColors: Record<string, string> = {
+                    csv: "#9060f8", xlsx: "#4080ff", xls: "#4080ff",
+                    json: "#e8a020", parquet: "#e840c8", tsv: "#00d4e8",
+                  };
+                  const color = extColors[ext] || "#9060f8";
+                  return (
+                    <button
+                      key={dataset.id}
+                      onClick={() => handleDatasetClick(dataset.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "12px 16px",
+                        background: "rgba(255,255,255,0.72)",
+                        border: "1px solid rgba(0,0,0,0.07)",
+                        borderRadius: 12,
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s ease",
+                        width: "100%",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.95)";
+                        e.currentTarget.style.borderColor = "rgba(144,96,248,0.25)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.72)";
+                        e.currentTarget.style.borderColor = "rgba(0,0,0,0.07)";
+                      }}
+                    >
+                      <div style={{
+                        width: 38, height: 38, borderRadius: 8, flexShrink: 0,
+                        background: `${color}10`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: "uppercase" }}>{ext}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {dataset.original_filename}
+                        </p>
+                        <p style={{ fontSize: 11, color: "#9a9690", marginTop: 2 }}>
+                          {formatBytes(dataset.file_size_bytes)} &middot; {timeAgo(dataset.created_at)}
+                          {dataset.row_count && ` \u00b7 ${dataset.row_count.toLocaleString()} rows`}
+                        </p>
+                      </div>
+                      {dataset.is_starred && <Star size={14} style={{ color: "#e8a020", flexShrink: 0 }} />}
+                      <ArrowRight size={14} style={{ color: "#c8c4be", flexShrink: 0 }} />
+                    </button>
+                  );
+                })}
               </div>
             )}
+
+            {/* Stats row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 20 }}>
+              <div style={{
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 12,
+                padding: "16px 18px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Database size={14} style={{ color: "#9060f8" }} />
+                  <span style={{ fontSize: 22, fontWeight: 600, color: "#111010" }}>{totalCount}</span>
+                </div>
+                <p style={{ fontSize: 11, color: "#9a9690", marginTop: 2 }}>Total Datasets</p>
+              </div>
+              <div style={{
+                background: "rgba(255,255,255,0.72)",
+                border: "1px solid rgba(0,0,0,0.07)",
+                borderRadius: 12,
+                padding: "16px 18px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <TrendingUp size={14} style={{ color: "#00d4e8" }} />
+                  <span style={{ fontSize: 22, fontWeight: 600, color: "#111010" }}>
+                    {recentDatasets.filter(d => {
+                      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                      return new Date(d.created_at).getTime() > weekAgo;
+                    }).length}
+                  </span>
+                </div>
+                <p style={{ fontSize: 11, color: "#9a9690", marginTop: 2 }}>This Week</p>
+              </div>
+            </div>
           </div>
         </div>
       </main>

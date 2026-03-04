@@ -31,6 +31,16 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'react-plotly.js'],
   },
+  async rewrites() {
+    // Proxy /api/* to the backend in local development
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/:path*`,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     const bufferPolyfill = resolveOptional('buffer/');
     const resolvedBufferShim = bufferPolyfill || require.resolve('./src/shims/buffer.ts');
