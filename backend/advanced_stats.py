@@ -35,9 +35,10 @@ class AdvancedStatistics:
         if value is None:
             return None
         try:
-            if pd.isna(value):
+            f = float(value)
+            if pd.isna(f) or not np.isfinite(f):
                 return None
-            return float(value)
+            return f
         except Exception:
             return None
 
@@ -305,24 +306,31 @@ class AdvancedStatistics:
         group_names = []
         for name, group in self.df.groupby(group_col)[numeric_col]:
             clean_group = group.dropna()
-            if len(clean_group) > 0:
+            if len(clean_group) >= 2:  # ANOVA needs ≥2 samples per group
                 groups.append(clean_group.values)
                 group_names.append(str(name))
 
         if len(groups) < 2:
-            return {"error": "Need at least 2 groups for ANOVA"}
+            return {"error": "Need at least 2 groups with 2+ samples each for ANOVA. Try a column with fewer unique values."}
+
+        # Cap at 50 groups to avoid excessive computation and JSON size
+        if len(groups) > 50:
+            groups = groups[:50]
+            group_names = group_names[:50]
 
         f_statistic, p_value = stats.f_oneway(*groups)
+        f_val = self._safe_float(f_statistic)
+        p_val = self._safe_float(p_value)
 
         return {
             "test": "One-way ANOVA",
             "numeric_column": numeric_col,
             "group_column": group_col,
-            "f_statistic": float(f_statistic),
-            "p_value": float(p_value),
-            "significant": p_value < 0.05,
+            "f_statistic": f_val,
+            "p_value": p_val,
+            "significant": bool(p_val is not None and p_val < 0.05),
             "n_groups": len(groups),
-            "group_names": group_names,
+            "group_names": group_names[:20],  # trim for JSON size
         }
 
     def normality_test(self, column: str) -> Dict[str, Any]:
@@ -639,13 +647,15 @@ class AdvancedStatistics:
                     data = self.df[[col1, col2]].dropna()
                     if len(data) > 2:
                         r, p_value = stats.pearsonr(data[col1], data[col2])
+                        r_val = self._safe_float(r)
+                        p_val = self._safe_float(p_value)
                         results["correlations_with_significance"].append(
                             {
                                 "column1": col1,
                                 "column2": col2,
-                                "correlation": float(r),
-                                "p_value": float(p_value),
-                                "significant": p_value < 0.05,
+                                "correlation": r_val,
+                                "p_value": p_val,
+                                "significant": bool(p_val is not None and p_val < 0.05),
                             }
                         )
         return results

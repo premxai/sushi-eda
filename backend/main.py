@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import os
 import tempfile
 import uuid
@@ -62,6 +63,18 @@ else:
 _LOG_PATH = os.path.join(tempfile.gettempdir(), "sushi", "app.log")
 os.makedirs(os.path.dirname(_LOG_PATH), exist_ok=True)
 logger.add(_LOG_PATH, rotation="500 MB", retention="10 days", level="INFO")
+
+
+def _sanitize(obj: Any) -> Any:
+    """Recursively replace NaN/Inf floats with None so JSON serialization never crashes."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    return obj
+
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -405,7 +418,7 @@ async def get_advanced_stats():
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
     
     stats_analyzer = AdvancedStatistics(df)
-    return stats_analyzer.generate_all_tests()
+    return _sanitize(stats_analyzer.generate_all_tests())
 
 
 @app.post("/stats/regression")
@@ -414,9 +427,7 @@ async def perform_regression(x_col: str, y_col: str):
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    
-    stats_analyzer = AdvancedStatistics(df)
-    return stats_analyzer.linear_regression(x_col, y_col)
+    return _sanitize(AdvancedStatistics(df).linear_regression(x_col, y_col))
 
 
 @app.post("/stats/ttest")
@@ -425,9 +436,7 @@ async def perform_ttest(col1: str, col2: str):
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    
-    stats_analyzer = AdvancedStatistics(df)
-    return stats_analyzer.t_test_independent(col1, col2)
+    return _sanitize(AdvancedStatistics(df).t_test_independent(col1, col2))
 
 
 @app.post("/stats/mann_whitney")
@@ -436,7 +445,7 @@ async def perform_mann_whitney(col1: str, col2: str, alternative: str = "two-sid
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
+    return _sanitize(AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative))
 
 
 @app.post("/stats/chi_square")
@@ -445,7 +454,7 @@ async def perform_chi_square(col1: str, col2: str):
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).chi_square_test(col1, col2)
+    return _sanitize(AdvancedStatistics(df).chi_square_test(col1, col2))
 
 
 @app.post("/stats/anova")
@@ -454,7 +463,7 @@ async def perform_anova(numeric_col: str, group_col: str):
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).anova_one_way(numeric_col, group_col)
+    return _sanitize(AdvancedStatistics(df).anova_one_way(numeric_col, group_col))
 
 
 @app.post("/stats/correlation")
@@ -471,11 +480,13 @@ async def perform_correlation(col1: str, col2: str, method: str = "pearson"):
         raise HTTPException(status_code=422, detail="Insufficient data")
     fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
     stat, p = fn(data[col1], data[col2])
+    stat_f = None if (math.isnan(float(stat)) or math.isinf(float(stat))) else float(stat)
+    p_f = None if (math.isnan(float(p)) or math.isinf(float(p))) else float(p)
     return {
         "test": f"{method.title()} correlation",
         "column1": col1, "column2": col2,
-        "coefficient": float(stat), "p_value": float(p),
-        "significant": p < 0.05, "n": int(len(data)),
+        "coefficient": stat_f, "p_value": p_f,
+        "significant": bool(p_f is not None and p_f < 0.05), "n": int(len(data)),
     }
 
 
@@ -485,7 +496,7 @@ async def perform_logistic_regression(x_col: str, y_col: str, positive_class: st
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class)
+    return _sanitize(AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class))
 
 
 @app.post("/stats/regression/polynomial")
@@ -494,7 +505,7 @@ async def perform_polynomial_regression(x_col: str, y_col: str, degree: int = 2)
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
+    return _sanitize(AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree))
 
 
 @app.post("/stats/time_series/decompose")
@@ -503,9 +514,9 @@ async def perform_ts_decomposition(date_col: str, value_col: str, period: int | 
     df = _get_current_df()
     if df is None:
         raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).time_series_decomposition(
+    return _sanitize(AdvancedStatistics(df).time_series_decomposition(
         date_col=date_col, value_col=value_col, period=period, model=model,
-    )
+    ))
 
 
 @app.post("/stats/time_series/arima")
