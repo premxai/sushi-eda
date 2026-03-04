@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useJobStream } from "@/hooks/useJobStream";
 import { Button } from "@/components/ui/button";
+import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { ColumnCard } from "@/components/dashboard/ColumnCard";
 import { CorrelationSection } from "@/components/dashboard/CorrelationSection";
@@ -19,9 +20,9 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, fetchAnalysis } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { GitCompare, Lock, FileSpreadsheet, Plus } from "lucide-react";
+import { GitCompare, Lock } from "lucide-react";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -98,6 +99,7 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<NavSection>("overview");
   const [columnSearchTerm, setColumnSearchTerm] = useState("");
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [datasetId, setDatasetId] = useState<string | null>(null);
@@ -250,20 +252,27 @@ export default function Home() {
     setVisualizations(null);
   }, []);
 
-  // Auto-fetch visualizations when a report is loaded
-  useEffect(() => {
-    if (report && !visualizations && !vizLoading) {
+  const handleSectionChange = useCallback(async (section: NavSection) => {
+    setActiveSection(section);
+    if (section === "visualizations" && !visualizations && !vizLoading) {
       setVizLoading(true);
-      fetchVisualizations().then(setVisualizations).catch(() => {}).finally(() => setVizLoading(false));
+      try {
+        const data = await fetchVisualizations();
+        setVisualizations(data);
+      } catch {
+        // silently fail
+      } finally {
+        setVizLoading(false);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!report]);
+  }, [visualizations, vizLoading]);
 
   const handleNewFile = () => {
     setReport(null);
     setFileName("");
     setError(null);
     setUploadProgress(0);
+    setActiveSection("overview");
     setVisualizations(null);
     setOpenDatasetId(null);
     sessionStorage.removeItem(REPORT_KEY);
@@ -271,243 +280,141 @@ export default function Home() {
     sessionStorage.removeItem(DATASET_KEY);
   };
 
-  // ─── Dashboard View — single scrollable page ──────────────────────
+  const handleArchive = async () => {
+    if (!openDatasetId) return;
+    await archiveDataset(openDatasetId);
+    sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(FILE_KEY);
+    sessionStorage.removeItem(DATASET_KEY);
+    handleNewFile();
+  };
+
+  // ─── Dashboard View — sidebar navigation ─────────────────────────
   if (report) {
     const { basic_info } = report;
     const isPreviewMode = !isSignedIn;
-
-    const scrollTo = (id: string) =>
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    const NAV_PILLS = [
-      { id: "overview",       label: "Overview" },
-      { id: "columns",        label: "Columns" },
-      { id: "correlations",   label: "Correlations" },
-      { id: "outliers",       label: "Outliers" },
-      { id: "insights",       label: "Insights" },
-      { id: "visualizations", label: "Visualizations" },
-      { id: "statistics",     label: "Statistics",  locked: isPreviewMode },
-      { id: "cleaning",       label: "Cleaning",    locked: isPreviewMode },
-      { id: "transforms",     label: "Transforms",  locked: isPreviewMode },
-      { id: "sql",            label: "SQL",         locked: isPreviewMode },
-      { id: "monitors",       label: "Monitors",    locked: isPreviewMode },
-      { id: "data",           label: "Data Table" },
-      { id: "report",         label: "Report" },
-    ];
-
-    // Reusable section header
-    const Sec = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
-      <section id={id} style={{ scrollMarginTop: 110, marginBottom: 56 }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12, marginBottom: 20,
-          paddingBottom: 14, borderBottom: "1px solid rgba(0,0,0,0.07)",
-        }}>
-          <h2 className="font-display" style={{ fontSize: 22, color: "#111010", letterSpacing: "-0.3px", margin: 0 }}>{title}</h2>
-        </div>
-        {children}
-      </section>
-    );
+    const sectionTitles: Record<NavSection, string> = {
+      overview: "Overview", columns: "Column Analysis", statistics: "Statistical Analysis",
+      correlations: "Correlations", outliers: "Outlier Detection", insights: "Insights",
+      visualizations: "Visualizations", cleaning: "Data Cleaning", transforms: "Feature Engineering",
+      sql: "SQL Editor", monitors: "Monitors", comments: "Comments", report: "Report", data: "Data Table",
+    };
 
     return (
       <>
-      <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
-        {/* ── Sticky header ── */}
-        <header style={{
-          position: "sticky", top: 0, zIndex: 100,
-          background: "rgba(240,238,233,0.94)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(0,0,0,0.07)",
-        }}>
-          {/* Gradient accent line */}
-          <div style={{ height: 2, background: "linear-gradient(90deg, transparent, rgba(144,96,248,0.5), rgba(232,64,200,0.5), transparent)" }} />
-
-          {/* Top row: filename + controls */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 32px",
+      <div className="flex h-screen" style={{ background: "#f0eee9", display: "flex", flexDirection: "row", height: "100vh", overflow: "hidden" }}>
+        <Sidebar
+          fileName={fileName}
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+          onNewFile={handleNewFile}
+          datasetId={openDatasetId}
+          onArchive={handleArchive}
+        />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header style={{
+            position: "relative", display: "flex", flexShrink: 0,
+            alignItems: "center", justifyContent: "space-between",
+            padding: "14px 32px",
+            background: "rgba(240,238,233,0.88)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(0,0,0,0.07)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <FileSpreadsheet style={{ width: 16, height: 16, color: "#9060f8", flexShrink: 0 }} />
-              <span className="font-display" style={{ fontSize: 17, color: "#111010", letterSpacing: "-0.2px" }}>
-                {fileName || "Dataset"}
-              </span>
-              <span style={{ fontSize: 11, color: "#9a9690", padding: "2px 8px", borderRadius: 20, background: "rgba(0,0,0,0.05)" }}>
-                {basic_info.rows.toLocaleString()} rows · {basic_info.columns} cols
-              </span>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(144,96,248,0.5), rgba(232,64,200,0.5), transparent)" }} />
+            <div>
+              <h1 className="font-display" style={{ fontSize: 22, color: "#111010", letterSpacing: "-0.3px" }}>{sectionTitles[activeSection]}</h1>
+              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>
+                {fileName} · {basic_info.rows.toLocaleString()} rows · {basic_info.columns} columns
+              </p>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button
-                onClick={handleNewFile}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "7px 14px", borderRadius: 8, fontSize: 12.5,
-                  border: "1px solid rgba(0,0,0,0.1)", background: "transparent",
-                  color: "#6b6860", cursor: "pointer",
-                }}
-              >
-                <Plus style={{ width: 13, height: 13 }} />
-                New file
-              </button>
-              <Link href="/compare" style={{ textDecoration: "none" }}>
+            <div className="flex items-center gap-2">
+              <Link href="/compare">
                 <Button variant="outline" size="sm" className="gap-2 text-xs">
-                  <GitCompare className="h-3.5 w-3.5" />
-                  Compare
+                  <GitCompare className="h-3.5 w-3.5" />Compare
                 </Button>
               </Link>
               <ExportButton report={report} fileName={fileName} />
             </div>
-          </div>
-
-          {/* Anchor nav pills */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 2,
-            padding: "0 32px 10px",
-            overflowX: "auto",
-          }}>
-            {NAV_PILLS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => scrollTo(p.id)}
-                style={{
-                  padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                  background: "transparent", color: p.locked ? "#bbb" : "#6b6860",
-                  display: "flex", alignItems: "center", gap: 4,
-                  transition: "background 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.06)"; e.currentTarget.style.color = "#111010"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = p.locked ? "#bbb" : "#6b6860"; }}
-              >
-                {p.locked && <Lock style={{ width: 10, height: 10 }} />}
-                {p.label}
-              </button>
-            ))}
-          </div>
+          </header>
 
           {/* Preview mode banner */}
           {isPreviewMode && (
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "8px 32px",
-              background: "linear-gradient(90deg, rgba(144,96,248,0.08), rgba(232,64,200,0.08))",
-              borderTop: "1px solid rgba(144,96,248,0.12)",
-              gap: 12,
+              padding: "9px 32px", gap: 12, flexShrink: 0,
+              background: "linear-gradient(90deg, rgba(144,96,248,0.07), rgba(232,64,200,0.07))",
+              borderBottom: "1px solid rgba(144,96,248,0.13)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Lock style={{ width: 13, height: 13, color: "#9060f8", flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: "#6b6860" }}>
-                  <strong style={{ color: "#111010" }}>Preview mode</strong> — Statistics, SQL, Cleaning and Monitoring require an account.
+                <Lock style={{ width: 13, height: 13, color: "#9060f8" }} />
+                <span style={{ fontSize: 12.5, color: "#6b6860" }}>
+                  <strong style={{ color: "#111010" }}>Preview mode</strong> — Statistics, SQL, Cleaning &amp; Monitoring require an account.
                 </span>
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                <Link href="/sign-up" style={{ padding: "5px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500, background: "linear-gradient(135deg, #9060f8, #e840c8)", color: "#fff", textDecoration: "none" }}>
-                  Get started free
-                </Link>
-                <Link href="/sign-in" style={{ padding: "5px 12px", borderRadius: 7, fontSize: 12, border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860", textDecoration: "none" }}>
-                  Sign in
-                </Link>
+                <Link href="/sign-up" style={{ padding: "5px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 500, background: "linear-gradient(135deg, #9060f8, #e840c8)", color: "#fff", textDecoration: "none" }}>Get started free</Link>
+                <Link href="/sign-in" style={{ padding: "5px 12px", borderRadius: 7, fontSize: 12.5, border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860", textDecoration: "none" }}>Sign in</Link>
               </div>
             </div>
           )}
-        </header>
 
-        {/* ── Scrollable content ── */}
-        <main style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 32px 120px" }}>
-          <ErrorBoundary>
-            {/* Overview */}
-            <Sec id="overview" title="Overview">
-              {isUploading ? <DashboardSkeleton /> : <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}
-            </Sec>
-
-            {/* Columns */}
-            <Sec id="columns" title={`Column Analysis (${basic_info.columns} columns)`}>
-              <ColumnSearch
-                onSearchChange={setColumnSearchTerm}
-                resultCount={report.column_analysis.filter(c => c.name.toLowerCase().includes(columnSearchTerm.toLowerCase())).length}
-              />
-              <div className="space-y-2 mt-4">
-                {report.column_analysis
-                  .filter(col => col.name.toLowerCase().includes(columnSearchTerm.toLowerCase()))
-                  .map((col) => (
-                    <ColumnCard key={col.name} column={col} preview={report.preview} totalRows={basic_info.rows} />
-                  ))}
-              </div>
-            </Sec>
-
-            {/* Correlations */}
-            <Sec id="correlations" title="Correlations">
-              <CorrelationSection data={report.correlation_matrix} />
-            </Sec>
-
-            {/* Outliers */}
-            <Sec id="outliers" title="Outlier Detection">
-              <OutliersSection outliers={report.outliers} preview={report.preview} />
-            </Sec>
-
-            {/* Insights */}
-            <Sec id="insights" title="Insights">
-              <InsightsSection report={report} />
-            </Sec>
-
-            {/* Visualizations */}
-            <Sec id="visualizations" title="Visualizations">
-              <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} />
-            </Sec>
-
-            {/* Statistics — locked in preview */}
-            <Sec id="statistics" title="Statistical Analysis">
-              {isPreviewMode
-                ? <LockedPreview feature="Statistical Analysis" />
-                : <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />}
-            </Sec>
-
-            {/* Data Cleaning — locked in preview */}
-            <Sec id="cleaning" title="Data Cleaning">
-              {isPreviewMode
-                ? <LockedPreview feature="Data Cleaning" />
-                : <CleaningSection report={report} onReportUpdate={handleReportUpdate} />}
-            </Sec>
-
-            {/* Transforms — locked in preview */}
-            <Sec id="transforms" title="Feature Engineering">
-              {isPreviewMode
-                ? <LockedPreview feature="Feature Engineering" />
-                : <TransformSection report={report} onReportUpdate={handleReportUpdate} />}
-            </Sec>
-
-            {/* SQL — locked in preview */}
-            <Sec id="sql" title="SQL Editor">
-              {isPreviewMode
-                ? <LockedPreview feature="SQL Editor" />
-                : <SQLQuerySection datasetId={openDatasetId} orgId="default" />}
-            </Sec>
-
-            {/* Monitors — locked in preview */}
-            <Sec id="monitors" title="Monitors">
-              {isPreviewMode
-                ? <LockedPreview feature="Monitors" />
-                : <MonitoringSection datasetId={openDatasetId} orgId="default" />}
-            </Sec>
-
-            {/* Data Table */}
-            <Sec id="data" title="Data Table">
-              <DataTable preview={report.preview} />
-            </Sec>
-
-            {/* Report */}
-            <Sec id="report" title="Report">
-              <ReportSection report={report} fileName={fileName} />
-            </Sec>
-          </ErrorBoundary>
-        </main>
+          <main className="flex-1 overflow-y-auto p-6">
+            <ErrorBoundary>
+              {isUploading && activeSection === "overview" && <DashboardSkeleton />}
+              {!isUploading && activeSection === "overview" && <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}
+              {activeSection === "columns" && (
+                <>
+                  <ColumnSearch
+                    onSearchChange={setColumnSearchTerm}
+                    resultCount={report.column_analysis.filter(c => c.name.toLowerCase().includes(columnSearchTerm.toLowerCase())).length}
+                  />
+                  <div className="space-y-2 mt-4">
+                    {report.column_analysis
+                      .filter(col => col.name.toLowerCase().includes(columnSearchTerm.toLowerCase()))
+                      .map((col) => (
+                        <ColumnCard key={col.name} column={col} preview={report.preview} totalRows={basic_info.rows} />
+                      ))}
+                  </div>
+                </>
+              )}
+              {activeSection === "correlations" && <CorrelationSection data={report.correlation_matrix} />}
+              {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
+              {activeSection === "insights" && <InsightsSection report={report} />}
+              {activeSection === "statistics" && (
+                isPreviewMode ? <LockedPreview feature="Statistical Analysis" />
+                  : <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
+              )}
+              {activeSection === "cleaning" && (
+                isPreviewMode ? <LockedPreview feature="Data Cleaning" />
+                  : <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
+              )}
+              {activeSection === "transforms" && (
+                isPreviewMode ? <LockedPreview feature="Feature Engineering" />
+                  : <TransformSection report={report} onReportUpdate={handleReportUpdate} />
+              )}
+              {activeSection === "visualizations" && (
+                <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} />
+              )}
+              {activeSection === "sql" && (
+                isPreviewMode ? <LockedPreview feature="SQL Editor" />
+                  : <SQLQuerySection datasetId={openDatasetId} orgId="default" />
+              )}
+              {activeSection === "monitors" && (
+                isPreviewMode ? <LockedPreview feature="Monitors" />
+                  : <MonitoringSection datasetId={openDatasetId} orgId="default" />
+              )}
+              {activeSection === "report" && <ReportSection report={report} fileName={fileName} />}
+              {activeSection === "data" && <DataTable preview={report.preview} />}
+            </ErrorBoundary>
+          </main>
+          <KeyboardShortcuts />
+          <CommandPalette
+            onSectionChange={(s) => handleSectionChange(s as NavSection)}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "monitors", "data"]}
+          />
+        </div>
       </div>
-      <KeyboardShortcuts />
-      <CommandPalette
-        onSectionChange={scrollTo}
-        sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "monitors", "data"]}
-      />
-      <OnboardingChecklist activeSection="overview" hasDataset={!!report} />
+      <OnboardingChecklist activeSection={activeSection} hasDataset={!!report} />
       <ProductTour />
       </>
     );
