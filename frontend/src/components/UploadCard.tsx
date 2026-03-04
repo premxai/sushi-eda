@@ -20,7 +20,7 @@ export default function UploadCard({
   onLoadSample 
 }: UploadCardProps) {
   return (
-    <div className="mt-8 w-full max-w-[520px]">
+    <div className="mt-8 w-full flex justify-center">
       <FileUpload
         onFileAccepted={onFileAccepted}
         isUploading={isUploading}
