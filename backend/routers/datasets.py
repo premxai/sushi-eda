@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from advanced_stats import AdvancedStatistics
 from auth import get_current_user, validate_org_access
+from defaults import resolve_org_id
 from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
 from polars_loader import parse_to_polars
@@ -68,7 +69,7 @@ def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
 
 async def _get_dataset_or_404(dataset_id: str, org_id: str, db: AsyncSession) -> Dataset:
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -120,7 +121,7 @@ async def list_datasets(
 ):
     """List datasets for an org. Excludes archived by default. Use ?archived=true for trash."""
     await validate_org_access(org_id, current_user, db)
-    query = select(Dataset).where(Dataset.org_id == org_id)
+    query = select(Dataset).where(Dataset.org_id == resolve_org_id(org_id))
     if archived:
         query = query.where(Dataset.archived_at.isnot(None))
     else:
@@ -142,7 +143,7 @@ async def toggle_star(
     """Toggle starred status on a dataset (editor+)."""
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -162,7 +163,7 @@ async def archive_dataset(
     """Soft-archive a dataset (moves to trash, editor+)."""
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -182,7 +183,7 @@ async def restore_dataset(
     """Restore a dataset from the archive (editor+)."""
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -202,7 +203,7 @@ async def get_dataset(
     """Get dataset metadata (viewer+)."""
     await validate_org_access(org_id, current_user, db)
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -222,16 +223,17 @@ async def delete_dataset(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a dataset, its analyses, and R2 files (admin|editor)."""
+    effective_org = resolve_org_id(org_id)
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == effective_org)
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     try:
-        storage.delete_prefix(f"uploads/{org_id}/{dataset_id}/")
+        storage.delete_prefix(f"uploads/{effective_org}/{dataset_id}/")
     except Exception as e:
         logger.warning(f"R2 delete failed for {dataset_id}: {e}")
 

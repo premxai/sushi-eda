@@ -752,6 +752,12 @@ export async function runSQLQuery(
   offset: number = 0,
   orgId: string = "default"
 ): Promise<QueryResult> {
+  // "local" means the dataset was uploaded via the sync /upload path and lives
+  // in-memory on the backend. Route to the /query endpoint in that case.
+  if (datasetId === "local") {
+    const { data } = await client.post<QueryResult>("/query", { sql, limit, offset });
+    return data;
+  }
   const { data } = await client.post<QueryResult>(
     `/datasets/${datasetId}/query?org_id=${orgId}`,
     { sql, limit, offset }

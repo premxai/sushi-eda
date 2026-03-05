@@ -26,6 +26,11 @@ from export_utils import DataExporter
 from cache import cache
 from storage import storage
 from worker import analyze_dataset
+import defaults
+from auth import get_optional_user
+from db import get_db
+from db.models import User as _UserModel
+from duckdb_query import run_query as _duckdb_run_query
 from routers import webhooks, jobs as jobs_router
 from routers.admin import router as admin_router
 from routers.billing import router as billing_router
@@ -112,6 +117,72 @@ app.include_router(datasets_router)
 app.include_router(analyses_router)
 app.include_router(credits_router)
 app.include_router(slack_router)
+
+# ── Startup: ensure default org + system user exist in Postgres ───────────────
+
+@app.on_event("startup")
+async def _ensure_default_org() -> None:
+    """
+    Create the 'default' organisation and 'system' user in Postgres if they
+    don't already exist.  IDs are stored in the `defaults` module so that
+    /datasets/upload and the datasets router can translate the literal string
+    "default" into a real UUID that satisfies FK constraints.
+    """
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        logger.info("DATABASE_URL not set — skipping default org creation")
+        return
+    try:
+        import psycopg2
+        db_url = (
+            database_url
+            .replace("postgresql+asyncpg://", "postgresql://")
+            .replace("postgres://", "postgresql://")
+        )
+        conn = psycopg2.connect(db_url)
+        with conn:
+            with conn.cursor() as cur:
+                # ── Default organisation ────────────────────────────────────
+                cur.execute("SELECT id FROM organizations WHERE slug = 'default'")
+                row = cur.fetchone()
+                if row:
+                    defaults.DEFAULT_ORG_ID = str(row[0])
+                else:
+                    new_org_id = str(uuid.uuid4())
+                    cur.execute(
+                        """
+                        INSERT INTO organizations (id, name, slug, plan)
+                        VALUES (%s, 'Default', 'default', 'free')
+                        RETURNING id
+                        """,
+                        (new_org_id,),
+                    )
+                    defaults.DEFAULT_ORG_ID = str(cur.fetchone()[0])
+
+                # ── System user (clerk_id='system') ────────────────────────
+                cur.execute("SELECT id FROM users WHERE clerk_id = 'system'")
+                row = cur.fetchone()
+                if row:
+                    defaults.DEFAULT_USER_ID = str(row[0])
+                else:
+                    new_user_id = str(uuid.uuid4())
+                    cur.execute(
+                        """
+                        INSERT INTO users (id, clerk_id, email)
+                        VALUES (%s, 'system', 'system@localhost')
+                        RETURNING id
+                        """,
+                        (new_user_id,),
+                    )
+                    defaults.DEFAULT_USER_ID = str(cur.fetchone()[0])
+        conn.close()
+        logger.info(
+            f"Default org={defaults.DEFAULT_ORG_ID}, "
+            f"system user={defaults.DEFAULT_USER_ID}"
+        )
+    except Exception as exc:
+        logger.warning(f"Could not ensure default org/user: {exc}")
+
 
 # In-memory store for the last uploaded DataFrame (single-user dev tool)
 _current_df: Optional[pd.DataFrame] = None
@@ -305,6 +376,27 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error processing file {file.filename}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+@app.post("/query")
+async def query_local_df(request: Request):
+    """
+    Run a SQL SELECT against the in-memory DataFrame loaded by /upload.
+    Used by the SQL editor when datasetId == 'local'.
+    """
+    df_pd = _get_current_df()
+    if df_pd is None:
+        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+    body = await request.json()
+    sql: str = body.get("sql", "")
+    limit: int = int(body.get("limit", 1000))
+    offset: int = int(body.get("offset", 0))
+    try:
+        import polars as pl
+        pl_df = pl.from_pandas(df_pd)
+        return _duckdb_run_query(pl_df, sql, limit, offset)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.post("/analyze")
@@ -806,7 +898,8 @@ async def health():
 async def upload_dataset_async(
     request: Request,
     file: UploadFile = File(...),
-    org_id: str = "default",      # Will be replaced by Clerk auth in Task 7
+    org_id: str = "default",
+    current_user: Optional[_UserModel] = Depends(get_optional_user),
 ):
     """
     Production upload endpoint.
@@ -823,21 +916,37 @@ async def upload_dataset_async(
     if len(contents) > 100 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File exceeds 100 MB limit")
 
+    # Resolve "default" org_id to real UUID
+    effective_org_id = (
+        defaults.DEFAULT_ORG_ID
+        if (org_id == "default" and defaults.DEFAULT_ORG_ID)
+        else org_id
+    )
+    effective_created_by = (
+        str(current_user.id)
+        if current_user
+        else (defaults.DEFAULT_USER_ID or effective_org_id)
+    )
+
     # Upload to R2
     dataset_id = str(uuid.uuid4())
-    file_key = f"uploads/{org_id}/{dataset_id}/{filename}"
+    file_key = f"uploads/{effective_org_id}/{dataset_id}/{filename}"
     try:
-        storage.upload(org_id, dataset_id, filename, contents)
+        storage.upload(effective_org_id, dataset_id, filename, contents)
     except Exception as e:
         logger.error(f"R2 upload failed: {e}")
         raise HTTPException(status_code=500, detail="File storage failed")
 
     # Persist Dataset row to Postgres
     database_url = os.getenv("DATABASE_URL", "")
-    if database_url:
+    if database_url and effective_org_id and effective_created_by:
         try:
             import psycopg2
-            db_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+            db_url = (
+                database_url
+                .replace("postgresql+asyncpg://", "postgresql://")
+                .replace("postgres://", "postgresql://")
+            )
             conn = psycopg2.connect(db_url)
             with conn:
                 with conn.cursor() as cur:
@@ -848,10 +957,11 @@ async def upload_dataset_async(
                            file_key, file_size_bytes, file_format, status)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
                         """,
-                        (dataset_id, org_id, org_id, filename, filename,
-                         file_key, len(contents), ext),
+                        (dataset_id, effective_org_id, effective_created_by,
+                         filename, filename, file_key, len(contents), ext),
                     )
             conn.close()
+            logger.info(f"Dataset row inserted: id={dataset_id} org={effective_org_id}")
         except Exception as e:
             logger.warning(f"Dataset row insert failed (non-fatal): {e}")
 
@@ -859,7 +969,7 @@ async def upload_dataset_async(
     cache.set_job_status(dataset_id, "pending")
     analyze_dataset.delay(
         dataset_id=dataset_id,
-        org_id=org_id,
+        org_id=effective_org_id,
         file_key=file_key,
         file_format=ext,
         database_url=database_url,
