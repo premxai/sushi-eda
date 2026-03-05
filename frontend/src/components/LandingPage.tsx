@@ -6,7 +6,6 @@ import Link from "next/link";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Database, Github } from "lucide-react";
 import UploadCard from "@/components/UploadCard";
-import { ProductTour } from "@/components/ProductTour";
 
 interface LandingPageProps {
   onFileAccepted: (file: File) => void;
@@ -41,8 +40,6 @@ export function LandingPage({
 
   return (
     <div className="lp-root">
-      <ProductTour />
-
       {/* ── NAV ── */}
       <nav className="lp-nav" style={{ background: "rgba(240,238,233,0.88)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
