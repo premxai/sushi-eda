@@ -30,6 +30,7 @@ import defaults
 from auth import get_optional_user
 from db import get_db
 from db.models import User as _UserModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from duckdb_query import run_query as _duckdb_run_query
 from routers import webhooks, jobs as jobs_router
 from routers.admin import router as admin_router
@@ -124,58 +125,47 @@ app.include_router(slack_router)
 async def _ensure_default_org() -> None:
     """
     Create the 'default' organisation and 'system' user in Postgres if they
-    don't already exist.  IDs are stored in the `defaults` module so that
-    /datasets/upload and the datasets router can translate the literal string
-    "default" into a real UUID that satisfies FK constraints.
+    don't already exist.  Uses the app's async SQLAlchemy session so ORM-level
+    column defaults (ai_credits_used, ai_credits_limit, is_starred, etc.) are
+    applied automatically — raw psycopg2 would miss these and hit NOT NULL
+    violations.
     """
-    database_url = os.getenv("DATABASE_URL", "")
-    if not database_url:
+    from db.connection import AsyncSessionLocal
+    if AsyncSessionLocal is None:
         logger.info("DATABASE_URL not set — skipping default org creation")
         return
     try:
-        import psycopg2
-        db_url = (
-            database_url
-            .replace("postgresql+asyncpg://", "postgresql://")
-            .replace("postgres://", "postgresql://")
-        )
-        conn = psycopg2.connect(db_url)
-        with conn:
-            with conn.cursor() as cur:
-                # ── Default organisation ────────────────────────────────────
-                cur.execute("SELECT id FROM organizations WHERE slug = 'default'")
-                row = cur.fetchone()
-                if row:
-                    defaults.DEFAULT_ORG_ID = str(row[0])
-                else:
-                    new_org_id = str(uuid.uuid4())
-                    cur.execute(
-                        """
-                        INSERT INTO organizations (id, name, slug, plan)
-                        VALUES (%s, 'Default', 'default', 'free')
-                        RETURNING id
-                        """,
-                        (new_org_id,),
-                    )
-                    defaults.DEFAULT_ORG_ID = str(cur.fetchone()[0])
+        from sqlalchemy import select as sa_select
+        from db.models import Organization, User as _User
+        async with AsyncSessionLocal() as db:
+            # ── Default organisation ────────────────────────────────────────
+            result = await db.execute(
+                sa_select(Organization).where(Organization.slug == "default")
+            )
+            org = result.scalar_one_or_none()
+            if org:
+                defaults.DEFAULT_ORG_ID = str(org.id)
+            else:
+                org = Organization(name="Default", slug="default", plan="free")
+                db.add(org)
+                await db.flush()
+                defaults.DEFAULT_ORG_ID = str(org.id)
 
-                # ── System user (clerk_id='system') ────────────────────────
-                cur.execute("SELECT id FROM users WHERE clerk_id = 'system'")
-                row = cur.fetchone()
-                if row:
-                    defaults.DEFAULT_USER_ID = str(row[0])
-                else:
-                    new_user_id = str(uuid.uuid4())
-                    cur.execute(
-                        """
-                        INSERT INTO users (id, clerk_id, email)
-                        VALUES (%s, 'system', 'system@localhost')
-                        RETURNING id
-                        """,
-                        (new_user_id,),
-                    )
-                    defaults.DEFAULT_USER_ID = str(cur.fetchone()[0])
-        conn.close()
+            # ── System user ────────────────────────────────────────────────
+            result = await db.execute(
+                sa_select(_User).where(_User.clerk_id == "system")
+            )
+            sys_user = result.scalar_one_or_none()
+            if sys_user:
+                defaults.DEFAULT_USER_ID = str(sys_user.id)
+            else:
+                sys_user = _User(clerk_id="system", email="system@localhost")
+                db.add(sys_user)
+                await db.flush()
+                defaults.DEFAULT_USER_ID = str(sys_user.id)
+
+            await db.commit()
+
         logger.info(
             f"Default org={defaults.DEFAULT_ORG_ID}, "
             f"system user={defaults.DEFAULT_USER_ID}"
@@ -900,6 +890,7 @@ async def upload_dataset_async(
     file: UploadFile = File(...),
     org_id: str = "default",
     current_user: Optional[_UserModel] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Production upload endpoint.
@@ -937,32 +928,29 @@ async def upload_dataset_async(
         logger.error(f"R2 upload failed: {e}")
         raise HTTPException(status_code=500, detail="File storage failed")
 
-    # Persist Dataset row to Postgres
+    # Persist Dataset row to Postgres via SQLAlchemy ORM so that
+    # column defaults (is_starred=False, etc.) are applied automatically.
     database_url = os.getenv("DATABASE_URL", "")
-    if database_url and effective_org_id and effective_created_by:
+    if effective_org_id and effective_created_by:
         try:
-            import psycopg2
-            db_url = (
-                database_url
-                .replace("postgresql+asyncpg://", "postgresql://")
-                .replace("postgres://", "postgresql://")
+            from db.models import Dataset as _Dataset
+            import uuid as _uuid_mod
+            ds = _Dataset(
+                id=_uuid_mod.UUID(dataset_id),
+                org_id=_uuid_mod.UUID(effective_org_id),
+                created_by=_uuid_mod.UUID(effective_created_by),
+                name=filename,
+                original_filename=filename,
+                file_key=file_key,
+                file_size_bytes=len(contents),
+                file_format=ext,
+                status="pending",
             )
-            conn = psycopg2.connect(db_url)
-            with conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO datasets
-                          (id, org_id, created_by, name, original_filename,
-                           file_key, file_size_bytes, file_format, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
-                        """,
-                        (dataset_id, effective_org_id, effective_created_by,
-                         filename, filename, file_key, len(contents), ext),
-                    )
-            conn.close()
+            db.add(ds)
+            await db.commit()
             logger.info(f"Dataset row inserted: id={dataset_id} org={effective_org_id}")
         except Exception as e:
+            await db.rollback()
             logger.warning(f"Dataset row insert failed (non-fatal): {e}")
 
     # Enqueue Celery job
