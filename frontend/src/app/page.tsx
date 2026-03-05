@@ -20,7 +20,7 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary } from "@/lib/api";
+import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, fetchDatasetVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { GitCompare, Lock, Star, ArrowRight, FileSpreadsheet } from "lucide-react";
 import { useDropzone } from "react-dropzone";
@@ -416,7 +416,10 @@ export default function Home() {
     if (section === "visualizations" && !visualizations && !vizLoading) {
       setVizLoading(true);
       try {
-        const data = await fetchVisualizations();
+        // Use dataset-specific endpoint for stored datasets; fall back to in-memory
+        const data = openDatasetId && openDatasetId !== "local"
+          ? await fetchDatasetVisualizations(openDatasetId, "default")
+          : await fetchVisualizations();
         setVisualizations(data);
       } catch {
         // silently fail
@@ -424,20 +427,28 @@ export default function Home() {
         setVizLoading(false);
       }
     }
-  }, [visualizations, vizLoading]);
+  }, [visualizations, vizLoading, openDatasetId]);
 
   const handleOpenDataset = useCallback(async (id: string, filename = "dataset") => {
+    setIsUploading(true);
+    setUploadProgress(50);
+    setError(null);
     try {
       const result = await fetchDatasetAnalysis(id, "default");
       setReport(result.report);
       setFileName(filename);
       setOpenDatasetId(id);
+      setVisualizations(null); // reset so visualizations reload for the new dataset
       setShowFileModal(false);
+      setUploadProgress(100);
       sessionStorage.setItem(REPORT_KEY, JSON.stringify(result.report));
       sessionStorage.setItem(FILE_KEY, filename);
       sessionStorage.setItem(DATASET_KEY, id);
     } catch {
       setError("Failed to load dataset");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   }, []);
 
@@ -446,6 +457,8 @@ export default function Home() {
     setFileName("");
     setError(null);
     setUploadProgress(0);
+    setIsUploading(false);
+    setDatasetId(null);       // stop any in-flight SSE job stream
     setActiveSection("overview");
     setVisualizations(null);
     setOpenDatasetId(null);
@@ -457,7 +470,7 @@ export default function Home() {
   };
 
   const handleArchive = async () => {
-    if (!openDatasetId) return;
+    if (!openDatasetId || openDatasetId === "local") return;
     await archiveDataset(openDatasetId);
     sessionStorage.removeItem(REPORT_KEY);
     sessionStorage.removeItem(FILE_KEY);
@@ -581,6 +594,12 @@ export default function Home() {
                 isPreviewMode ? <LockedPreview feature="Monitors" />
                   : <MonitoringSection datasetId={openDatasetId} orgId="default" />
               )}
+              {activeSection === "comments" && (
+                isPreviewMode ? <LockedPreview feature="Comments" /> :
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320, color: "#9a9690", fontSize: 14 }}>
+                  Comments coming soon.
+                </div>
+              )}
               {activeSection === "report" && <ReportSection report={report} fileName={fileName} />}
               {activeSection === "data" && <DataTable preview={report.preview} />}
             </ErrorBoundary>
@@ -606,8 +625,13 @@ export default function Home() {
   }
 
   // ─── Landing Page or User Dashboard ─────────────────────────────
-  // Show user dashboard for signed-in users, landing page for guests
-  if (userLoaded && isSignedIn) {
+  // While Clerk is loading, show a blank screen to avoid flashing the landing
+  // page at signed-in users before their session is confirmed.
+  if (!userLoaded) {
+    return <div style={{ height: "100vh", background: "#f0eee9" }} />;
+  }
+
+  if (isSignedIn) {
     return (
       <UserDashboard
         onFileAccepted={handleFileAccepted}

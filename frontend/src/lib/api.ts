@@ -95,6 +95,14 @@ export async function fetchVisualizations(): Promise<Record<string, any>> {
   return data;
 }
 
+export async function fetchDatasetVisualizations(
+  datasetId: string,
+  orgId: string = "default"
+): Promise<Record<string, any>> {
+  const { data } = await client.get(`/datasets/${datasetId}/visualize?org_id=${orgId}`);
+  return data;
+}
+
 export async function fetchColumnVisualization(
   columnName: string,
   chartType: "auto" | "distribution" | "box_plot" | "categorical_bar" = "auto"
