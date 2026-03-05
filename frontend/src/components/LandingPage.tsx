@@ -280,28 +280,6 @@ export function LandingPage({
         ))}
       </div>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="lp-hiw">
-        <div className="lp-reveal">
-          <div className="lp-section-tag">How it works</div>
-          <h2 className="lp-section-title">Three steps from raw file to sharp insight.</h2>
-        </div>
-        <div className="lp-steps-grid">
-          {[
-            { num: "01", icon: "📂", title: "Drop your file", desc: "Upload any structured format up to 100 MB. CSV, JSON, Excel, Parquet, TSV, or SQLite — Sushi handles all of them without configuration." },
-            { num: "02", icon: "⚡", title: "Auto-analyze", desc: "Schema detection, type inference, outlier detection, correlation matrices, and quality scoring — all automatic, all instant." },
-            { num: "03", icon: "📊", title: "Explore & share", desc: "Interactive charts, AI-generated summaries, data cleaning tools, and exportable reports. Share a link anyone can view — no login required." },
-          ].map((s, i) => (
-            <div key={s.num} className={`lp-step-card lp-reveal lp-rd${i + 1}`}>
-              <div className="lp-step-glow" />
-              <div className="lp-step-num">{s.num}</div>
-              <div className="lp-step-icon">{s.icon}</div>
-              <h3 className="lp-step-title">{s.title}</h3>
-              <p className="lp-step-desc">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ── CTA ── */}
       <div className="lp-cta lp-reveal">

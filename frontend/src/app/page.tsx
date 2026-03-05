@@ -31,8 +31,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { ColumnSearch } from "@/components/ColumnSearch";
 import { LandingPage } from "@/components/LandingPage";
 import { UserDashboard } from "@/components/UserDashboard";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { ProductTour } from "@/components/ProductTour";
+
 
 const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
@@ -593,8 +592,7 @@ export default function Home() {
           />
         </div>
       </div>
-      <OnboardingChecklist activeSection={activeSection} hasDataset={!!report} />
-      <ProductTour />
+
       {showFileModal && (
         <NewFileModal
           onClose={() => setShowFileModal(false)}
