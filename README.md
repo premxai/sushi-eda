@@ -1,4 +1,4 @@
-# 🍣 Sushi
+# Sushi
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
@@ -7,9 +7,9 @@
 
 **Serve Your Raw Data Perfectly** with quality scores, type suggestions, interactive visualizations, and actionable insights — all in a beautiful, modern interface.
 
-## 🍱 Features
+## Features
 
-### 📁 Multiple Data Formats
+### Multiple Data Formats
 - **CSV** — Comma-separated values
 - **TSV** — Tab-separated values
 - **Excel** — .xlsx and .xls files
@@ -17,20 +17,20 @@
 - **Parquet** — High-performance columnar format
 - **SQLite** — Database files (.db, .sqlite, .sqlite3)
 
-### 🎯 Core Analysis
+### Core Analysis
 - **Data Quality Score** — 0-100 score with A-F grade, breakdown by missing data, duplicates, outliers, type consistency, and unique ratios
 - **Smart Type Detection** — Auto-detect datetime columns, suggest categorical conversions, identify numeric strings and boolean patterns
 - **Interactive Visualizations** — Plotly-powered distribution charts, correlation heatmaps, box plots, and categorical bars with hover insights
 - **Outlier Detection** — IQR-based detection with visual indicators and statistics
 - **Column Analysis** — Detailed per-column stats: missing %, unique count, mean/median/std/skew, top values
 
-### � Advanced Statistics
+### Advanced Statistics
 - **Hypothesis Testing** — Independent t-test, chi-square test, one-way ANOVA
 - **Regression Analysis** — Simple linear regression with R² and RMSE metrics
 - **Normality Tests** — Shapiro-Wilk test for distribution analysis
 - **Correlation Significance** — Pearson correlation with p-values
 
-### 🚀 Export & Sharing
+### Export & Sharing
 - **Excel Export** — Multi-sheet workbook with data, summary, correlations, and outliers
 - **Markdown Reports** — Comprehensive analysis report in markdown format
 - **Chart Export** — Download visualizations as PNG or SVG
