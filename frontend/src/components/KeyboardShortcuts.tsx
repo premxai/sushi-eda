@@ -8,6 +8,14 @@ export function KeyboardShortcuts() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable
+      )
+        return;
+
       // ? key to toggle help
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
@@ -39,7 +47,9 @@ export function KeyboardShortcuts() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Keyboard Shortcuts</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Keyboard Shortcuts
+          </h2>
           <button
             onClick={() => setIsOpen(false)}
             className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -51,13 +61,23 @@ export function KeyboardShortcuts() {
         <div className="mt-4 space-y-3">
           <ShortcutRow keys={["?"]} description="Toggle this help menu" />
           <ShortcutRow keys={["Esc"]} description="Close modals" />
-          <ShortcutRow keys={["Ctrl", "/"]} description="Focus search (coming soon)" />
-          <ShortcutRow keys={["1-6"]} description="Navigate sections (coming soon)" />
+          <ShortcutRow
+            keys={["Ctrl", "/"]}
+            description="Focus search (coming soon)"
+          />
+          <ShortcutRow
+            keys={["1-6"]}
+            description="Navigate sections (coming soon)"
+          />
         </div>
 
         <div className="mt-6 rounded-md bg-slate-50 p-3">
           <p className="text-xs text-slate-600">
-            <strong>Tip:</strong> Press <kbd className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm">?</kbd> anytime to see shortcuts
+            <strong>Tip:</strong> Press{" "}
+            <kbd className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm">
+              ?
+            </kbd>{" "}
+            anytime to see shortcuts
           </p>
         </div>
       </div>
@@ -65,7 +85,13 @@ export function KeyboardShortcuts() {
   );
 }
 
-function ShortcutRow({ keys, description }: { keys: string[]; description: string }) {
+function ShortcutRow({
+  keys,
+  description,
+}: {
+  keys: string[];
+  description: string;
+}) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-slate-700">{description}</span>

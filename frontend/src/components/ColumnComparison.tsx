@@ -15,33 +15,61 @@ interface ColumnComparisonProps {
   onClose: () => void;
 }
 
-export function ColumnComparison({ column1, column2, data, onClose }: ColumnComparisonProps) {
-  const col1Data = data.map((row) => row[column1]).filter((v) => v != null);
-  const col2Data = data.map((row) => row[column2]).filter((v) => v != null);
+export function ColumnComparison({
+  column1,
+  column2,
+  data,
+  onClose,
+}: ColumnComparisonProps) {
+  const col1Data = data.map((row) => row[column1]);
+  const col2Data = data.map((row) => row[column2]);
 
-  // Calculate correlation if both are numeric
-  const isNumeric1 = col1Data.every((v) => !isNaN(Number(v)));
-  const isNumeric2 = col2Data.every((v) => !isNaN(Number(v)));
+  const isNumeric1 = col1Data
+    .filter((v) => v != null && v !== "")
+    .every((v) => !isNaN(Number(v)));
+  const isNumeric2 = col2Data
+    .filter((v) => v != null && v !== "")
+    .every((v) => !isNaN(Number(v)));
+
+  // Build paired data — only include rows where BOTH columns have valid numeric values
+  const pairs: [number, number][] = [];
+  for (
+    let k = 0;
+    k < Math.min(data.length, col1Data.length, col2Data.length);
+    k++
+  ) {
+    const v1 = col1Data[k];
+    const v2 = col2Data[k];
+    if (
+      v1 !== null &&
+      v1 !== undefined &&
+      v1 !== "" &&
+      v2 !== null &&
+      v2 !== undefined &&
+      v2 !== "" &&
+      !isNaN(Number(v1)) &&
+      !isNaN(Number(v2))
+    ) {
+      pairs.push([Number(v1), Number(v2)]);
+    }
+  }
 
   let correlation = null;
-  if (isNumeric1 && isNumeric2) {
-    const n = Math.min(col1Data.length, col2Data.length);
-    const mean1 = col1Data.map(Number).reduce((a: number, b: number) => a + b, 0) / n;
-    const mean2 = col2Data.map(Number).reduce((a: number, b: number) => a + b, 0) / n;
-    
-    let num = 0;
-    let den1 = 0;
-    let den2 = 0;
-    
-    for (let i = 0; i < n; i++) {
-      const diff1 = Number(col1Data[i]) - mean1;
-      const diff2 = Number(col2Data[i]) - mean2;
-      num += diff1 * diff2;
-      den1 += diff1 * diff1;
-      den2 += diff2 * diff2;
+  const n = pairs.length;
+  if (n >= 3) {
+    const mean1 = pairs.reduce((a, p) => a + p[0], 0) / n;
+    const mean2 = pairs.reduce((a, p) => a + p[1], 0) / n;
+    let num = 0,
+      den1 = 0,
+      den2 = 0;
+    for (const [v1, v2] of pairs) {
+      const d1 = v1 - mean1;
+      const d2 = v2 - mean2;
+      num += d1 * d2;
+      den1 += d1 * d1;
+      den2 += d2 * d2;
     }
-    
-    correlation = num / Math.sqrt(den1 * den2);
+    correlation = den1 === 0 || den2 === 0 ? 0 : num / Math.sqrt(den1 * den2);
   }
 
   return (
@@ -75,8 +103,8 @@ export function ColumnComparison({ column1, column2, data, onClose }: ColumnComp
                 {Math.abs(correlation) > 0.7
                   ? "Strong correlation"
                   : Math.abs(correlation) > 0.4
-                  ? "Moderate correlation"
-                  : "Weak correlation"}
+                    ? "Moderate correlation"
+                    : "Weak correlation"}
               </p>
             </div>
           )}
@@ -118,7 +146,8 @@ export function ColumnComparison({ column1, column2, data, onClose }: ColumnComp
                 Scatter plot is only available for numeric columns.
               </p>
               <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                Selected columns: {column1} ({isNumeric1 ? "numeric" : "non-numeric"}), {column2} (
+                Selected columns: {column1} (
+                {isNumeric1 ? "numeric" : "non-numeric"}), {column2} (
                 {isNumeric2 ? "numeric" : "non-numeric"})
               </p>
             </div>

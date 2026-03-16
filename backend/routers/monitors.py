@@ -22,31 +22,37 @@ Check types:
 Conditions:
   lt | gt | eq | change_pct
 """
+
 from __future__ import annotations
 
 import os
 from typing import Any
 
+from auth import get_current_user, validate_org_access
+from db import get_db
+from db.models import Analysis, Dataset, Monitor, MonitorRun, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user, validate_org_access
-from db import get_db
-from db.models import Analysis, Dataset, Monitor, MonitorRun, User
-
 router = APIRouter(tags=["monitors"])
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-_VALID_CHECK_TYPES = frozenset(["row_count", "null_rate", "quality_score", "column_drift"])
-_VALID_CONDITIONS  = frozenset(["lt", "gt", "eq", "change_pct"])
+_VALID_CHECK_TYPES = frozenset(
+    ["row_count", "null_rate", "quality_score", "column_drift"]
+)
+_VALID_CONDITIONS = frozenset(["lt", "gt", "eq", "change_pct"])
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-async def _get_monitor_or_404(monitor_id: str, org_id: str, db: AsyncSession) -> Monitor:
+
+async def _get_monitor_or_404(
+    monitor_id: str, org_id: str, db: AsyncSession
+) -> Monitor:
     result = await db.execute(
         select(Monitor).where(Monitor.id == monitor_id, Monitor.org_id == org_id)
     )
@@ -58,22 +64,23 @@ async def _get_monitor_or_404(monitor_id: str, org_id: str, db: AsyncSession) ->
 
 def _monitor_dict(m: Monitor) -> dict[str, Any]:
     return {
-        "monitor_id":       str(m.id),
-        "dataset_id":       str(m.dataset_id),
-        "name":             m.name,
-        "check_type":       m.check_type,
-        "column_name":      m.column_name,
-        "condition":        m.condition,
-        "threshold":        m.threshold,
-        "schedule":         m.schedule,
-        "is_active":        m.is_active,
-        "last_checked_at":  m.last_checked_at.isoformat() if m.last_checked_at else None,
-        "last_status":      m.last_status,
-        "created_at":       m.created_at.isoformat(),
+        "monitor_id": str(m.id),
+        "dataset_id": str(m.dataset_id),
+        "name": m.name,
+        "check_type": m.check_type,
+        "column_name": m.column_name,
+        "condition": m.condition,
+        "threshold": m.threshold,
+        "schedule": m.schedule,
+        "is_active": m.is_active,
+        "last_checked_at": m.last_checked_at.isoformat() if m.last_checked_at else None,
+        "last_status": m.last_status,
+        "created_at": m.created_at.isoformat(),
     }
 
 
 # ── CRUD ───────────────────────────────────────────────────────────────────────
+
 
 @router.post("/datasets/{dataset_id}/monitors", status_code=201)
 async def create_monitor(
@@ -96,7 +103,9 @@ async def create_monitor(
       "schedule": "0 9 * * *"             // cron: daily at 9am UTC
     }
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
 
     # Verify dataset belongs to org
     ds = await db.execute(
@@ -106,15 +115,21 @@ async def create_monitor(
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     check_type = body.get("check_type", "")
-    condition   = body.get("condition", "")
+    condition = body.get("condition", "")
     if check_type not in _VALID_CHECK_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid check_type. Choose from: {sorted(_VALID_CHECK_TYPES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid check_type. Choose from: {sorted(_VALID_CHECK_TYPES)}",
+        )
     if condition not in _VALID_CONDITIONS:
-        raise HTTPException(status_code=400, detail=f"Invalid condition. Choose from: {sorted(_VALID_CONDITIONS)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid condition. Choose from: {sorted(_VALID_CONDITIONS)}",
+        )
 
     monitor = Monitor(
         dataset_id=dataset_id,
-        org_id=org_id,
+        org_id=resolve_org_id(org_id),
         created_by=current_user.id,
         name=body.get("name", "Unnamed monitor"),
         check_type=check_type,
@@ -136,6 +151,8 @@ async def create_monitor(
 async def list_monitors(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -144,6 +161,8 @@ async def list_monitors(
         select(Monitor)
         .where(Monitor.dataset_id == dataset_id, Monitor.org_id == org_id)
         .order_by(Monitor.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     monitors = result.scalars().all()
     return {"monitors": [_monitor_dict(m) for m in monitors]}
@@ -170,7 +189,9 @@ async def update_monitor(
     db: AsyncSession = Depends(get_db),
 ):
     """Partially update a monitor (name, threshold, schedule, is_active)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     m = await _get_monitor_or_404(monitor_id, org_id, db)
 
     for field in ("name", "threshold", "schedule", "is_active", "column_name"):
@@ -192,7 +213,9 @@ async def delete_monitor(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     m = await _get_monitor_or_404(monitor_id, org_id, db)
     await db.delete(m)
     await db.commit()
@@ -200,6 +223,7 @@ async def delete_monitor(
 
 
 # ── Run endpoints ──────────────────────────────────────────────────────────────
+
 
 @router.post("/monitors/{monitor_id}/run")
 async def trigger_monitor_run(
@@ -209,10 +233,13 @@ async def trigger_monitor_run(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger a monitor check immediately."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     m = await _get_monitor_or_404(monitor_id, org_id, db)
 
     from worker import run_monitor_check
+
     result = run_monitor_check.delay(str(m.id), DATABASE_URL)
     return {"task_id": result.id, "monitor_id": monitor_id, "status": "queued"}
 
@@ -240,11 +267,11 @@ async def get_monitor_runs(
         "monitor_id": monitor_id,
         "runs": [
             {
-                "run_id":       str(r.id),
-                "status":       r.status,
+                "run_id": str(r.id),
+                "status": r.status,
                 "actual_value": r.actual_value,
-                "message":      r.message,
-                "ran_at":       r.ran_at.isoformat(),
+                "message": r.message,
+                "ran_at": r.ran_at.isoformat(),
             }
             for r in runs
         ],

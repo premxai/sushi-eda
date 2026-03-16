@@ -7,21 +7,21 @@ Routes:
   POST /billing/create-portal     — create Billing Portal session
   GET  /billing/plans             — list available plans with pricing
 """
+
 from __future__ import annotations
 
 import os
 from typing import Any
 
 import stripe
+from auth import get_current_user, validate_org_access
+from db import get_db
+from db.models import Organization, User
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from auth import get_current_user, validate_org_access
-from db import get_db
-from db.models import Organization, User
 
 # ── Stripe config ─────────────────────────────────────────────────────────────
 
@@ -86,6 +86,7 @@ _PLAN_CREDIT_LIMITS = {"free": 100, "pro": 2000, "team": -1}
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/plans")
 async def list_plans():
     """Return available subscription plans (public)."""
@@ -114,7 +115,9 @@ async def create_checkout_session(
 
     price_id = plan_data.get("stripe_price_id", "")
     if not price_id:
-        raise HTTPException(status_code=503, detail=f"Stripe price ID not configured for {plan}")
+        raise HTTPException(
+            status_code=503, detail=f"Stripe price ID not configured for {plan}"
+        )
 
     # Get or create Stripe customer for this org
     org = await _get_org(org_id, db)
@@ -161,7 +164,9 @@ async def create_billing_portal(
 
     org = await _get_org(org_id, db)
     if not org or not org.stripe_customer_id:
-        raise HTTPException(status_code=404, detail="No billing account found for this org")
+        raise HTTPException(
+            status_code=404, detail="No billing account found for this org"
+        )
 
     session = stripe.billing_portal.Session.create(
         customer=org.stripe_customer_id,
@@ -186,11 +191,29 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     if STRIPE_WEBHOOK_SECRET:
         try:
             event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-        except stripe.error.SignatureVerificationError:
-            raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+        except Exception as exc:
+            # Modern stripe SDK uses stripe.SignatureVerificationError;
+            # older versions use stripe.error.SignatureVerificationError.
+            _modern = getattr(stripe, "SignatureVerificationError", None)
+            _legacy = getattr(
+                getattr(stripe, "error", None), "SignatureVerificationError", None
+            )
+            if (_modern and isinstance(exc, _modern)) or (
+                _legacy and isinstance(exc, _legacy)
+            ):
+                raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+            raise  # re-raise unexpected errors
     else:
+        if os.getenv("ENVIRONMENT") == "production":
+            raise HTTPException(
+                status_code=500, detail="Stripe webhook secret not configured"
+            )
         # Dev mode: skip signature verification
         import json
+
+        logger.warning(
+            "STRIPE_WEBHOOK_SECRET not set — skipping signature verification"
+        )
         event = json.loads(payload)
 
     event_type = event.get("type", "")
@@ -205,7 +228,10 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         if org_id:
             await _activate_plan(org_id, plan, customer_id, db)
 
-    elif event_type in ("customer.subscription.updated", "customer.subscription.created"):
+    elif event_type in (
+        "customer.subscription.updated",
+        "customer.subscription.created",
+    ):
         sub = data
         customer_id = sub.get("customer")
         plan = _plan_from_subscription(sub)
@@ -229,6 +255,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 # ── Private helpers ────────────────────────────────────────────────────────────
 
+
 async def _get_org(org_id: str, db: AsyncSession) -> Organization | None:
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     return result.scalar_one_or_none()
@@ -239,19 +266,29 @@ async def _activate_plan(
 ) -> None:
     """Update org.plan and reset/set ai_credits_limit accordingly."""
     credit_limit = _PLAN_CREDIT_LIMITS.get(plan, 100)
+
+    # Fetch current org to check if plan is actually changing
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
+    org = result.scalar_one_or_none()
+
     values: dict[str, Any] = {
         "plan": plan,
         "ai_credits_limit": credit_limit,
-        "ai_credits_used": 0,  # reset on plan change
     }
     if customer_id:
         values["stripe_customer_id"] = customer_id
+
+    # Only reset credits on actual plan change
+    if org is None or org.plan != plan:
+        values["ai_credits_used"] = 0
 
     await db.execute(
         update(Organization).where(Organization.id == org_id).values(**values)
     )
     await db.commit()
-    logger.info(f"Activated plan '{plan}' for org {org_id} (credits_limit={credit_limit})")
+    logger.info(
+        f"Activated plan '{plan}' for org {org_id} (credits_limit={credit_limit})"
+    )
 
 
 def _plan_from_subscription(sub: dict) -> str | None:

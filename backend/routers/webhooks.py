@@ -6,17 +6,24 @@ organizationMembership.created, etc.) to POST /webhooks/clerk.
 
 This keeps our Postgres users table in sync with Clerk automatically.
 """
-from fastapi import APIRouter, Header, HTTPException, Request
-from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 
 from auth import verify_clerk_webhook
 from db import get_db
 from db.models import Organization, OrgMember, User
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+_CLERK_ROLE_MAP = {
+    "org:admin": "admin",
+    "org:member": "editor",
+    "admin": "admin",
+    "basic_member": "viewer",
+    "member": "editor",
+}
 
 
 @router.post("/clerk")
@@ -86,7 +93,9 @@ async def clerk_webhook(
         slug = data.get("slug") or clerk_org_id
         name = data.get("name") or slug
 
-        result = await db.execute(select(Organization).where(Organization.slug == clerk_org_id))
+        result = await db.execute(
+            select(Organization).where(Organization.slug == clerk_org_id)
+        )
         if result.scalar_one_or_none() is None:
             org = Organization(name=name, slug=clerk_org_id)
             db.add(org)
@@ -97,38 +106,61 @@ async def clerk_webhook(
     elif event_type == "organizationMembership.created":
         clerk_org_id = data.get("organization", {}).get("id")
         clerk_user_id = data.get("public_user_data", {}).get("user_id")
-        role = data.get("role", "viewer")
+        role = _CLERK_ROLE_MAP.get(data.get("role", ""), "viewer")
 
-        org_result = await db.execute(select(Organization).where(Organization.slug == clerk_org_id))
-        user_result = await db.execute(select(User).where(User.clerk_id == clerk_user_id))
+        org_result = await db.execute(
+            select(Organization).where(Organization.slug == clerk_org_id)
+        )
+        user_result = await db.execute(
+            select(User).where(User.clerk_id == clerk_user_id)
+        )
         org = org_result.scalar_one_or_none()
         user = user_result.scalar_one_or_none()
 
         if org and user:
-            membership = OrgMember(org_id=org.id, user_id=user.id, role=role)
-            db.add(membership)
+            result = await db.execute(
+                select(OrgMember).where(
+                    OrgMember.org_id == org.id, OrgMember.user_id == user.id
+                )
+            )
+            existing_member = result.scalar_one_or_none()
+            if existing_member:
+                existing_member.role = role  # update role on replay
+            else:
+                membership = OrgMember(org_id=org.id, user_id=user.id, role=role)
+                db.add(membership)
             await db.commit()
-            logger.info(f"Created membership: user={clerk_user_id} org={clerk_org_id} role={role}")
+            logger.info(
+                f"Created membership: user={clerk_user_id} org={clerk_org_id} role={role}"
+            )
 
     # ── organizationMembership.deleted ────────────────────────────────────────
     elif event_type == "organizationMembership.deleted":
         clerk_org_id = data.get("organization", {}).get("id")
         clerk_user_id = data.get("public_user_data", {}).get("user_id")
 
-        org_result = await db.execute(select(Organization).where(Organization.slug == clerk_org_id))
-        user_result = await db.execute(select(User).where(User.clerk_id == clerk_user_id))
+        org_result = await db.execute(
+            select(Organization).where(Organization.slug == clerk_org_id)
+        )
+        user_result = await db.execute(
+            select(User).where(User.clerk_id == clerk_user_id)
+        )
         org = org_result.scalar_one_or_none()
         user = user_result.scalar_one_or_none()
 
         if org and user:
             result = await db.execute(
-                select(OrgMember).where(OrgMember.org_id == org.id, OrgMember.user_id == user.id)
+                select(OrgMember).where(
+                    OrgMember.org_id == org.id, OrgMember.user_id == user.id
+                )
             )
             membership = result.scalar_one_or_none()
             if membership:
                 await db.delete(membership)
                 await db.commit()
-                logger.info(f"Deleted membership: user={clerk_user_id} org={clerk_org_id}")
+                logger.info(
+                    f"Deleted membership: user={clerk_user_id} org={clerk_org_id}"
+                )
 
     else:
         logger.debug(f"Unhandled Clerk event type: {event_type}")

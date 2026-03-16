@@ -2,7 +2,9 @@
 import axios from "axios";
 import { EDAReport } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '/api' : 'http://localhost:8000');
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" ? "/api" : "http://localhost:8000");
 
 const client = axios.create({
   baseURL: API_BASE,
@@ -51,7 +53,9 @@ export async function uploadFile(file: File): Promise<EDAReport> {
 
 /** Fire-and-forget ping to wake Render backend before user uploads. */
 export function prewarmBackend(): void {
-  client.get("/health", { timeout: 15_000 }).catch(() => {/* silent */});
+  client.get("/health", { timeout: 15_000 }).catch(() => {
+    /* silent */
+  });
 }
 
 /** Async upload — returns a dataset_id immediately; use useJobStream to track progress. */
@@ -73,13 +77,15 @@ export async function uploadFileAsync(
           onProgress?.(Math.round((e.loaded / e.total) * 50));
         }
       },
-    }
+    },
   );
   return data;
 }
 
 /** Fetch a completed analysis by analysis_id. */
-export async function fetchAnalysis(analysisId: string): Promise<{ report: EDAReport }> {
+export async function fetchAnalysis(
+  analysisId: string,
+): Promise<{ report: EDAReport }> {
   const { data } = await client.get(`/analyses/${analysisId}`);
   return data;
 }
@@ -97,29 +103,35 @@ export async function fetchVisualizations(): Promise<Record<string, any>> {
 
 export async function fetchDatasetVisualizations(
   datasetId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<Record<string, any>> {
-  const { data } = await client.get(`/datasets/${datasetId}/visualize?org_id=${orgId}`);
+  const { data } = await client.get(
+    `/datasets/${datasetId}/visualize?org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function fetchColumnVisualization(
   columnName: string,
-  chartType: "auto" | "distribution" | "box_plot" | "categorical_bar" = "auto"
+  chartType: "auto" | "distribution" | "box_plot" | "categorical_bar" = "auto",
 ): Promise<Record<string, any>> {
   const { data } = await client.get(
     `/visualize/${encodeURIComponent(columnName)}`,
-    { params: { chart_type: chartType } }
+    { params: { chart_type: chartType } },
   );
   return data;
 }
 
-export async function cleanDataset(operations: Record<string, any>): Promise<Record<string, any>> {
+export async function cleanDataset(
+  operations: Record<string, any>,
+): Promise<Record<string, any>> {
   const { data } = await client.post("/clean", operations);
   return data;
 }
 
-export async function transformColumn(params: Record<string, any>): Promise<Record<string, any>> {
+export async function transformColumn(
+  params: Record<string, any>,
+): Promise<Record<string, any>> {
   const { data } = await client.post("/transform", params);
   return data;
 }
@@ -156,21 +168,21 @@ export async function askDataset(
   datasetId: string,
   question: string,
   chatHistory: ChatMessage[] = [],
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<ChatResult> {
   const { data } = await client.post<ChatResult>(
     `/datasets/${datasetId}/ai/chat?org_id=${orgId}`,
-    { question, chat_history: chatHistory, limit: 500 }
+    { question, chat_history: chatHistory, limit: 500 },
   );
   return data;
 }
 
 export async function getAICleaningSuggestions(
   datasetId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<{ suggestions: any[] }> {
   const { data } = await client.get(
-    `/datasets/${datasetId}/ai/cleaning-suggestions?org_id=${orgId}`
+    `/datasets/${datasetId}/ai/cleaning-suggestions?org_id=${orgId}`,
   );
   return data;
 }
@@ -181,25 +193,35 @@ export interface CreditStatus {
   org_id: string;
   plan: string;
   ai_credits_used: number;
-  ai_credits_limit: number;   // -1 = unlimited
+  ai_credits_limit: number; // -1 = unlimited
   remaining: number;
   percent_used: number;
 }
 
-export async function getCreditStatus(orgId: string = "default"): Promise<CreditStatus> {
-  const { data } = await client.get<Record<string, unknown>>(`/orgs/${orgId}/credits`);
+export async function getCreditStatus(
+  orgId: string = "default",
+): Promise<CreditStatus> {
+  const { data } = await client.get<Record<string, unknown>>(
+    `/orgs/${orgId}/credits`,
+  );
 
   // Backward/forward compatibility across credit payload shapes.
   const used = Number(data.ai_credits_used ?? data.credits_used ?? 0);
   const limit = Number(data.ai_credits_limit ?? data.credits_limit ?? 0);
   const remainingRaw = data.remaining ?? data.credits_remaining;
-  const remaining = remainingRaw === undefined
-    ? (limit === -1 ? -1 : Math.max(0, limit - used))
-    : Number(remainingRaw);
+  const remaining =
+    remainingRaw === undefined
+      ? limit === -1
+        ? -1
+        : Math.max(0, limit - used)
+      : Number(remainingRaw);
   const percentUsedRaw = data.percent_used;
-  const percentUsed = percentUsedRaw === undefined
-    ? (limit > 0 ? (used / limit) * 100 : 0)
-    : Number(percentUsedRaw);
+  const percentUsed =
+    percentUsedRaw === undefined
+      ? limit > 0
+        ? (used / limit) * 100
+        : 0
+      : Number(percentUsedRaw);
 
   return {
     org_id: String(data.org_id ?? orgId),
@@ -229,7 +251,7 @@ export interface DatasetSummary {
 
 export async function listDatasets(
   orgId: string = "default",
-  opts: { archived?: boolean; starred?: boolean } = {}
+  opts: { archived?: boolean; starred?: boolean } = {},
 ): Promise<DatasetSummary[]> {
   const params = new URLSearchParams({ org_id: orgId });
   if (opts.archived) params.set("archived", "true");
@@ -238,15 +260,24 @@ export async function listDatasets(
   return data;
 }
 
-export async function starDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+export async function starDataset(
+  datasetId: string,
+  orgId: string = "default",
+): Promise<void> {
   await client.patch(`/datasets/${datasetId}/star?org_id=${orgId}`);
 }
 
-export async function archiveDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+export async function archiveDataset(
+  datasetId: string,
+  orgId: string = "default",
+): Promise<void> {
   await client.patch(`/datasets/${datasetId}/archive?org_id=${orgId}`);
 }
 
-export async function restoreDataset(datasetId: string, orgId: string = "default"): Promise<void> {
+export async function restoreDataset(
+  datasetId: string,
+  orgId: string = "default",
+): Promise<void> {
   await client.patch(`/datasets/${datasetId}/restore?org_id=${orgId}`);
 }
 
@@ -259,19 +290,26 @@ export interface AnalysisVersion {
 
 export async function listDatasetAnalyses(
   datasetId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<AnalysisVersion[]> {
   const { data } = await client.get<AnalysisVersion[]>(
-    `/datasets/${datasetId}/analyses?org_id=${orgId}`
+    `/datasets/${datasetId}/analyses?org_id=${orgId}`,
   );
   return data;
 }
 
 export async function fetchDatasetAnalysis(
   datasetId: string,
-  orgId: string = "default"
-): Promise<{ analysis_id: string; report: EDAReport; ai_narrative: string | null; version: number }> {
-  const { data } = await client.get(`/datasets/${datasetId}/analysis?org_id=${orgId}`);
+  orgId: string = "default",
+): Promise<{
+  analysis_id: string;
+  report: EDAReport;
+  ai_narrative: string | null;
+  version: number;
+}> {
+  const { data } = await client.get(
+    `/datasets/${datasetId}/analysis?org_id=${orgId}`,
+  );
   return data;
 }
 
@@ -286,52 +324,64 @@ export interface ConnectorSummary {
   created_at: string;
 }
 
-export async function listConnectors(orgId: string = "default"): Promise<ConnectorSummary[]> {
+export async function listConnectors(
+  orgId: string = "default",
+): Promise<ConnectorSummary[]> {
   const { data } = await client.get<{ connectors: ConnectorSummary[] }>(
-    `/connectors?org_id=${orgId}`
+    `/connectors?org_id=${orgId}`,
   );
   return data.connectors;
 }
 
 export async function createConnector(
   body: Record<string, any>,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<ConnectorSummary> {
   const { data } = await client.post<ConnectorSummary>(
     `/connectors?org_id=${orgId}`,
-    body
+    body,
   );
   return data;
 }
 
 export async function testConnector(
   connectorId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<{ ok: boolean; tested_at: string }> {
-  const { data } = await client.post(`/connectors/${connectorId}/test?org_id=${orgId}`);
+  const { data } = await client.post(
+    `/connectors/${connectorId}/test?org_id=${orgId}`,
+  );
   return data;
 }
 
-export async function deleteConnector(connectorId: string, orgId: string = "default"): Promise<void> {
+export async function deleteConnector(
+  connectorId: string,
+  orgId: string = "default",
+): Promise<void> {
   await client.delete(`/connectors/${connectorId}?org_id=${orgId}`);
 }
 
 export async function listConnectorTables(
   connectorId: string,
-  orgId: string = "default"
-): Promise<{ tables?: Record<string, unknown>[]; objects?: Record<string, unknown>[] }> {
-  const { data } = await client.get(`/connectors/${connectorId}/tables?org_id=${orgId}`);
+  orgId: string = "default",
+): Promise<{
+  tables?: Record<string, unknown>[];
+  objects?: Record<string, unknown>[];
+}> {
+  const { data } = await client.get(
+    `/connectors/${connectorId}/tables?org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function importFromConnector(
   connectorId: string,
   body: Record<string, any>,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<{ dataset_id: string; status: string; message: string }> {
   const { data } = await client.post(
     `/connectors/${connectorId}/import?org_id=${orgId}`,
-    body
+    body,
   );
   return data;
 }
@@ -355,10 +405,10 @@ export interface MonitorSummary {
 
 export async function listMonitors(
   datasetId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<MonitorSummary[]> {
   const { data } = await client.get<{ monitors: MonitorSummary[] }>(
-    `/datasets/${datasetId}/monitors?org_id=${orgId}`
+    `/datasets/${datasetId}/monitors?org_id=${orgId}`,
   );
   return data.monitors;
 }
@@ -366,20 +416,22 @@ export async function listMonitors(
 export async function createMonitor(
   datasetId: string,
   body: Record<string, any>,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<MonitorSummary> {
   const { data } = await client.post<MonitorSummary>(
     `/datasets/${datasetId}/monitors?org_id=${orgId}`,
-    body
+    body,
   );
   return data;
 }
 
 export async function triggerMonitorRun(
   monitorId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<{ task_id: string }> {
-  const { data } = await client.post(`/monitors/${monitorId}/run?org_id=${orgId}`);
+  const { data } = await client.post(
+    `/monitors/${monitorId}/run?org_id=${orgId}`,
+  );
   return data;
 }
 
@@ -387,15 +439,18 @@ export async function updateMonitor(
   monitorId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body: Record<string, any>,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<MonitorSummary> {
-  const { data } = await client.patch<MonitorSummary>(`/monitors/${monitorId}?org_id=${orgId}`, body);
+  const { data } = await client.patch<MonitorSummary>(
+    `/monitors/${monitorId}?org_id=${orgId}`,
+    body,
+  );
   return data;
 }
 
 export async function deleteMonitor(
   monitorId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<void> {
   await client.delete(`/monitors/${monitorId}?org_id=${orgId}`);
 }
@@ -411,10 +466,10 @@ export interface MonitorRun {
 export async function getMonitorRuns(
   monitorId: string,
   orgId: string = "default",
-  limit: number = 20
+  limit: number = 20,
 ): Promise<MonitorRun[]> {
   const { data } = await client.get<{ monitor_id: string; runs: MonitorRun[] }>(
-    `/monitors/${monitorId}/runs?org_id=${orgId}&limit=${limit}`
+    `/monitors/${monitorId}/runs?org_id=${orgId}&limit=${limit}`,
   );
   return data.runs;
 }
@@ -455,47 +510,76 @@ export interface PipelineRunSummary {
   created_at: string;
 }
 
-export async function listPipelines(orgId: string = "default"): Promise<PipelineSummary[]> {
-  const { data } = await client.get<{ pipelines: PipelineSummary[] }>(`/pipelines?org_id=${orgId}`);
+export async function listPipelines(
+  orgId: string = "default",
+): Promise<PipelineSummary[]> {
+  const { data } = await client.get<{ pipelines: PipelineSummary[] }>(
+    `/pipelines?org_id=${orgId}`,
+  );
   return data.pipelines;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createPipeline(body: Record<string, any>, orgId: string = "default"): Promise<PipelineSummary> {
-  const { data } = await client.post<PipelineSummary>(`/pipelines?org_id=${orgId}`, body);
+export async function createPipeline(
+  body: Record<string, any>,
+  orgId: string = "default",
+): Promise<PipelineSummary> {
+  const { data } = await client.post<PipelineSummary>(
+    `/pipelines?org_id=${orgId}`,
+    body,
+  );
   return data;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updatePipeline(pipelineId: string, body: Record<string, any>, orgId: string = "default"): Promise<PipelineSummary> {
-  const { data } = await client.patch<PipelineSummary>(`/pipelines/${pipelineId}?org_id=${orgId}`, body);
+export async function updatePipeline(
+  pipelineId: string,
+  body: Record<string, any>,
+  orgId: string = "default",
+): Promise<PipelineSummary> {
+  const { data } = await client.patch<PipelineSummary>(
+    `/pipelines/${pipelineId}?org_id=${orgId}`,
+    body,
+  );
   return data;
 }
 
-export async function deletePipeline(pipelineId: string, orgId: string = "default"): Promise<void> {
+export async function deletePipeline(
+  pipelineId: string,
+  orgId: string = "default",
+): Promise<void> {
   await client.delete(`/pipelines/${pipelineId}?org_id=${orgId}`);
 }
 
-export async function runPipelineNow(pipelineId: string, orgId: string = "default"): Promise<{ task_id: string; run_id: string; status: string }> {
-  const { data } = await client.post(`/pipelines/${pipelineId}/run?org_id=${orgId}`);
+export async function runPipelineNow(
+  pipelineId: string,
+  orgId: string = "default",
+): Promise<{ task_id: string; run_id: string; status: string }> {
+  const { data } = await client.post(
+    `/pipelines/${pipelineId}/run?org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function listPipelineRuns(
   pipelineId: string,
   orgId: string = "default",
-  limit: number = 50
+  limit: number = 50,
 ): Promise<PipelineRunSummary[]> {
   const { data } = await client.get<{ runs: PipelineRunSummary[] }>(
-    `/pipelines/${pipelineId}/runs?org_id=${orgId}&limit=${limit}`
+    `/pipelines/${pipelineId}/runs?org_id=${orgId}&limit=${limit}`,
   );
   return data.runs;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function listPipelineVersions(pipelineId: string, orgId: string = "default", limit: number = 50): Promise<any[]> {
+export async function listPipelineVersions(
+  pipelineId: string,
+  orgId: string = "default",
+  limit: number = 50,
+): Promise<any[]> {
   const { data } = await client.get<{ versions: any[] }>(
-    `/pipelines/${pipelineId}/versions?org_id=${orgId}&limit=${limit}`
+    `/pipelines/${pipelineId}/versions?org_id=${orgId}&limit=${limit}`,
   );
   return data.versions;
 }
@@ -504,74 +588,112 @@ export async function listPipelineVersions(pipelineId: string, orgId: string = "
 
 export async function fetchAdvancedStats(
   datasetId: string,
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
     const { data } = await client.get(`/stats/advanced`);
     return data;
   }
-  const { data } = await client.get(`/datasets/${datasetId}/stats/advanced?org_id=${orgId}`);
+  const { data } = await client.get(
+    `/datasets/${datasetId}/stats/advanced?org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function runTTest(
-  datasetId: string, col1: string, col2: string, orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasetId: string,
+  col1: string,
+  col2: string,
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
-    const { data } = await client.post(`/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`);
+    const { data } = await client.post(
+      `/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`,
+    );
     return data;
   }
-  const { data } = await client.post(`/datasets/${datasetId}/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`);
+  const { data } = await client.post(
+    `/datasets/${datasetId}/stats/ttest?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function runChiSquare(
-  datasetId: string, col1: string, col2: string, orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasetId: string,
+  col1: string,
+  col2: string,
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
-    const { data } = await client.post(`/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`);
+    const { data } = await client.post(
+      `/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}`,
+    );
     return data;
   }
-  const { data } = await client.post(`/datasets/${datasetId}/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`);
+  const { data } = await client.post(
+    `/datasets/${datasetId}/stats/chi_square?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function runANOVA(
-  datasetId: string, numericCol: string, groupCol: string, orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasetId: string,
+  numericCol: string,
+  groupCol: string,
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
-    const { data } = await client.post(`/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}`);
+    const { data } = await client.post(
+      `/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}`,
+    );
     return data;
   }
-  const { data } = await client.post(`/datasets/${datasetId}/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}&org_id=${orgId}`);
+  const { data } = await client.post(
+    `/datasets/${datasetId}/stats/anova?numeric_col=${encodeURIComponent(numericCol)}&group_col=${encodeURIComponent(groupCol)}&org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function runCorrelation(
-  datasetId: string, col1: string, col2: string, method: string = "pearson", orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasetId: string,
+  col1: string,
+  col2: string,
+  method: string = "pearson",
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
-    const { data } = await client.post(`/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}`);
+    const { data } = await client.post(
+      `/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}`,
+    );
     return data;
   }
-  const { data } = await client.post(`/datasets/${datasetId}/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}&org_id=${orgId}`);
+  const { data } = await client.post(
+    `/datasets/${datasetId}/stats/correlation?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&method=${method}&org_id=${orgId}`,
+  );
   return data;
 }
 
 export async function runRegression(
-  datasetId: string, xCol: string, yCol: string, orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  datasetId: string,
+  xCol: string,
+  yCol: string,
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
-    const { data } = await client.post(`/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}`);
+    const { data } = await client.post(
+      `/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}`,
+    );
     return data;
   }
-  const { data } = await client.post(`/datasets/${datasetId}/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&org_id=${orgId}`);
+  const { data } = await client.post(
+    `/datasets/${datasetId}/stats/regression?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&org_id=${orgId}`,
+  );
   return data;
 }
 
@@ -580,18 +702,20 @@ export async function runLogisticRegression(
   xCol: string,
   yCol: string,
   positiveClass?: string,
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
-  const positiveParam = positiveClass ? `&positive_class=${encodeURIComponent(positiveClass)}` : "";
+  const positiveParam = positiveClass
+    ? `&positive_class=${encodeURIComponent(positiveClass)}`
+    : "";
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}`
+      `/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/regression/logistic?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}${positiveParam}&org_id=${orgId}`,
   );
   return data;
 }
@@ -601,17 +725,17 @@ export async function runPolynomialRegression(
   xCol: string,
   yCol: string,
   degree: number = 2,
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}`
+      `/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/regression/polynomial?x_col=${encodeURIComponent(xCol)}&y_col=${encodeURIComponent(yCol)}&degree=${degree}&org_id=${orgId}`,
   );
   return data;
 }
@@ -621,17 +745,17 @@ export async function runMannWhitney(
   col1: string,
   col2: string,
   alternative: "two-sided" | "less" | "greater" = "two-sided",
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}`
+      `/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/mann_whitney?col1=${encodeURIComponent(col1)}&col2=${encodeURIComponent(col2)}&alternative=${alternative}&org_id=${orgId}`,
   );
   return data;
 }
@@ -642,18 +766,18 @@ export async function runTimeSeriesDecomposition(
   valueCol: string,
   period?: number,
   model: "additive" | "multiplicative" = "additive",
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   const periodPart = period ? `&period=${period}` : "";
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}`
+      `/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/time_series/decompose?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}${periodPart}&model=${model}&org_id=${orgId}`,
   );
   return data;
 }
@@ -662,9 +786,15 @@ export async function runArimaForecast(
   datasetId: string,
   dateCol: string,
   valueCol: string,
-  options: { periods?: number; p?: number; d?: number; q?: number; alpha?: number } = {},
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: {
+    periods?: number;
+    p?: number;
+    d?: number;
+    q?: number;
+    alpha?: number;
+  } = {},
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   const periods = options.periods ?? 12;
   const p = options.p ?? 1;
@@ -673,12 +803,12 @@ export async function runArimaForecast(
   const alpha = options.alpha ?? 0.05;
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}`
+      `/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/time_series/arima?date_col=${encodeURIComponent(dateCol)}&value_col=${encodeURIComponent(valueCol)}&periods=${periods}&p=${p}&d=${d}&q=${q}&alpha=${alpha}&org_id=${orgId}`,
   );
   return data;
 }
@@ -688,17 +818,17 @@ export async function runCohortAnalysis(
   entityCol: string,
   dateCol: string,
   freq: "D" | "W" | "M" | "Q" = "M",
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}`
+      `/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/cohort?entity_col=${encodeURIComponent(entityCol)}&date_col=${encodeURIComponent(dateCol)}&freq=${freq}&org_id=${orgId}`,
   );
   return data;
 }
@@ -710,17 +840,17 @@ export async function runABTestSignificance(
   variantConversions: number,
   variantTotal: number,
   alpha: number = 0.05,
-  orgId: string = "default"
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgId: string = "default",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Record<string, any>> {
   if (datasetId === "local") {
     const { data } = await client.post(
-      `/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}`
+      `/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}`,
     );
     return data;
   }
   const { data } = await client.post(
-    `/datasets/${datasetId}/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}&org_id=${orgId}`
+    `/datasets/${datasetId}/stats/ab_test?control_conversions=${controlConversions}&control_total=${controlTotal}&variant_conversions=${variantConversions}&variant_total=${variantTotal}&alpha=${alpha}&org_id=${orgId}`,
   );
   return data;
 }
@@ -734,11 +864,11 @@ export interface QuerySchemaColumn {
 
 export async function fetchQuerySchema(
   datasetId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<QuerySchemaColumn[]> {
-  const { data } = await client.get<{ schema: Array<{ column: string; type: string }> }>(
-    `/datasets/${datasetId}/query/schema?org_id=${orgId}`
-  );
+  const { data } = await client.get<{
+    schema: Array<{ column: string; type: string }>;
+  }>(`/datasets/${datasetId}/query/schema?org_id=${orgId}`);
   return data.schema.map((col) => ({ name: col.column, dtype: col.type }));
 }
 
@@ -758,17 +888,21 @@ export async function runSQLQuery(
   sql: string,
   limit: number = 1000,
   offset: number = 0,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<QueryResult> {
   // "local" means the dataset was uploaded via the sync /upload path and lives
   // in-memory on the backend. Route to the /query endpoint in that case.
   if (datasetId === "local") {
-    const { data } = await client.post<QueryResult>("/query", { sql, limit, offset });
+    const { data } = await client.post<QueryResult>("/query", {
+      sql,
+      limit,
+      offset,
+    });
     return data;
   }
   const { data } = await client.post<QueryResult>(
     `/datasets/${datasetId}/query?org_id=${orgId}`,
-    { sql, limit, offset }
+    { sql, limit, offset },
   );
   return data;
 }
@@ -780,11 +914,11 @@ export interface QueryExplainResult {
 export async function explainSQLQuery(
   datasetId: string,
   sql: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<QueryExplainResult> {
   const { data } = await client.post<QueryExplainResult>(
     `/datasets/${datasetId}/query/explain?org_id=${orgId}`,
-    { sql }
+    { sql },
   );
   return data;
 }
@@ -818,24 +952,29 @@ export interface CommentThread {
 export async function listComments(
   datasetId: string,
   orgId: string = "default",
-  columnName?: string
+  columnName?: string,
 ): Promise<CommentThread[]> {
   const params = new URLSearchParams({ org_id: orgId });
   if (columnName) params.set("column_name", columnName);
   const { data } = await client.get<CommentThread[]>(
-    `/datasets/${datasetId}/comments?${params}`
+    `/datasets/${datasetId}/comments?${params}`,
   );
   return data;
 }
 
 export async function createComment(
   datasetId: string,
-  body: { content: string; column_name?: string; parent_id?: string; author_name?: string },
-  orgId: string = "default"
+  body: {
+    content: string;
+    column_name?: string;
+    parent_id?: string;
+    author_name?: string;
+  },
+  orgId: string = "default",
 ): Promise<CommentThread> {
   const { data } = await client.post<CommentThread>(
     `/datasets/${datasetId}/comments?org_id=${orgId}`,
-    body
+    body,
   );
   return data;
 }
@@ -843,18 +982,18 @@ export async function createComment(
 export async function editComment(
   commentId: string,
   content: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<CommentThread> {
   const { data } = await client.patch<CommentThread>(
     `/comments/${commentId}?org_id=${orgId}`,
-    { content }
+    { content },
   );
   return data;
 }
 
 export async function deleteComment(
   commentId: string,
-  orgId: string = "default"
+  orgId: string = "default",
 ): Promise<void> {
   await client.delete(`/comments/${commentId}?org_id=${orgId}`);
 }
@@ -884,7 +1023,12 @@ export interface OrgMemberEntry {
 
 export async function listAuditLogs(
   orgId: string = "default",
-  opts: { action?: string; resource_type?: string; limit?: number; offset?: number } = {}
+  opts: {
+    action?: string;
+    resource_type?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
 ): Promise<{ logs: AuditLogEntry[]; count: number }> {
   const p = new URLSearchParams();
   if (opts.action) p.set("action", opts.action);
@@ -892,12 +1036,14 @@ export async function listAuditLogs(
   if (opts.limit) p.set("limit", String(opts.limit));
   if (opts.offset) p.set("offset", String(opts.offset));
   const { data } = await client.get<{ logs: AuditLogEntry[]; count: number }>(
-    `/orgs/${orgId}/audit-logs?${p}`
+    `/orgs/${orgId}/audit-logs?${p}`,
   );
   return data;
 }
 
-export async function listOrgMembers(orgId: string = "default"): Promise<OrgMemberEntry[]> {
+export async function listOrgMembers(
+  orgId: string = "default",
+): Promise<OrgMemberEntry[]> {
   const { data } = await client.get<OrgMemberEntry[]>(`/orgs/${orgId}/members`);
   return data;
 }
@@ -905,16 +1051,18 @@ export async function listOrgMembers(orgId: string = "default"): Promise<OrgMemb
 export async function updateMemberRole(
   orgId: string,
   userId: string,
-  role: string
+  role: string,
 ): Promise<OrgMemberEntry> {
   const { data } = await client.patch<OrgMemberEntry>(
     `/orgs/${orgId}/members/${userId}`,
-    { role }
+    { role },
   );
   return data;
 }
 
-export async function removeMember(orgId: string, userId: string): Promise<void> {
+export async function removeMember(
+  orgId: string,
+  userId: string,
+): Promise<void> {
   await client.delete(`/orgs/${orgId}/members/${userId}`);
 }
-

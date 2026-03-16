@@ -11,17 +11,17 @@ Each task:
   4. Publishes a job_done event via Redis pub/sub
   5. Updates the Dataset.status in Postgres
 """
+
 import hashlib
 import os
 import time
 from datetime import datetime, timezone
 from typing import Any
 
-from celery import Celery
-from loguru import logger
-
 from analyzer import EDAAnalyzer
 from cache import cache
+from celery import Celery
+from loguru import logger
 from storage import storage
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -41,18 +41,19 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
-    task_acks_late=True,          # re-queue on worker crash
-    worker_prefetch_multiplier=1, # one task at a time per worker (heavy CPU tasks)
+    task_acks_late=True,  # re-queue on worker crash
+    worker_prefetch_multiplier=1,  # one task at a time per worker (heavy CPU tasks)
     result_expires=60 * 60 * 24,  # keep Celery results for 1 day
     # Celery Beat schedule — run all active monitors every hour on the 5-minute mark
     beat_schedule={
         "run-all-monitors": {
             "task": "run_all_monitors",
-            "schedule": 60 * 60,   # every hour (monitors gate themselves by their own cron)
+            "schedule": 60
+            * 60,  # every hour (monitors gate themselves by their own cron)
         },
         "run-all-pipelines": {
             "task": "run_all_pipelines",
-            "schedule": 60 * 60,   # every hour (pipelines gate by their cron)
+            "schedule": 60 * 60,  # every hour (pipelines gate by their cron)
         },
     },
 )
@@ -60,13 +61,14 @@ celery_app.conf.update(
 
 # ── Tasks ──────────────────────────────────────────────────────────────────────
 
+
 @celery_app.task(
     bind=True,
     name="analyze_dataset",
     max_retries=2,
     default_retry_delay=30,
-    soft_time_limit=300,   # 5 min soft limit — task gets SoftTimeLimitExceeded
-    time_limit=360,        # 6 min hard kill
+    soft_time_limit=300,  # 5 min soft limit — task gets SoftTimeLimitExceeded
+    time_limit=360,  # 6 min hard kill
 )
 def analyze_dataset(
     self,
@@ -93,7 +95,9 @@ def analyze_dataset(
     logger.info(f"[Task] Starting analysis: dataset={dataset_id}")
 
     # Mark as processing in Redis
-    cache.set_job_status(dataset_id, "processing", {"started_at": datetime.now(timezone.utc).isoformat()})
+    cache.set_job_status(
+        dataset_id, "processing", {"started_at": datetime.now(timezone.utc).isoformat()}
+    )
 
     try:
         # ── 1. Download file from R2 ───────────────────────────────────────────
@@ -104,8 +108,12 @@ def analyze_dataset(
         file_hash = hashlib.md5(file_bytes).hexdigest()
         cached = cache.get_analysis(file_hash)
         if cached:
-            logger.info(f"[Task] Cache hit for dataset={dataset_id}, hash={file_hash[:8]}")
-            _save_analysis_to_db(database_url, dataset_id, org_id, cached, file_hash, 0.0)
+            logger.info(
+                f"[Task] Cache hit for dataset={dataset_id}, hash={file_hash[:8]}"
+            )
+            _save_analysis_to_db(
+                database_url, dataset_id, org_id, cached, file_hash, 0.0
+            )
             cache.set_job_status(dataset_id, "done")
             cache.publish_job_done(org_id, dataset_id, "cached")
             return {"analysis_id": "cached", "duration_seconds": 0.0}
@@ -115,7 +123,9 @@ def analyze_dataset(
         logger.info(f"[Task] Parsed dataset={dataset_id}: {df.height}r x {df.width}c")
 
         # Update job progress
-        cache.set_job_status(dataset_id, "processing", {"progress": 30, "stage": "analyzing"})
+        cache.set_job_status(
+            dataset_id, "processing", {"progress": 30, "stage": "analyzing"}
+        )
 
         # ── 4. Run EDA analysis ────────────────────────────────────────────────
         analyzer = EDAAnalyzer(df)
@@ -124,23 +134,38 @@ def analyze_dataset(
         preview = df.head(50).to_pandas().fillna("").to_dict(orient="records")
         report["preview"] = preview
 
-        cache.set_job_status(dataset_id, "processing", {"progress": 70, "stage": "generating_narrative"})
+        cache.set_job_status(
+            dataset_id, "processing", {"progress": 70, "stage": "generating_narrative"}
+        )
 
         # ── 4b. AI narrative (Claude) ─────────────────────────────────────────
         from ai_narrative import generate_narrative
+
         narrative = generate_narrative(report, dataset_name=dataset_id)
 
-        cache.set_job_status(dataset_id, "processing", {"progress": 85, "stage": "saving"})
+        cache.set_job_status(
+            dataset_id, "processing", {"progress": 85, "stage": "saving"}
+        )
 
         # ── 5. Persist to Postgres + cache ────────────────────────────────────
         duration = time.time() - start_time
         analysis_id = _save_analysis_to_db(
-            database_url, dataset_id, org_id, report, file_hash, duration, narrative=narrative
+            database_url,
+            dataset_id,
+            org_id,
+            report,
+            file_hash,
+            duration,
+            narrative=narrative,
         )
         cache.set_analysis(file_hash, report)
 
         # ── 6. Notify frontend via Redis pub/sub ──────────────────────────────
-        cache.set_job_status(dataset_id, "done", {"analysis_id": str(analysis_id), "duration_seconds": duration})
+        cache.set_job_status(
+            dataset_id,
+            "done",
+            {"analysis_id": str(analysis_id), "duration_seconds": duration},
+        )
         cache.publish_job_done(org_id, dataset_id, str(analysis_id))
 
         logger.info(f"[Task] Completed dataset={dataset_id} in {duration:.2f}s")
@@ -156,7 +181,10 @@ def analyze_dataset(
 
 # ── Monitor tasks ──────────────────────────────────────────────────────────────
 
-@celery_app.task(bind=True, name="run_monitor_check", max_retries=1, default_retry_delay=60)
+
+@celery_app.task(
+    bind=True, name="run_monitor_check", max_retries=1, default_retry_delay=60
+)
 def run_monitor_check(self, monitor_id: str, database_url: str) -> dict:
     """
     Execute a single monitor check against the latest analysis and persist the result.
@@ -165,7 +193,9 @@ def run_monitor_check(self, monitor_id: str, database_url: str) -> dict:
     import psycopg2
     from psycopg2.extras import Json
 
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     if not db_url:
         logger.warning("run_monitor_check: DATABASE_URL not set, skipping")
         return {"skipped": True}
@@ -188,7 +218,16 @@ def run_monitor_check(self, monitor_id: str, database_url: str) -> dict:
                 if row is None:
                     return {"skipped": True, "reason": "monitor not found or inactive"}
 
-                _, dataset_id, org_id, name, check_type, column_name, condition, threshold = row
+                (
+                    _,
+                    dataset_id,
+                    org_id,
+                    name,
+                    check_type,
+                    column_name,
+                    condition,
+                    threshold,
+                ) = row
 
                 # Load latest analysis
                 cur.execute(
@@ -201,7 +240,9 @@ def run_monitor_check(self, monitor_id: str, database_url: str) -> dict:
                 )
                 analysis_row = cur.fetchone()
                 if analysis_row is None:
-                    _insert_monitor_run(cur, monitor_id, "error", None, "No analysis found")
+                    _insert_monitor_run(
+                        cur, monitor_id, "error", None, "No analysis found"
+                    )
                     _update_monitor_status(cur, monitor_id, "error")
                     return {"status": "error", "reason": "no analysis"}
 
@@ -217,10 +258,24 @@ def run_monitor_check(self, monitor_id: str, database_url: str) -> dict:
         conn.close()
 
         if status == "triggered":
-            _send_slack_alert(name, check_type, column_name, condition, threshold, actual_value, message)
+            _send_slack_alert(
+                name,
+                check_type,
+                column_name,
+                condition,
+                threshold,
+                actual_value,
+                message,
+            )
 
-        logger.info(f"Monitor {monitor_id} ({check_type}): {status} | value={actual_value}")
-        return {"monitor_id": monitor_id, "status": status, "actual_value": actual_value}
+        logger.info(
+            f"Monitor {monitor_id} ({check_type}): {status} | value={actual_value}"
+        )
+        return {
+            "monitor_id": monitor_id,
+            "status": status,
+            "actual_value": actual_value,
+        }
 
     except Exception as exc:
         logger.error(f"run_monitor_check failed for {monitor_id}: {exc}")
@@ -233,12 +288,15 @@ def run_all_monitors() -> dict:
     Hourly task: load all active monitors, evaluate their cron schedule,
     and dispatch individual run_monitor_check tasks for those that are due.
     """
-    import psycopg2
-    from croniter import croniter
     from datetime import datetime, timezone
 
+    import psycopg2
+    from croniter import croniter
+
     database_url = os.getenv("DATABASE_URL", "")
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     if not db_url:
         return {"skipped": True}
 
@@ -249,10 +307,8 @@ def run_all_monitors() -> dict:
         conn = psycopg2.connect(db_url)
         with conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, schedule FROM monitors WHERE is_active = true"
-                )
-                for (monitor_id, schedule) in cur.fetchall():
+                cur.execute("SELECT id, schedule FROM monitors WHERE is_active = true")
+                for monitor_id, schedule in cur.fetchall():
                     try:
                         cron = croniter(schedule, now)
                         # Check if the monitor was due in the past hour
@@ -272,8 +328,13 @@ def run_all_monitors() -> dict:
 
 # ── Pipeline tasks ─────────────────────────────────────────────────────────────
 
-@celery_app.task(bind=True, name="run_pipeline_recipe", max_retries=1, default_retry_delay=60)
-def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url: str) -> dict:
+
+@celery_app.task(
+    bind=True, name="run_pipeline_recipe", max_retries=1, default_retry_delay=60
+)
+def run_pipeline_recipe(
+    self, pipeline_id: str, run_id: str | None, database_url: str
+) -> dict:
     """
     Execute a pipeline recipe:
       1) Load source dataset
@@ -283,11 +344,14 @@ def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url
       5) Persist run status/logs/metrics
     """
     import uuid
+
     import pandas as pd
     import psycopg2
     from psycopg2.extras import Json
 
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     if not db_url:
         logger.warning("run_pipeline_recipe: DATABASE_URL not set, skipping")
         return {"skipped": True}
@@ -379,7 +443,10 @@ def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url
         _log(f"Transform output has {output_rows} rows and {output_cols} columns")
 
         output_dataset_id = str(uuid.uuid4())
-        safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(recipe_name).lower())[:40]
+        safe_name = "".join(
+            ch if ch.isalnum() or ch in ("-", "_") else "_"
+            for ch in str(recipe_name).lower()
+        )[:40]
         output_filename = f"{safe_name or 'pipeline_output'}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
         output_bytes = transformed_df.to_csv(index=False).encode("utf-8")
         storage.upload(str(org_id), output_dataset_id, output_filename, output_bytes)
@@ -446,7 +513,12 @@ def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url
                     """,
                     (pipeline_id,),
                 )
-        return {"pipeline_id": pipeline_id, "run_id": run_id, "status": "success", **metrics}
+        return {
+            "pipeline_id": pipeline_id,
+            "run_id": run_id,
+            "status": "success",
+            **metrics,
+        }
 
     except Exception as exc:
         logger.error(f"run_pipeline_recipe failed for {pipeline_id}: {exc}")
@@ -462,7 +534,12 @@ def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url
                             """,
                             (
                                 "\n".join(log_lines + [f"ERROR: {exc}"]),
-                                Json({"error": str(exc), "output_dataset_id": output_dataset_id}),
+                                Json(
+                                    {
+                                        "error": str(exc),
+                                        "output_dataset_id": output_dataset_id,
+                                    }
+                                ),
                                 run_id,
                             ),
                         )
@@ -482,12 +559,15 @@ def run_pipeline_recipe(self, pipeline_id: str, run_id: str | None, database_url
 @celery_app.task(name="run_all_pipelines")
 def run_all_pipelines() -> dict:
     """Dispatch due active pipelines based on cron schedules."""
-    import psycopg2
-    from croniter import croniter
     from datetime import datetime, timezone
 
+    import psycopg2
+    from croniter import croniter
+
     database_url = os.getenv("DATABASE_URL", "")
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     if not db_url:
         return {"skipped": True}
 
@@ -501,12 +581,14 @@ def run_all_pipelines() -> dict:
                 cur.execute(
                     "SELECT id, schedule FROM pipeline_recipes WHERE is_active = true"
                 )
-                for (pipeline_id, schedule) in cur.fetchall():
+                for pipeline_id, schedule in cur.fetchall():
                     try:
                         cron = croniter(schedule, now)
                         prev_run = cron.get_prev(datetime)
                         if (now - prev_run).total_seconds() < 3600:
-                            run_pipeline_recipe.delay(str(pipeline_id), None, database_url)
+                            run_pipeline_recipe.delay(
+                                str(pipeline_id), None, database_url
+                            )
                             dispatched += 1
                     except Exception as e:
                         logger.warning(f"Invalid cron for pipeline {pipeline_id}: {e}")
@@ -519,6 +601,7 @@ def run_all_pipelines() -> dict:
 
 
 # ── Monitor evaluation ─────────────────────────────────────────────────────────
+
 
 def _evaluate_monitor(
     report: dict,
@@ -549,7 +632,10 @@ def _evaluate_monitor(
 
         triggered = _check_condition(actual, condition, threshold)
         if triggered:
-            return actual, f"TRIGGERED: {check_type} = {actual:.4g} {condition} {threshold}"
+            return (
+                actual,
+                f"TRIGGERED: {check_type} = {actual:.4g} {condition} {threshold}",
+            )
         return actual, f"ok: {check_type} = {actual:.4g}"
 
     except Exception as e:
@@ -564,12 +650,15 @@ def _check_condition(actual: float, condition: str, threshold: float) -> bool:
     if condition == "eq":
         return abs(actual - threshold) < 1e-9
     if condition == "change_pct":
-        return abs(actual - threshold) / max(abs(threshold), 1e-9) * 100 > 20  # >20% drift
+        return (
+            abs(actual - threshold) / max(abs(threshold), 1e-9) * 100 > 20
+        )  # >20% drift
     return False
 
 
 def _insert_monitor_run(cur, monitor_id: str, status: str, actual_value, message: str):
     import uuid
+
     cur.execute(
         """
         INSERT INTO monitor_runs (id, monitor_id, status, actual_value, message)
@@ -625,6 +714,7 @@ def _send_slack_alert(
 
 # ── Pipeline transformation helpers ───────────────────────────────────────────
 
+
 def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
     """
     Execute transform nodes from a pipeline graph.
@@ -644,7 +734,11 @@ def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
         data = node.get("data", {}) if isinstance(node.get("data"), dict) else {}
         node_type = node.get("type")
         operation = data.get("operation") or node.get("operation")
-        params = data.get("params") if isinstance(data.get("params"), dict) else node.get("params", {})
+        params = (
+            data.get("params")
+            if isinstance(data.get("params"), dict)
+            else node.get("params", {})
+        )
         if node_type == "transform" or operation:
             steps.append(
                 {
@@ -704,7 +798,9 @@ def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
             ascending = bool(params.get("ascending", True))
             if col in working.columns:
                 working = working.sort_values(by=col, ascending=ascending)
-                logs.append(f"sort_rows: sorted by {col} ({'asc' if ascending else 'desc'})")
+                logs.append(
+                    f"sort_rows: sorted by {col} ({'asc' if ascending else 'desc'})"
+                )
         elif op == "limit_rows":
             limit = int(params.get("limit", 1000))
             working = working.head(max(0, limit))
@@ -723,7 +819,9 @@ def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
             if isinstance(subset, list) and subset:
                 valid = [c for c in subset if c in working.columns]
                 working = working.dropna(subset=valid)
-                logs.append(f"drop_missing: dropped rows with nulls in {len(valid)} columns")
+                logs.append(
+                    f"drop_missing: dropped rows with nulls in {len(valid)} columns"
+                )
             else:
                 working = working.dropna()
                 logs.append("drop_missing: dropped rows with any null")
@@ -732,10 +830,21 @@ def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
             expression = params.get("expression")
             if target and expression:
                 try:
-                    working[target] = working.eval(str(expression))
+                    # Restrict eval to numexpr engine (arithmetic only, no Python code execution)
+                    working[target] = pd.eval(
+                        str(expression),
+                        local_dict={col: working[col] for col in working.columns},
+                        engine="numexpr",
+                    )
                     logs.append(f"derive_column: computed {target}")
-                except Exception:
-                    logs.append(f"derive_column: failed for target {target}")
+                except Exception as exc:
+                    logger.warning(
+                        f"derive_column: unsafe or invalid expression skipped "
+                        f"for target '{target}': {exc}"
+                    )
+                    logs.append(
+                        f"derive_column: skipped for target {target} (expression rejected)"
+                    )
         else:
             logs.append(f"unknown_operation: {op} (skipped)")
 
@@ -744,9 +853,11 @@ def _apply_pipeline_graph(df, graph: dict) -> tuple[Any, list[str]]:
 
 # ── DB helpers (synchronous — no asyncio in Celery workers) ────────────────────
 
+
 def _parse_bytes(data: bytes, file_format: str):
     """Parse raw bytes into a Polars DataFrame using the fast I/O layer."""
     from polars_loader import parse_to_polars
+
     return parse_to_polars(data, file_format)
 
 
@@ -761,11 +872,14 @@ def _save_analysis_to_db(
 ) -> str:
     """Synchronously write the Analysis row and update Dataset.status using psycopg2."""
     import uuid
+
     import psycopg2
     from psycopg2.extras import Json
 
     # Convert asyncpg URL to psycopg2 URL
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
 
     analysis_id = str(uuid.uuid4())
     try:
@@ -786,8 +900,16 @@ def _save_analysis_to_db(
                       (id, dataset_id, org_id, version, report, ai_narrative, job_id, duration_seconds)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (analysis_id, dataset_id, org_id, version,
-                     Json(report), narrative, file_hash, duration),
+                    (
+                        analysis_id,
+                        dataset_id,
+                        org_id,
+                        version,
+                        Json(report),
+                        narrative,
+                        file_hash,
+                        duration,
+                    ),
                 )
 
                 # Update dataset status + row/col counts
@@ -801,7 +923,9 @@ def _save_analysis_to_db(
                     (bi.get("rows"), bi.get("columns"), dataset_id),
                 )
         conn.close()
-        logger.info(f"Saved Analysis id={analysis_id} v{version} for dataset={dataset_id}")
+        logger.info(
+            f"Saved Analysis id={analysis_id} v{version} for dataset={dataset_id}"
+        )
     except Exception as e:
         logger.error(f"DB write failed for dataset={dataset_id}: {e}")
         raise
@@ -812,7 +936,10 @@ def _save_analysis_to_db(
 def _mark_dataset_failed(database_url: str, dataset_id: str, error: str) -> None:
     """Mark a dataset as failed in Postgres."""
     import psycopg2
-    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+
+    db_url = database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     try:
         conn = psycopg2.connect(db_url)
         with conn:

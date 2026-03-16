@@ -18,6 +18,7 @@ Results are visible in the dataset list for the configured org.
 The org is identified by the repo full_name stored in the webhook secret header
 OR by GITHUB_DEFAULT_ORG_ID env var (fallback: "default").
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,11 +28,11 @@ import os
 import uuid
 from typing import Any
 
+import defaults
 import httpx
+from cache import cache
 from fastapi import APIRouter, Header, HTTPException, Request
 from loguru import logger
-
-from cache import cache
 from storage import storage
 from worker import analyze_dataset
 
@@ -43,19 +44,29 @@ _DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # File extensions we'll analyze automatically
 _ANALYZABLE_EXTENSIONS = {".csv", ".tsv", ".parquet", ".json"}
-_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024   # 50 MB
+_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
 def _verify_signature(body: bytes, signature: str) -> bool:
     """Verify GitHub's HMAC-SHA256 webhook signature."""
     if not _GITHUB_WEBHOOK_SECRET:
-        logger.warning("GITHUB_WEBHOOK_SECRET not set — skipping signature verification")
+        if os.getenv("ENVIRONMENT") == "production":
+            logger.error(
+                "GITHUB_WEBHOOK_SECRET not set in production — rejecting request"
+            )
+            return False
+        logger.warning(
+            "GITHUB_WEBHOOK_SECRET not set — skipping signature verification"
+        )
         return True
-    expected = "sha256=" + hmac.new(
-        _GITHUB_WEBHOOK_SECRET.encode(),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(
+            _GITHUB_WEBHOOK_SECRET.encode(),
+            body,
+            hashlib.sha256,
+        ).hexdigest()
+    )
     return hmac.compare_digest(expected, signature or "")
 
 
@@ -85,7 +96,9 @@ async def _download_file(raw_url: str) -> bytes | None:
             resp.raise_for_status()
             content = resp.content
             if len(content) > _MAX_FILE_SIZE_BYTES:
-                logger.warning(f"GitHub file too large ({len(content)/1e6:.1f} MB), skipping: {raw_url}")
+                logger.warning(
+                    f"GitHub file too large ({len(content) / 1e6:.1f} MB), skipping: {raw_url}"
+                )
                 return None
             return content
     except Exception as e:
@@ -136,7 +149,9 @@ async def github_webhook(
     org_id = _GITHUB_DEFAULT_ORG_ID
     org_map_env = os.getenv("GITHUB_ORG_MAP", "")
     if org_map_env:
-        mapping = dict(pair.split(":") for pair in org_map_env.split(",") if ":" in pair)
+        mapping = dict(
+            pair.split(":") for pair in org_map_env.split(",") if ":" in pair
+        )
         org_id = mapping.get(repo_full_name, org_id)
 
     queued: list[dict] = []
@@ -165,7 +180,10 @@ async def github_webhook(
         if _DATABASE_URL:
             try:
                 import psycopg2
-                db_url = _DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+
+                db_url = _DATABASE_URL.replace(
+                    "postgresql+asyncpg://", "postgresql://"
+                ).replace("postgres://", "postgresql://")
                 conn = psycopg2.connect(db_url)
                 with conn:
                     with conn.cursor() as cur:
@@ -176,8 +194,16 @@ async def github_webhook(
                                file_key, file_size_bytes, file_format, status)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
                             """,
-                            (dataset_id, org_id, org_id, display_name, filename,
-                             file_key, len(file_bytes), ext),
+                            (
+                                dataset_id,
+                                defaults.resolve_org_id(org_id),
+                                defaults.DEFAULT_USER_ID,
+                                display_name,
+                                filename,
+                                file_key,
+                                len(file_bytes),
+                                ext,
+                            ),
                         )
                 conn.close()
             except Exception as e:

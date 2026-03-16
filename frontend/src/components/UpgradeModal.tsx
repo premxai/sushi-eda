@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { X, Zap, Check } from "lucide-react";
 
 interface Props {
@@ -17,7 +18,12 @@ const PRO_FEATURES = [
   "Priority support",
 ];
 
-export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit }: Props) {
+export default function UpgradeModal({
+  open,
+  onClose,
+  creditsUsed,
+  creditsLimit,
+}: Props) {
   if (!open) return null;
 
   return (
@@ -42,10 +48,13 @@ export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit 
           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
             <Zap className="h-5 w-5 text-violet-600" />
           </div>
-          <h2 className="text-lg font-bold text-neutral-900">You&apos;ve hit your AI credit limit</h2>
+          <h2 className="text-lg font-bold text-neutral-900">
+            You&apos;ve hit your AI credit limit
+          </h2>
           {creditsUsed !== undefined && creditsLimit !== undefined && (
             <p className="text-sm text-neutral-500">
-              {creditsUsed.toLocaleString()} / {creditsLimit.toLocaleString()} credits used this period.
+              {creditsUsed.toLocaleString()} / {creditsLimit.toLocaleString()}{" "}
+              credits used this period.
             </p>
           )}
         </div>
@@ -56,7 +65,10 @@ export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit 
             Pro Plan — $29/mo
           </p>
           {PRO_FEATURES.map((f) => (
-            <div key={f} className="flex items-center gap-2 text-sm text-neutral-700">
+            <div
+              key={f}
+              className="flex items-center gap-2 text-sm text-neutral-700"
+            >
               <Check className="h-4 w-4 text-violet-500 flex-shrink-0" />
               {f}
             </div>
@@ -64,13 +76,13 @@ export default function UpgradeModal({ open, onClose, creditsUsed, creditsLimit 
         </div>
 
         {/* CTA */}
-        <a
+        <Link
           href="/pricing"
           className="block w-full text-center py-2.5 rounded-xl bg-neutral-900 text-white
                      text-sm font-semibold hover:bg-neutral-700 transition-colors"
         >
           Upgrade to Pro
-        </a>
+        </Link>
 
         <p className="text-center text-xs text-neutral-400">
           Cancel anytime · No long-term contract

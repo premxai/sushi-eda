@@ -5,11 +5,7 @@
   "version": "1.0.0",
   "description": "Capture tables and CSV links from any web page and analyze them instantly with Sushi EDA.",
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "contextMenus", "storage", "scripting"],
 
   "host_permissions": [
     "https://api.sushi-eda.com/*",

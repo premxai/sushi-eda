@@ -1,8 +1,9 @@
 """Data cleaning and transformation engine."""
 
-import pandas as pd
-import numpy as np
 from typing import Any
+
+import numpy as np
+import pandas as pd
 
 
 class DataCleaner:
@@ -11,6 +12,7 @@ class DataCleaner:
     def __init__(self, df: pd.DataFrame):
         self.df = df.copy()
         self.original_shape = df.shape
+        self._original_columns = list(df.columns)
         self.log: list[str] = []
 
     # ── Missing value handling ────────────────────────────────────────
@@ -33,7 +35,9 @@ class DataCleaner:
         missing_pct = self.df.isnull().mean()
         cols_to_drop = missing_pct[missing_pct > threshold].index.tolist()
         self.df = self.df.drop(columns=cols_to_drop)
-        self.log.append(f"Dropped {len(cols_to_drop)} columns with >{threshold*100:.0f}% missing: {cols_to_drop}")
+        self.log.append(
+            f"Dropped {len(cols_to_drop)} columns with >{threshold * 100:.0f}% missing: {cols_to_drop}"
+        )
         return self
 
     def impute_mean(self, columns: list[str] | None = None) -> "DataCleaner":
@@ -44,7 +48,9 @@ class DataCleaner:
                 mean_val = self.df[col].mean()
                 count = self.df[col].isnull().sum()
                 self.df[col] = self.df[col].fillna(mean_val)
-                self.log.append(f"Imputed {count} missing values in '{col}' with mean ({mean_val:.4f})")
+                self.log.append(
+                    f"Imputed {count} missing values in '{col}' with mean ({mean_val:.4f})"
+                )
         return self
 
     def impute_median(self, columns: list[str] | None = None) -> "DataCleaner":
@@ -55,12 +61,17 @@ class DataCleaner:
                 median_val = self.df[col].median()
                 count = self.df[col].isnull().sum()
                 self.df[col] = self.df[col].fillna(median_val)
-                self.log.append(f"Imputed {count} missing values in '{col}' with median ({median_val:.4f})")
+                self.log.append(
+                    f"Imputed {count} missing values in '{col}' with median ({median_val:.4f})"
+                )
         return self
 
     def impute_mode(self, columns: list[str] | None = None) -> "DataCleaner":
         """Fill missing categorical values with column mode."""
-        cols = columns or self.df.select_dtypes(include=["object", "category"]).columns.tolist()
+        cols = (
+            columns
+            or self.df.select_dtypes(include=["object", "category"]).columns.tolist()
+        )
         for col in cols:
             if col in self.df.columns and self.df[col].isnull().any():
                 mode_vals = self.df[col].mode()
@@ -69,17 +80,23 @@ class DataCleaner:
                 mode_val = mode_vals[0]
                 count = self.df[col].isnull().sum()
                 self.df[col] = self.df[col].fillna(mode_val)
-                self.log.append(f"Imputed {count} missing values in '{col}' with mode ('{mode_val}')")
+                self.log.append(
+                    f"Imputed {count} missing values in '{col}' with mode ('{mode_val}')"
+                )
         return self
 
-    def impute_constant(self, value: Any, columns: list[str] | None = None) -> "DataCleaner":
+    def impute_constant(
+        self, value: Any, columns: list[str] | None = None
+    ) -> "DataCleaner":
         """Fill missing values with a constant."""
         cols = columns or self.df.columns.tolist()
         for col in cols:
             if col in self.df.columns and self.df[col].isnull().any():
                 count = self.df[col].isnull().sum()
                 self.df[col] = self.df[col].fillna(value)
-                self.log.append(f"Imputed {count} missing values in '{col}' with constant '{value}'")
+                self.log.append(
+                    f"Imputed {count} missing values in '{col}' with constant '{value}'"
+                )
         return self
 
     def impute_forward_fill(self, columns: list[str] | None = None) -> "DataCleaner":
@@ -94,18 +111,24 @@ class DataCleaner:
 
     # ── Duplicates ───────────────────────────────────────────────────
 
-    def remove_duplicates(self, subset: list[str] | None = None, keep: str = "first") -> "DataCleaner":
+    def remove_duplicates(
+        self, subset: list[str] | None = None, keep: str = "first"
+    ) -> "DataCleaner":
         """Remove duplicate rows."""
         before = len(self.df)
         self.df = self.df.drop_duplicates(subset=subset, keep=keep)
         removed = before - len(self.df)
         scope = f"columns {subset}" if subset else "all columns"
-        self.log.append(f"Removed {removed} duplicate rows (based on {scope}, keep='{keep}')")
+        self.log.append(
+            f"Removed {removed} duplicate rows (based on {scope}, keep='{keep}')"
+        )
         return self
 
     # ── Outlier treatment ────────────────────────────────────────────
 
-    def cap_outliers_iqr(self, columns: list[str] | None = None, factor: float = 1.5) -> "DataCleaner":
+    def cap_outliers_iqr(
+        self, columns: list[str] | None = None, factor: float = 1.5
+    ) -> "DataCleaner":
         """Cap outliers at IQR whisker bounds (Winsorization)."""
         cols = columns or self.df.select_dtypes(include=[np.number]).columns.tolist()
         for col in cols:
@@ -118,10 +141,14 @@ class DataCleaner:
             upper = q3 + factor * iqr
             n_capped = int(((self.df[col] < lower) | (self.df[col] > upper)).sum())
             self.df[col] = self.df[col].clip(lower=lower, upper=upper)
-            self.log.append(f"Capped {n_capped} outliers in '{col}' to [{lower:.4f}, {upper:.4f}]")
+            self.log.append(
+                f"Capped {n_capped} outliers in '{col}' to [{lower:.4f}, {upper:.4f}]"
+            )
         return self
 
-    def remove_outliers_iqr(self, columns: list[str] | None = None, factor: float = 1.5) -> "DataCleaner":
+    def remove_outliers_iqr(
+        self, columns: list[str] | None = None, factor: float = 1.5
+    ) -> "DataCleaner":
         """Remove rows where any of the specified columns have outlier values."""
         cols = columns or self.df.select_dtypes(include=[np.number]).columns.tolist()
         before = len(self.df)
@@ -182,7 +209,8 @@ class DataCleaner:
         cols = columns or self.df.select_dtypes(include=["object"]).columns.tolist()
         for col in cols:
             if col in self.df.columns:
-                self.df[col] = self.df[col].astype(str).str.strip()
+                mask = self.df[col].notna()
+                self.df.loc[mask, col] = self.df.loc[mask, col].astype(str).str.strip()
         self.log.append(f"Stripped whitespace from {len(cols)} string columns")
         return self
 
@@ -199,12 +227,15 @@ class DataCleaner:
         """Drop columns with only one unique value."""
         constant_cols = [col for col in self.df.columns if self.df[col].nunique() <= 1]
         self.df = self.df.drop(columns=constant_cols)
-        self.log.append(f"Dropped {len(constant_cols)} constant columns: {constant_cols}")
+        self.log.append(
+            f"Dropped {len(constant_cols)} constant columns: {constant_cols}"
+        )
         return self
 
     def rename_columns_snake_case(self) -> "DataCleaner":
         """Rename columns to snake_case."""
         import re
+
         new_names = {}
         for col in self.df.columns:
             new = re.sub(r"[\s\-\.]+", "_", str(col))
@@ -220,6 +251,7 @@ class DataCleaner:
     def result(self) -> dict[str, Any]:
         """Return cleaned DataFrame summary."""
         from analyzer import EDAAnalyzer
+
         analyzer = EDAAnalyzer(self.df)
         report = analyzer.generate_full_report()
         preview = self.df.head(50).fillna("").to_dict(orient="records")
@@ -241,9 +273,12 @@ class DataTransformer:
 
     def __init__(self, df: pd.DataFrame):
         self.df = df.copy()
+        self._original_columns = list(df.columns)
         self.log: list[str] = []
 
-    def log_transform(self, columns: list[str], handle_zeros: bool = True) -> "DataTransformer":
+    def log_transform(
+        self, columns: list[str], handle_zeros: bool = True
+    ) -> "DataTransformer":
         """Apply log1p transform to reduce right skew."""
         for col in columns:
             if col not in self.df.columns:
@@ -253,7 +288,9 @@ class DataTransformer:
                 if min_val <= 0:
                     shift = abs(min_val) + 1
                     self.df[f"{col}_log"] = np.log1p(self.df[col] + shift)
-                    self.log.append(f"Log-transformed '{col}' (shifted by {shift:.4f}) → '{col}_log'")
+                    self.log.append(
+                        f"Log-transformed '{col}' (shifted by {shift:.4f}) → '{col}_log'"
+                    )
                 else:
                     self.df[f"{col}_log"] = np.log1p(self.df[col])
                     self.log.append(f"Log-transformed '{col}' → '{col}_log'")
@@ -287,16 +324,22 @@ class DataTransformer:
                 self.df[f"{col}_std"] = 0.0
             else:
                 self.df[f"{col}_std"] = (self.df[col] - mean) / std
-            self.log.append(f"Z-score standardized '{col}' → '{col}_std' (mean={mean:.4f}, std={std:.4f})")
+            self.log.append(
+                f"Z-score standardized '{col}' → '{col}_std' (mean={mean:.4f}, std={std:.4f})"
+            )
         return self
 
-    def bin_equal_width(self, column: str, n_bins: int = 5, labels: list[str] | None = None) -> "DataTransformer":
+    def bin_equal_width(
+        self, column: str, n_bins: int = 5, labels: list[str] | None = None
+    ) -> "DataTransformer":
         """Bin a numeric column into equal-width buckets."""
         if column not in self.df.columns:
             return self
         new_col = f"{column}_bin"
         self.df[new_col] = pd.cut(self.df[column], bins=n_bins, labels=labels)
-        self.log.append(f"Binned '{column}' into {n_bins} equal-width bins → '{new_col}'")
+        self.log.append(
+            f"Binned '{column}' into {n_bins} equal-width bins → '{new_col}'"
+        )
         return self
 
     def bin_equal_frequency(self, column: str, n_bins: int = 5) -> "DataTransformer":
@@ -304,18 +347,26 @@ class DataTransformer:
         if column not in self.df.columns:
             return self
         new_col = f"{column}_qbin"
-        self.df[new_col] = pd.qcut(self.df[column], q=n_bins, labels=False, duplicates="drop")
-        self.log.append(f"Quantile-binned '{column}' into {n_bins} buckets → '{new_col}'")
+        self.df[new_col] = pd.qcut(
+            self.df[column], q=n_bins, labels=False, duplicates="drop"
+        )
+        self.log.append(
+            f"Quantile-binned '{column}' into {n_bins} buckets → '{new_col}'"
+        )
         return self
 
-    def one_hot_encode(self, columns: list[str], max_cardinality: int = 20) -> "DataTransformer":
+    def one_hot_encode(
+        self, columns: list[str], max_cardinality: int = 20
+    ) -> "DataTransformer":
         """One-hot encode low-cardinality categorical columns."""
         for col in columns:
             if col not in self.df.columns:
                 continue
             n_unique = self.df[col].nunique()
             if n_unique > max_cardinality:
-                self.log.append(f"Skipped OHE for '{col}': {n_unique} unique values > max {max_cardinality}")
+                self.log.append(
+                    f"Skipped OHE for '{col}': {n_unique} unique values > max {max_cardinality}"
+                )
                 continue
             dummies = pd.get_dummies(self.df[col], prefix=col, drop_first=False)
             self.df = pd.concat([self.df, dummies], axis=1)
@@ -373,12 +424,20 @@ class DataTransformer:
         if column not in self.df.columns:
             return self
         window = max(2, min(window, len(self.df)))
-        self.df[f"{column}_roll_mean_{window}"] = self.df[column].rolling(window, min_periods=1).mean()
-        self.df[f"{column}_roll_std_{window}"] = self.df[column].rolling(window, min_periods=1).std()
-        self.log.append(f"Rolling stats (w={window}) for '{column}' → '{column}_roll_mean_{window}', '{column}_roll_std_{window}'")
+        self.df[f"{column}_roll_mean_{window}"] = (
+            self.df[column].rolling(window, min_periods=1).mean()
+        )
+        self.df[f"{column}_roll_std_{window}"] = (
+            self.df[column].rolling(window, min_periods=1).std()
+        )
+        self.log.append(
+            f"Rolling stats (w={window}) for '{column}' → '{column}_roll_mean_{window}', '{column}_roll_std_{window}'"
+        )
         return self
 
-    def lag_features(self, column: str, lags: list[int] | None = None) -> "DataTransformer":
+    def lag_features(
+        self, column: str, lags: list[int] | None = None
+    ) -> "DataTransformer":
         """Add lag features for a numeric column."""
         if column not in self.df.columns:
             return self
@@ -391,6 +450,7 @@ class DataTransformer:
 
     def result(self) -> dict[str, Any]:
         from analyzer import EDAAnalyzer
+
         analyzer = EDAAnalyzer(self.df)
         report = analyzer.generate_full_report()
         preview = self.df.head(50).fillna("").to_dict(orient="records")
@@ -398,6 +458,8 @@ class DataTransformer:
         return {
             "report": report,
             "transform_log": self.log,
-            "new_columns": [c for c in self.df.columns if c not in self.df.columns],
+            "new_columns": [
+                c for c in self.df.columns if c not in self._original_columns
+            ],
             "total_columns": int(self.df.shape[1]),
         }

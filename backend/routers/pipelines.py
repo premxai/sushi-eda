@@ -8,19 +8,20 @@ Implements Task 27 core workflows:
 - run history with logs/metrics
 - versioned recipe snapshots
 """
+
 from __future__ import annotations
 
 import os
 from typing import Any
 
+from auth import get_current_user, validate_org_access
+from db import get_db
+from db.models import Dataset, PipelineRecipe, PipelineRecipeVersion, PipelineRun, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from auth import get_current_user, validate_org_access
-from db import get_db
-from db.models import Dataset, PipelineRecipe, PipelineRecipeVersion, PipelineRun, User
 
 router = APIRouter(tags=["pipelines"])
 
@@ -62,7 +63,9 @@ def _run_dict(r: PipelineRun) -> dict[str, Any]:
     }
 
 
-async def _get_pipeline_or_404(pipeline_id: str, org_id: str, db: AsyncSession) -> PipelineRecipe:
+async def _get_pipeline_or_404(
+    pipeline_id: str, org_id: str, db: AsyncSession
+) -> PipelineRecipe:
     result = await db.execute(
         select(PipelineRecipe).where(
             PipelineRecipe.id == pipeline_id,
@@ -83,7 +86,9 @@ async def create_pipeline(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new pipeline recipe (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
 
     name = (body.get("name") or "").strip()
     if not name:
@@ -92,7 +97,9 @@ async def create_pipeline(
     source_dataset_id = body.get("source_dataset_id")
     if source_dataset_id:
         ds = await db.execute(
-            select(Dataset).where(Dataset.id == source_dataset_id, Dataset.org_id == org_id)
+            select(Dataset).where(
+                Dataset.id == source_dataset_id, Dataset.org_id == org_id
+            )
         )
         if ds.scalar_one_or_none() is None:
             raise HTTPException(status_code=404, detail="Source dataset not found")
@@ -102,7 +109,7 @@ async def create_pipeline(
         raise HTTPException(status_code=400, detail="graph must be an object")
 
     pipeline = PipelineRecipe(
-        org_id=org_id,
+        org_id=resolve_org_id(org_id),
         created_by=current_user.id,
         source_dataset_id=source_dataset_id,
         name=name,
@@ -134,6 +141,8 @@ async def create_pipeline(
 @router.get("/pipelines")
 async def list_pipelines(
     org_id: str = Query(default="default"),
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -143,6 +152,8 @@ async def list_pipelines(
         select(PipelineRecipe)
         .where(PipelineRecipe.org_id == org_id)
         .order_by(PipelineRecipe.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     pipelines = result.scalars().all()
     return {"pipelines": [_pipeline_dict(p) for p in pipelines]}
@@ -170,7 +181,9 @@ async def update_pipeline(
     db: AsyncSession = Depends(get_db),
 ):
     """Update pipeline recipe and create a new version snapshot when changed (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     pipeline = await _get_pipeline_or_404(pipeline_id, org_id, db)
 
     changed = False
@@ -179,11 +192,15 @@ async def update_pipeline(
         source_dataset_id = body.get("source_dataset_id")
         if source_dataset_id:
             ds = await db.execute(
-                select(Dataset).where(Dataset.id == source_dataset_id, Dataset.org_id == org_id)
+                select(Dataset).where(
+                    Dataset.id == source_dataset_id, Dataset.org_id == org_id
+                )
             )
             if ds.scalar_one_or_none() is None:
                 raise HTTPException(status_code=404, detail="Source dataset not found")
-        if source_dataset_id != (str(pipeline.source_dataset_id) if pipeline.source_dataset_id else None):
+        if source_dataset_id != (
+            str(pipeline.source_dataset_id) if pipeline.source_dataset_id else None
+        ):
             pipeline.source_dataset_id = source_dataset_id
             changed = True
 
@@ -232,7 +249,9 @@ async def delete_pipeline(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a pipeline and associated runs/versions (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     pipeline = await _get_pipeline_or_404(pipeline_id, org_id, db)
     await db.delete(pipeline)
     await db.commit()
@@ -247,7 +266,9 @@ async def run_pipeline(
     db: AsyncSession = Depends(get_db),
 ):
     """Queue a pipeline run immediately (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     pipeline = await _get_pipeline_or_404(pipeline_id, org_id, db)
 
     if not DATABASE_URL:

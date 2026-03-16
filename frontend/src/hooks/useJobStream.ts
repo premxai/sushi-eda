@@ -13,17 +13,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" ? "/api" : "http://localhost:8000");
+import { API_BASE } from "@/lib/api";
 
 export type JobStatus = "pending" | "processing" | "done" | "failed" | "idle";
 
 interface JobStreamState {
   status: JobStatus;
-  progress: number;          // 0–100
-  stage: string;             // e.g. "analyzing", "saving"
+  progress: number; // 0–100
+  stage: string; // e.g. "analyzing", "saving"
   analysisId: string | null;
   error: string | null;
   durationSeconds: number | null;
@@ -40,7 +37,7 @@ const INITIAL_STATE: JobStreamState = {
 
 export function useJobStream(
   datasetId: string | null,
-  orgId: string = "default"
+  orgId: string = "default",
 ): JobStreamState {
   const [state, setState] = useState<JobStreamState>(INITIAL_STATE);
   const esRef = useRef<EventSource | null>(null);
@@ -143,7 +140,7 @@ function _startPolling(
   datasetId: string,
   orgId: string,
   setState: React.Dispatch<React.SetStateAction<JobStreamState>>,
-  pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>
+  pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
 ) {
   _clearPolling(pollRef);
 
@@ -173,7 +170,9 @@ function _startPolling(
   }, 3000);
 }
 
-function _clearPolling(pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>) {
+function _clearPolling(
+  pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
+) {
   if (pollRef.current !== null) {
     clearInterval(pollRef.current);
     pollRef.current = null;

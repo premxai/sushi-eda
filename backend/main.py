@@ -4,45 +4,47 @@ import math
 import os
 import tempfile
 import uuid
-from typing import Optional, Any
+from typing import Any, Optional
 
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
-from sentry_sdk.integrations.celery import CeleryIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
-import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile, Request
-from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from loguru import logger
-
-from analyzer import EDAAnalyzer
-from visualizer import Visualizer
-from advanced_stats import AdvancedStatistics
-from export_utils import DataExporter
-from cache import cache
-from storage import storage
-from worker import analyze_dataset
 import defaults
+import pandas as pd
+import sentry_sdk
+from advanced_stats import AdvancedStatistics
+from analyzer import EDAAnalyzer
 from auth import get_optional_user
+from cache import cache
+from cleaner import DataCleaner, DataTransformer
 from db import get_db
 from db.models import User as _UserModel
-from sqlalchemy.ext.asyncio import AsyncSession
 from duckdb_query import run_query as _duckdb_run_query
-from routers import webhooks, jobs as jobs_router
+from export_utils import DataExporter
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
+from routers import jobs as jobs_router
+from routers import webhooks
 from routers.admin import router as admin_router
 from routers.billing import router as billing_router
 from routers.comments import router as comments_router
 from routers.connectors import router as connectors_router
-from routers.datasets import router as datasets_router, analyses_router, credits_router
+from routers.datasets import analyses_router, credits_router
+from routers.datasets import router as datasets_router
 from routers.integrations import router as integrations_router
 from routers.monitors import router as monitors_router
 from routers.pipelines import router as pipelines_router
 from routers.shares import router as shares_router
 from routers.slack_bot import router as slack_router
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from sqlalchemy.ext.asyncio import AsyncSession
+from storage import storage
+from visualizer import Visualizer
+from worker import analyze_dataset
 
 # ── Sentry ─────────────────────────────────────────────────────────────────────
 _SENTRY_DSN = os.getenv("SENTRY_DSN", "")
@@ -121,6 +123,7 @@ app.include_router(slack_router)
 
 # ── Startup: ensure default org + system user exist in Postgres ───────────────
 
+
 @app.on_event("startup")
 async def _ensure_default_org() -> None:
     """
@@ -131,12 +134,15 @@ async def _ensure_default_org() -> None:
     violations.
     """
     from db.connection import AsyncSessionLocal
+
     if AsyncSessionLocal is None:
         logger.info("DATABASE_URL not set — skipping default org creation")
         return
     try:
+        from db.models import Organization
+        from db.models import User as _User
         from sqlalchemy import select as sa_select
-        from db.models import Organization, User as _User
+
         async with AsyncSessionLocal() as db:
             # ── Default organisation ────────────────────────────────────────
             result = await db.execute(
@@ -178,6 +184,7 @@ async def _ensure_default_org() -> None:
 _current_df: Optional[pd.DataFrame] = None
 
 # Simple in-memory cache for analysis results (file hash -> report)
+_MAX_CACHE_SIZE = 100
 _analysis_cache: dict[str, Any] = {}
 
 # Persistent temp file so the DataFrame survives backend restarts
@@ -220,7 +227,9 @@ def _read_bytes_as_df(raw: bytes, filename: str) -> pd.DataFrame:
             return pd.DataFrame()
         for col in df.columns:
             if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+                df[col] = df[col].apply(
+                    lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x
+                )
         return df
     else:
         return pd.read_csv(io.BytesIO(raw))  # best-effort fallback
@@ -239,7 +248,9 @@ def _get_current_df() -> Optional[pd.DataFrame]:
             with open(_LAST_UPLOAD_DATA, "rb") as f:
                 raw = f.read()
             _current_df = _read_bytes_as_df(raw, meta.get("filename", "data.csv"))
-            logger.info(f"Recovered DataFrame from disk: {meta.get('filename')}, shape: {_current_df.shape}")
+            logger.info(
+                f"Recovered DataFrame from disk: {meta.get('filename')}, shape: {_current_df.shape}"
+            )
             return _current_df
         except Exception as e:
             logger.warning(f"Failed to recover DataFrame from disk: {e}")
@@ -249,6 +260,7 @@ def _get_current_df() -> Optional[pd.DataFrame]:
 def get_file_hash(contents: bytes) -> str:
     """Generate hash for file contents for caching."""
     import hashlib
+
     return hashlib.md5(contents).hexdigest()
 
 
@@ -268,45 +280,58 @@ def read_upload(file: UploadFile) -> pd.DataFrame:
         return pd.read_parquet(io.BytesIO(contents))
     elif ext in ("db", "sqlite", "sqlite3"):
         # For SQLite, we need to save to a temp file
-        import tempfile
         import sqlite3
+        import tempfile
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
-        
+
         try:
             conn = sqlite3.connect(tmp_path)
             # Get list of tables
-            tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'", conn)
+            tables = pd.read_sql_query(
+                "SELECT name FROM sqlite_master WHERE type='table'", conn
+            )
             if len(tables) == 0:
-                raise HTTPException(status_code=400, detail="No tables found in SQLite database")
-            
+                raise HTTPException(
+                    status_code=400, detail="No tables found in SQLite database"
+                )
+
             # Use the first table (or we could let user select)
-            table_name = tables.iloc[0]['name']
-            df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+            table_name = tables.iloc[0]["name"]
+            safe_name = table_name.replace('"', '""')
+            df = pd.read_sql_query(f'SELECT * FROM "{safe_name}"', conn)
             conn.close()
-            
+
             # Clean up temp file
             import os
+
             os.unlink(tmp_path)
-            
+
             return df
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to read SQLite database: {str(e)}")
+            raise HTTPException(
+                status_code=400, detail=f"Failed to read SQLite database: {str(e)}"
+            )
     elif ext == "json":
-        data = json.loads(contents.decode('utf-8'))
+        data = json.loads(contents.decode("utf-8"))
         if isinstance(data, list):
             df = pd.json_normalize(data, max_level=1) if data else pd.DataFrame()
         elif isinstance(data, dict):
             df = pd.json_normalize([data], max_level=1)
         else:
-            raise HTTPException(status_code=400, detail="JSON must be an array or object")
-        
+            raise HTTPException(
+                status_code=400, detail="JSON must be an array or object"
+            )
+
         # Convert any remaining dict/list columns to strings to avoid unhashable type errors
         for col in df.columns:
             if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
-        
+                df[col] = df[col].apply(
+                    lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x
+                )
+
         return df
     else:
         raise HTTPException(
@@ -319,30 +344,30 @@ def read_upload(file: UploadFile) -> pd.DataFrame:
 @limiter.limit("10/minute")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     global _current_df
-    
+
     logger.info(f"File upload request: {file.filename}")
-    
+
     try:
         # Read file contents for hashing
         contents = file.file.read()
         file_hash = get_file_hash(contents)
-        
+
         # Persist to disk so stats survive backend restarts
         _persist_upload(contents, file.filename or "data.csv")
-        
+
         # Check cache
         if file_hash in _analysis_cache:
             logger.info(f"Cache hit for file: {file.filename}")
             _current_df = _analysis_cache[file_hash]["df"]
             return _analysis_cache[file_hash]["report"]
-        
+
         # Reset file pointer for parsing
         file.file.seek(0)
-        
+
         # Parse file
         df = read_upload(file)
         logger.info(f"Successfully parsed file: {file.filename}, shape: {df.shape}")
-        
+
         _current_df = df
 
         # Run analysis
@@ -354,13 +379,16 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         # Include a data preview (first 50 rows)
         preview = df.head(50).fillna("").to_dict(orient="records")  # type: ignore[attr-defined]
         report["preview"] = preview
-        
-        # Cache the result
+
+        # Cache the result (evict oldest entry if at capacity)
+        if len(_analysis_cache) >= _MAX_CACHE_SIZE:
+            oldest_key = next(iter(_analysis_cache))
+            del _analysis_cache[oldest_key]
         _analysis_cache[file_hash] = {"df": df, "report": report}
         logger.info(f"Cached result for {file.filename} with hash {file_hash[:8]}")
 
-        return report
-        
+        return _sanitize(report)
+
     except HTTPException:
         raise
     except Exception as e:
@@ -376,13 +404,16 @@ async def query_local_df(request: Request):
     """
     df_pd = _get_current_df()
     if df_pd is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     body = await request.json()
     sql: str = body.get("sql", "")
     limit: int = int(body.get("limit", 1000))
     offset: int = int(body.get("offset", 0))
     try:
         import polars as pl
+
         pl_df = pl.from_pandas(df_pd)
         return _duckdb_run_query(pl_df, sql, limit, offset)
     except (ValueError, RuntimeError) as exc:
@@ -418,7 +449,9 @@ async def visualize_column(column_name: str, chart_type: str = "auto"):
     """On-demand chart generation for a single column."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
 
     if column_name not in df.columns:
         raise HTTPException(status_code=404, detail=f"Column '{column_name}' not found")
@@ -436,8 +469,10 @@ async def visualize_column(column_name: str, chart_type: str = "auto"):
     elif chart_type == "categorical_bar":
         return viz.create_categorical_bar(column_name)
     else:
-        raise HTTPException(status_code=400,
-                            detail=f"Unknown chart_type '{chart_type}'. Use: distribution, box_plot, categorical_bar")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown chart_type '{chart_type}'. Use: distribution, box_plot, categorical_bar",
+        )
 
 
 @app.get("/visualize")
@@ -445,14 +480,18 @@ async def visualize_all():
     """Generate all visualizations for the currently loaded dataset."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
 
     viz = Visualizer(df)
     return viz.generate_all_visualizations()
 
 
 @app.post("/compare")
-async def compare_datasets(file1: UploadFile = File(...), file2: UploadFile = File(...)):
+async def compare_datasets(
+    file1: UploadFile = File(...), file2: UploadFile = File(...)
+):
     """Compare two datasets side-by-side."""
     try:
         df1 = read_upload(file1)
@@ -464,16 +503,16 @@ async def compare_datasets(file1: UploadFile = File(...), file2: UploadFile = Fi
 
     analyzer1 = EDAAnalyzer(df1)
     analyzer2 = EDAAnalyzer(df2)
-    
+
     report1 = analyzer1.generate_full_report()
     report2 = analyzer2.generate_full_report()
-    
+
     preview1 = df1.head(50).fillna("").to_dict(orient="records")
     preview2 = df2.head(50).fillna("").to_dict(orient="records")
-    
+
     report1["preview"] = preview1
     report2["preview"] = preview2
-    
+
     # Generate comparison insights
     comparison = {
         "schema_diff": {
@@ -484,7 +523,7 @@ async def compare_datasets(file1: UploadFile = File(...), file2: UploadFile = Fi
         "row_count_diff": int(df1.shape[0]) - int(df2.shape[0]),
         "column_count_diff": int(df1.shape[1]) - int(df2.shape[1]),
     }
-    
+
     return {
         "file1": {"name": file1.filename, "report": report1},
         "file2": {"name": file2.filename, "report": report2},
@@ -497,8 +536,10 @@ async def get_advanced_stats():
     """Get advanced statistical tests for the current dataset."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+
     stats_analyzer = AdvancedStatistics(df)
     return _sanitize(stats_analyzer.generate_all_tests())
 
@@ -508,7 +549,9 @@ async def perform_regression(x_col: str, y_col: str):
     """Perform linear regression between two columns."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     return _sanitize(AdvancedStatistics(df).linear_regression(x_col, y_col))
 
 
@@ -517,7 +560,9 @@ async def perform_ttest(col1: str, col2: str):
     """Perform independent t-test between two columns."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     return _sanitize(AdvancedStatistics(df).t_test_independent(col1, col2))
 
 
@@ -526,8 +571,12 @@ async def perform_mann_whitney(col1: str, col2: str, alternative: str = "two-sid
     """Mann-Whitney U test between two numeric columns."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return _sanitize(AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative))
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+    return _sanitize(
+        AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
+    )
 
 
 @app.post("/stats/chi_square")
@@ -535,7 +584,9 @@ async def perform_chi_square(col1: str, col2: str):
     """Chi-square test of independence between two categorical columns."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     return _sanitize(AdvancedStatistics(df).chi_square_test(col1, col2))
 
 
@@ -544,7 +595,9 @@ async def perform_anova(numeric_col: str, group_col: str):
     """One-way ANOVA: numeric_col grouped by group_col."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     return _sanitize(AdvancedStatistics(df).anova_one_way(numeric_col, group_col))
 
 
@@ -552,33 +605,55 @@ async def perform_anova(numeric_col: str, group_col: str):
 async def perform_correlation(col1: str, col2: str, method: str = "pearson"):
     """Correlation coefficient + significance between two numeric columns."""
     from scipy import stats as scipy_stats
+
     if method not in ("pearson", "spearman", "kendall"):
-        raise HTTPException(status_code=400, detail="method must be pearson | spearman | kendall")
+        raise HTTPException(
+            status_code=400, detail="method must be pearson | spearman | kendall"
+        )
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     data = df[[col1, col2]].dropna()
     if len(data) < 3:
         raise HTTPException(status_code=422, detail="Insufficient data")
-    fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
+    fn = {
+        "pearson": scipy_stats.pearsonr,
+        "spearman": scipy_stats.spearmanr,
+        "kendall": scipy_stats.kendalltau,
+    }[method]
     stat, p = fn(data[col1], data[col2])
-    stat_f = None if (math.isnan(float(stat)) or math.isinf(float(stat))) else float(stat)
+    stat_f = (
+        None if (math.isnan(float(stat)) or math.isinf(float(stat))) else float(stat)
+    )
     p_f = None if (math.isnan(float(p)) or math.isinf(float(p))) else float(p)
     return {
         "test": f"{method.title()} correlation",
-        "column1": col1, "column2": col2,
-        "coefficient": stat_f, "p_value": p_f,
-        "significant": bool(p_f is not None and p_f < 0.05), "n": int(len(data)),
+        "column1": col1,
+        "column2": col2,
+        "coefficient": stat_f,
+        "p_value": p_f,
+        "significant": bool(p_f is not None and p_f < 0.05),
+        "n": int(len(data)),
     }
 
 
 @app.post("/stats/regression/logistic")
-async def perform_logistic_regression(x_col: str, y_col: str, positive_class: str | None = None):
+async def perform_logistic_regression(
+    x_col: str, y_col: str, positive_class: str | None = None
+):
     """Logistic regression for a binary target column."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return _sanitize(AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class))
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+    return _sanitize(
+        AdvancedStatistics(df).logistic_regression(
+            x_col, y_col, positive_class=positive_class
+        )
+    )
 
 
 @app.post("/stats/regression/polynomial")
@@ -586,33 +661,58 @@ async def perform_polynomial_regression(x_col: str, y_col: str, degree: int = 2)
     """Polynomial regression for numeric predictor/target pairs."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return _sanitize(AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree))
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+    return _sanitize(
+        AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
+    )
 
 
 @app.post("/stats/time_series/decompose")
-async def perform_ts_decomposition(date_col: str, value_col: str, period: int | None = None, model: str = "additive"):
+async def perform_ts_decomposition(
+    date_col: str, value_col: str, period: int | None = None, model: str = "additive"
+):
     """Time-series decomposition into trend/seasonality/residual."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return _sanitize(AdvancedStatistics(df).time_series_decomposition(
-        date_col=date_col, value_col=value_col, period=period, model=model,
-    ))
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+    return _sanitize(
+        AdvancedStatistics(df).time_series_decomposition(
+            date_col=date_col,
+            value_col=value_col,
+            period=period,
+            model=model,
+        )
+    )
 
 
 @app.post("/stats/time_series/arima")
 async def perform_arima_forecast(
-    date_col: str, value_col: str,
-    periods: int = 12, p: int = 1, d: int = 1, q: int = 1, alpha: float = 0.05,
+    date_col: str,
+    value_col: str,
+    periods: int = 12,
+    p: int = 1,
+    d: int = 1,
+    q: int = 1,
+    alpha: float = 0.05,
 ):
     """ARIMA forecast endpoint for a date/value series."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
     return AdvancedStatistics(df).arima_forecast(
-        date_col=date_col, value_col=value_col,
-        periods=periods, p=p, d=d, q=q, alpha=alpha,
+        date_col=date_col,
+        value_col=value_col,
+        periods=periods,
+        p=p,
+        d=d,
+        q=q,
+        alpha=alpha,
     )
 
 
@@ -621,19 +721,28 @@ async def perform_cohort_analysis(entity_col: str, date_col: str, freq: str = "M
     """Cohort retention analysis by entity and activity date."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    return AdvancedStatistics(df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+    return AdvancedStatistics(df).cohort_analysis(
+        entity_col=entity_col, date_col=date_col, freq=freq
+    )
 
 
 @app.post("/stats/ab_test")
 async def perform_ab_test(
-    control_conversions: int, control_total: int,
-    variant_conversions: int, variant_total: int, alpha: float = 0.05,
+    control_conversions: int,
+    control_total: int,
+    variant_conversions: int,
+    variant_total: int,
+    alpha: float = 0.05,
 ):
     """A/B test significance calculator using two-proportion z-test."""
     return AdvancedStatistics(pd.DataFrame()).ab_test_significance(
-        control_conversions=control_conversions, control_total=control_total,
-        variant_conversions=variant_conversions, variant_total=variant_total,
+        control_conversions=control_conversions,
+        control_total=control_total,
+        variant_conversions=variant_conversions,
+        variant_total=variant_total,
         alpha=alpha,
     )
 
@@ -643,8 +752,10 @@ async def export_to_excel():
     """Export current dataset and analysis to Excel."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+
     # Get the cached report
     file_hash = None
     report = None
@@ -653,20 +764,21 @@ async def export_to_excel():
             file_hash = hash_key
             report = cache_data["report"]
             break
-    
+
     if report is None:
         # Generate report if not cached
         analyzer = EDAAnalyzer(df)
         report = analyzer.generate_full_report()
-    
+
     exporter = DataExporter(df, report)
     excel_data = exporter.to_excel()
-    
+
     from fastapi.responses import Response
+
     return Response(
         content=excel_data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=sushi_analysis.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=sushi_analysis.xlsx"},
     )
 
 
@@ -675,27 +787,30 @@ async def export_to_markdown():
     """Export analysis report as markdown."""
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
-    
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
+
     # Get the cached report
     report = None
     for cache_data in _analysis_cache.values():
         if cache_data["df"].equals(df):
             report = cache_data["report"]
             break
-    
+
     if report is None:
         analyzer = EDAAnalyzer(df)
         report = analyzer.generate_full_report()
-    
+
     exporter = DataExporter(df, report)
     markdown_content = exporter.generate_markdown_report()
-    
+
     from fastapi.responses import Response
+
     return Response(
         content=markdown_content,
         media_type="text/markdown",
-        headers={"Content-Disposition": "attachment; filename=sushi_report.md"}
+        headers={"Content-Disposition": "attachment; filename=sushi_report.md"},
     )
 
 
@@ -728,13 +843,17 @@ async def clean_dataset(operations: dict):
     global _current_df
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
 
     try:
         cleaner = DataCleaner(df)
 
         if operations.get("drop_missing_rows"):
-            cleaner.drop_missing_rows(threshold=operations.get("drop_missing_rows_threshold", 0.0))
+            cleaner.drop_missing_rows(
+                threshold=operations.get("drop_missing_rows_threshold", 0.0)
+            )
 
         threshold = operations.get("drop_missing_cols_threshold")
         if threshold is not None:
@@ -742,32 +861,42 @@ async def clean_dataset(operations: dict):
 
         impute_num = operations.get("impute_numeric")
         if impute_num == "mean":
-            cleaner.impute_mean(columns=operations.get("impute_numeric_columns") or None)
+            cleaner.impute_mean(
+                columns=operations.get("impute_numeric_columns") or None
+            )
         elif impute_num == "median":
-            cleaner.impute_median(columns=operations.get("impute_numeric_columns") or None)
+            cleaner.impute_median(
+                columns=operations.get("impute_numeric_columns") or None
+            )
         elif impute_num == "constant":
             cleaner.impute_constant(
                 value=operations.get("impute_numeric_value", 0),
-                columns=operations.get("impute_numeric_columns") or None
+                columns=operations.get("impute_numeric_columns") or None,
             )
         elif impute_num == "ffill":
-            cleaner.impute_forward_fill(columns=operations.get("impute_numeric_columns") or None)
+            cleaner.impute_forward_fill(
+                columns=operations.get("impute_numeric_columns") or None
+            )
 
         impute_cat = operations.get("impute_categorical")
         if impute_cat == "mode":
-            cleaner.impute_mode(columns=operations.get("impute_categorical_columns") or None)
+            cleaner.impute_mode(
+                columns=operations.get("impute_categorical_columns") or None
+            )
         elif impute_cat == "constant":
             cleaner.impute_constant(
                 value=operations.get("impute_categorical_value", "unknown"),
-                columns=operations.get("impute_categorical_columns") or None
+                columns=operations.get("impute_categorical_columns") or None,
             )
         elif impute_cat == "ffill":
-            cleaner.impute_forward_fill(columns=operations.get("impute_categorical_columns") or None)
+            cleaner.impute_forward_fill(
+                columns=operations.get("impute_categorical_columns") or None
+            )
 
         if operations.get("remove_duplicates"):
             cleaner.remove_duplicates(
                 subset=operations.get("duplicate_subset") or None,
-                keep=operations.get("duplicate_keep", "first")
+                keep=operations.get("duplicate_keep", "first"),
             )
 
         outlier_cols = operations.get("outlier_columns") or None
@@ -795,7 +924,9 @@ async def clean_dataset(operations: dict):
         result = cleaner.result()
         # Update the in-memory dataframe with the cleaned version
         _current_df = cleaner.df
-        logger.info(f"Cleaning complete: {result['rows_removed']} rows removed, {result['cols_removed']} cols removed")
+        logger.info(
+            f"Cleaning complete: {result['rows_removed']} rows removed, {result['cols_removed']} cols removed"
+        )
         return result
 
     except Exception as e:
@@ -823,7 +954,9 @@ async def transform_dataset(operations: dict):
     global _current_df
     df = _get_current_df()
     if df is None:
-        raise HTTPException(status_code=400, detail="No dataset loaded. Upload a file first.")
+        raise HTTPException(
+            status_code=400, detail="No dataset loaded. Upload a file first."
+        )
 
     try:
         transformer = DataTransformer(df)
@@ -861,7 +994,9 @@ async def transform_dataset(operations: dict):
 
         result = transformer.result()
         _current_df = transformer.df
-        logger.info(f"Transform complete: {len(result['transform_log'])} operations applied")
+        logger.info(
+            f"Transform complete: {len(result['transform_log'])} operations applied"
+        )
         return result
 
     except Exception as e:
@@ -882,6 +1017,7 @@ async def health():
 
 
 # ── Async upload endpoint (Celery-backed) ─────────────────────────────────────
+
 
 @app.post("/datasets/upload")
 @limiter.limit("10/minute")
@@ -933,8 +1069,10 @@ async def upload_dataset_async(
     database_url = os.getenv("DATABASE_URL", "")
     if effective_org_id and effective_created_by:
         try:
-            from db.models import Dataset as _Dataset
             import uuid as _uuid_mod
+
+            from db.models import Dataset as _Dataset
+
             ds = _Dataset(
                 id=_uuid_mod.UUID(dataset_id),
                 org_id=_uuid_mod.UUID(effective_org_id),

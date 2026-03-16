@@ -52,16 +52,26 @@ const DEFAULT_REST = {
   headers_json: "{}",
 };
 
-export default function ConnectorModal({ open, onClose, orgId = "default", onCreated }: Props) {
+export default function ConnectorModal({
+  open,
+  onClose,
+  orgId = "default",
+  onCreated,
+}: Props) {
   const [connectorType, setConnectorType] = useState<ConnectorType>("postgres");
   const [name, setName] = useState("");
   const [pgFields, setPgFields] = useState(DEFAULT_POSTGRES);
   const [s3Fields, setS3Fields] = useState(DEFAULT_S3);
   const [gsFields, setGsFields] = useState(DEFAULT_GOOGLE_SHEETS);
   const [restFields, setRestFields] = useState(DEFAULT_REST);
-  const [testResult, setTestResult] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [testResult, setTestResult] = useState<
+    "idle" | "testing" | "ok" | "fail"
+  >("idle");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdConnectorId, setCreatedConnectorId] = useState<string | null>(
+    null,
+  );
 
   if (!open) return null;
 
@@ -73,13 +83,21 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
       throw new Error("Headers JSON must be an object");
     }
     return Object.fromEntries(
-      Object.entries(parsed).map(([k, v]) => [String(k), v == null ? "" : String(v)])
+      Object.entries(parsed).map(([k, v]) => [
+        String(k),
+        v == null ? "" : String(v),
+      ]),
     );
   }
 
   function buildBody() {
     if (connectorType === "postgres") {
-      return { type: "postgres", name, ...pgFields, port: Number(pgFields.port) };
+      return {
+        type: "postgres",
+        name,
+        ...pgFields,
+        port: Number(pgFields.port),
+      };
     }
 
     if (connectorType === "s3") {
@@ -128,24 +146,45 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
   async function handleTest() {
     setError(null);
     setTestResult("testing");
+    let newId: string | null = null;
     try {
       const connector = await createConnector(buildBody(), orgId);
+      newId = connector.connector_id;
+      setCreatedConnectorId(newId);
       const result = await testConnector(connector.connector_id, orgId);
       setTestResult(result.ok ? "ok" : "fail");
       if (!result.ok) {
         await deleteConnector(connector.connector_id, orgId);
+        setCreatedConnectorId(null);
       } else {
         onCreated?.();
         setTimeout(handleClose, 1200);
       }
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { detail?: string } }; message?: string };
+      const err = e as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
       setTestResult("fail");
-      setError(err?.response?.data?.detail ?? err?.message ?? "Connection test failed");
+      setError(
+        err?.response?.data?.detail ?? err?.message ?? "Connection test failed",
+      );
+      const idToClean = newId ?? createdConnectorId;
+      if (idToClean) {
+        try {
+          await deleteConnector(idToClean, orgId);
+        } catch {}
+        setCreatedConnectorId(null);
+      }
     }
   }
 
   async function handleSave() {
+    if (createdConnectorId) {
+      onCreated?.();
+      handleClose();
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
@@ -153,8 +192,15 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
       onCreated?.();
       handleClose();
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { detail?: string } }; message?: string };
-      setError(err?.response?.data?.detail ?? err?.message ?? "Failed to save connector");
+      const err = e as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
+      setError(
+        err?.response?.data?.detail ??
+          err?.message ??
+          "Failed to save connector",
+      );
     } finally {
       setSaving(false);
     }
@@ -168,6 +214,7 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
     setRestFields(DEFAULT_REST);
     setTestResult("idle");
     setError(null);
+    setCreatedConnectorId(null);
     onClose();
   }
 
@@ -206,39 +253,77 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
   ];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
       <div
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(6px)" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.35)",
+          backdropFilter: "blur(6px)",
+        }}
         onClick={handleClose}
       />
 
-      <div style={{
-        position: "relative",
-        zIndex: 10,
-        width: "100%",
-        maxWidth: 520,
-        background: "rgba(255,255,255,0.9)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderRadius: 20,
-        border: "1px solid rgba(255,255,255,0.9)",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.95)",
-        overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 2,
-          background: "linear-gradient(90deg, #9060f8, #e840c8, #00d4e8)",
-        }} />
+      <div
+        style={{
+          position: "relative",
+          zIndex: 10,
+          width: "100%",
+          maxWidth: 520,
+          background: "rgba(255,255,255,0.9)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          borderRadius: 20,
+          border: "1px solid rgba(255,255,255,0.9)",
+          boxShadow:
+            "0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.95)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            background: "linear-gradient(90deg, #9060f8, #e840c8, #00d4e8)",
+          }}
+        />
 
         <div style={{ padding: 24, maxHeight: "80vh", overflow: "auto" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              marginBottom: 20,
+            }}
+          >
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#111010", marginBottom: 3 }}>Add Data Connector</h2>
-              <p style={{ fontSize: 12, color: "#9a9690" }}>Connect to a live data source</p>
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#111010",
+                  marginBottom: 3,
+                }}
+              >
+                Add Data Connector
+              </h2>
+              <p style={{ fontSize: 12, color: "#9a9690" }}>
+                Connect to a live data source
+              </p>
             </div>
             <button
               onClick={handleClose}
@@ -257,15 +342,17 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
             </button>
           </div>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 4,
-            background: "rgba(0,0,0,0.05)",
-            borderRadius: 12,
-            padding: 3,
-            marginBottom: 20,
-          }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 4,
+              background: "rgba(0,0,0,0.05)",
+              borderRadius: 12,
+              padding: 3,
+              marginBottom: 20,
+            }}
+          >
             {TYPE_OPTIONS.map(({ type, icon: Icon, label }) => (
               <button
                 key={type}
@@ -281,7 +368,10 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   fontWeight: connectorType === type ? 500 : 400,
                   color: connectorType === type ? "#111010" : "#6b6860",
                   background: connectorType === type ? "white" : "transparent",
-                  boxShadow: connectorType === type ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                  boxShadow:
+                    connectorType === type
+                      ? "0 1px 4px rgba(0,0,0,0.1)"
+                      : "none",
                   border: "none",
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -305,14 +395,22 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
 
           {connectorType === "postgres" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>Host</label>
                   <input
                     style={inputStyle}
                     placeholder="db.example.com"
                     value={pgFields.host}
-                    onChange={(e) => setPgFields((f) => ({ ...f, host: e.target.value }))}
+                    onChange={(e) =>
+                      setPgFields((f) => ({ ...f, host: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -321,7 +419,9 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     style={inputStyle}
                     placeholder="5432"
                     value={pgFields.port}
-                    onChange={(e) => setPgFields((f) => ({ ...f, port: e.target.value }))}
+                    onChange={(e) =>
+                      setPgFields((f) => ({ ...f, port: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -331,17 +431,27 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={inputStyle}
                   placeholder="mydb"
                   value={pgFields.database}
-                  onChange={(e) => setPgFields((f) => ({ ...f, database: e.target.value }))}
+                  onChange={(e) =>
+                    setPgFields((f) => ({ ...f, database: e.target.value }))
+                  }
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>Username</label>
                   <input
                     style={inputStyle}
                     placeholder="postgres"
                     value={pgFields.username}
-                    onChange={(e) => setPgFields((f) => ({ ...f, username: e.target.value }))}
+                    onChange={(e) =>
+                      setPgFields((f) => ({ ...f, username: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -351,7 +461,9 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     type="password"
                     placeholder="********"
                     value={pgFields.password}
-                    onChange={(e) => setPgFields((f) => ({ ...f, password: e.target.value }))}
+                    onChange={(e) =>
+                      setPgFields((f) => ({ ...f, password: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -360,7 +472,9 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                 <select
                   style={inputStyle}
                   value={pgFields.ssl_mode}
-                  onChange={(e) => setPgFields((f) => ({ ...f, ssl_mode: e.target.value }))}
+                  onChange={(e) =>
+                    setPgFields((f) => ({ ...f, ssl_mode: e.target.value }))
+                  }
                 >
                   <option value="require">require</option>
                   <option value="prefer">prefer</option>
@@ -378,17 +492,27 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={inputStyle}
                   placeholder="my-data-bucket"
                   value={s3Fields.bucket}
-                  onChange={(e) => setS3Fields((f) => ({ ...f, bucket: e.target.value }))}
+                  onChange={(e) =>
+                    setS3Fields((f) => ({ ...f, bucket: e.target.value }))
+                  }
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>Region</label>
                   <input
                     style={inputStyle}
                     placeholder="us-east-1"
                     value={s3Fields.region}
-                    onChange={(e) => setS3Fields((f) => ({ ...f, region: e.target.value }))}
+                    onChange={(e) =>
+                      setS3Fields((f) => ({ ...f, region: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -397,7 +521,12 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     style={inputStyle}
                     placeholder="https://..."
                     value={s3Fields.endpoint_url}
-                    onChange={(e) => setS3Fields((f) => ({ ...f, endpoint_url: e.target.value }))}
+                    onChange={(e) =>
+                      setS3Fields((f) => ({
+                        ...f,
+                        endpoint_url: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -407,7 +536,12 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={inputStyle}
                   placeholder="AKIA..."
                   value={s3Fields.access_key_id}
-                  onChange={(e) => setS3Fields((f) => ({ ...f, access_key_id: e.target.value }))}
+                  onChange={(e) =>
+                    setS3Fields((f) => ({
+                      ...f,
+                      access_key_id: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
@@ -417,7 +551,12 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   type="password"
                   placeholder="********"
                   value={s3Fields.secret_access_key}
-                  onChange={(e) => setS3Fields((f) => ({ ...f, secret_access_key: e.target.value }))}
+                  onChange={(e) =>
+                    setS3Fields((f) => ({
+                      ...f,
+                      secret_access_key: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -431,17 +570,27 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={inputStyle}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
                   value={gsFields.sheet_url}
-                  onChange={(e) => setGsFields((f) => ({ ...f, sheet_url: e.target.value }))}
+                  onChange={(e) =>
+                    setGsFields((f) => ({ ...f, sheet_url: e.target.value }))
+                  }
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>GID (optional)</label>
                   <input
                     style={inputStyle}
                     placeholder="0"
                     value={gsFields.gid}
-                    onChange={(e) => setGsFields((f) => ({ ...f, gid: e.target.value }))}
+                    onChange={(e) =>
+                      setGsFields((f) => ({ ...f, gid: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -450,7 +599,9 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     style={inputStyle}
                     placeholder="https://docs.google.com/.../export?format=csv"
                     value={gsFields.csv_url}
-                    onChange={(e) => setGsFields((f) => ({ ...f, csv_url: e.target.value }))}
+                    onChange={(e) =>
+                      setGsFields((f) => ({ ...f, csv_url: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -465,7 +616,9 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={inputStyle}
                   placeholder="https://api.example.com"
                   value={restFields.base_url}
-                  onChange={(e) => setRestFields((f) => ({ ...f, base_url: e.target.value }))}
+                  onChange={(e) =>
+                    setRestFields((f) => ({ ...f, base_url: e.target.value }))
+                  }
                 />
               </div>
               <div>
@@ -475,17 +628,30 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                   style={{ ...inputStyle, resize: "vertical" }}
                   placeholder={"/users\n/orders"}
                   value={restFields.endpoints}
-                  onChange={(e) => setRestFields((f) => ({ ...f, endpoints: e.target.value }))}
+                  onChange={(e) =>
+                    setRestFields((f) => ({ ...f, endpoints: e.target.value }))
+                  }
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>Healthcheck endpoint</label>
                   <input
                     style={inputStyle}
                     placeholder="/health"
                     value={restFields.healthcheck_endpoint}
-                    onChange={(e) => setRestFields((f) => ({ ...f, healthcheck_endpoint: e.target.value }))}
+                    onChange={(e) =>
+                      setRestFields((f) => ({
+                        ...f,
+                        healthcheck_endpoint: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
@@ -494,18 +660,31 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     style={inputStyle}
                     placeholder="data"
                     value={restFields.data_key}
-                    onChange={(e) => setRestFields((f) => ({ ...f, data_key: e.target.value }))}
+                    onChange={(e) =>
+                      setRestFields((f) => ({ ...f, data_key: e.target.value }))
+                    }
                   />
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <label style={labelStyle}>Auth header</label>
                   <input
                     style={inputStyle}
                     placeholder="Authorization"
                     value={restFields.auth_header}
-                    onChange={(e) => setRestFields((f) => ({ ...f, auth_header: e.target.value }))}
+                    onChange={(e) =>
+                      setRestFields((f) => ({
+                        ...f,
+                        auth_header: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
@@ -515,7 +694,12 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                     type="password"
                     placeholder="token"
                     value={restFields.bearer_token}
-                    onChange={(e) => setRestFields((f) => ({ ...f, bearer_token: e.target.value }))}
+                    onChange={(e) =>
+                      setRestFields((f) => ({
+                        ...f,
+                        bearer_token: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
@@ -523,27 +707,47 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                 <label style={labelStyle}>Extra headers JSON</label>
                 <textarea
                   rows={3}
-                  style={{ ...inputStyle, resize: "vertical", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12 }}
+                  style={{
+                    ...inputStyle,
+                    resize: "vertical",
+                    fontFamily: "ui-monospace, Menlo, monospace",
+                    fontSize: 12,
+                  }}
                   placeholder={`{"X-API-Key":"...","Accept":"application/json"}`}
                   value={restFields.headers_json}
-                  onChange={(e) => setRestFields((f) => ({ ...f, headers_json: e.target.value }))}
+                  onChange={(e) =>
+                    setRestFields((f) => ({
+                      ...f,
+                      headers_json: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
           )}
 
           {error && (
-            <div style={{
-              marginTop: 12,
-              display: "flex",
-              gap: 7,
-              alignItems: "flex-start",
-              padding: "8px 12px",
-              borderRadius: 8,
-              background: "rgba(239,68,68,0.08)",
-              border: "1px solid rgba(239,68,68,0.15)",
-            }}>
-              <XCircle style={{ width: 14, height: 14, color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                gap: 7,
+                alignItems: "flex-start",
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.15)",
+              }}
+            >
+              <XCircle
+                style={{
+                  width: 14,
+                  height: 14,
+                  color: "#ef4444",
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              />
               <p style={{ fontSize: 12, color: "#ef4444" }}>{error}</p>
             </div>
           )}
@@ -564,14 +768,30 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                 fontWeight: 500,
                 color: "#111010",
                 cursor: "pointer",
-                opacity: (!name || testResult === "testing" || saving) ? 0.4 : 1,
+                opacity: !name || testResult === "testing" || saving ? 0.4 : 1,
                 transition: "opacity 0.15s",
               }}
             >
-              {testResult === "testing" && <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />}
-              {testResult === "ok" && <CheckCircle2 style={{ width: 13, height: 13, color: "#10b981" }} />}
-              {testResult === "fail" && <XCircle style={{ width: 13, height: 13, color: "#ef4444" }} />}
-              {testResult === "idle" && <Database style={{ width: 13, height: 13 }} />}
+              {testResult === "testing" && (
+                <Loader2
+                  style={{
+                    width: 13,
+                    height: 13,
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+              )}
+              {testResult === "ok" && (
+                <CheckCircle2
+                  style={{ width: 13, height: 13, color: "#10b981" }}
+                />
+              )}
+              {testResult === "fail" && (
+                <XCircle style={{ width: 13, height: 13, color: "#ef4444" }} />
+              )}
+              {testResult === "idle" && (
+                <Database style={{ width: 13, height: 13 }} />
+              )}
               {testResult === "ok" ? "Connected!" : "Test & Save"}
             </button>
 
@@ -588,7 +808,7 @@ export default function ConnectorModal({ open, onClose, orgId = "default", onCre
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: "pointer",
-                opacity: (!name || saving || testResult === "testing") ? 0.4 : 1,
+                opacity: !name || saving || testResult === "testing" ? 0.4 : 1,
                 boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
                 transition: "opacity 0.15s",
               }}

@@ -16,21 +16,23 @@ Event format (text/event-stream):
 GET /jobs/{dataset_id}
   — Simple JSON poll (no streaming) for clients that can't do SSE.
 """
+
 import asyncio
 import json
 import time
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Request
+from auth import _decode_clerk_token, get_current_user
+from cache import cache
+from db.models import User
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from cache import cache
-
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
-HEARTBEAT_INTERVAL = 15   # seconds between keepalive pings
-JOB_TIMEOUT        = 360  # 6 minutes max stream duration
+HEARTBEAT_INTERVAL = 15  # seconds between keepalive pings
+JOB_TIMEOUT = 360  # 6 minutes max stream duration
 
 
 def _sse(data: dict) -> str:
@@ -49,7 +51,7 @@ async def _job_event_stream(dataset_id: str, org_id: str) -> AsyncGenerator[str,
          the connection alive. Exit when a terminal event arrives or timeout.
     """
     # Send current status right away
-    current = cache.get_job_status(dataset_id)
+    current = await asyncio.to_thread(cache.get_job_status, dataset_id)
     if current is None:
         yield _sse({"event": "error", "detail": "Job not found"})
         return
@@ -68,7 +70,7 @@ async def _job_event_stream(dataset_id: str, org_id: str) -> AsyncGenerator[str,
     try:
         while time.monotonic() < deadline:
             # Non-blocking check for a pub/sub message
-            message = pubsub.get_message(timeout=0.1)
+            message = await asyncio.to_thread(pubsub.get_message, timeout=0.1)
 
             if message and message["type"] == "message":
                 payload = json.loads(message["data"])
@@ -84,9 +86,16 @@ async def _job_event_stream(dataset_id: str, org_id: str) -> AsyncGenerator[str,
                 last_heartbeat = time.monotonic()
 
                 # Also re-check Redis in case we missed the pub/sub message
-                refreshed = cache.get_job_status(dataset_id)
+                refreshed = await asyncio.to_thread(cache.get_job_status, dataset_id)
                 if refreshed and refreshed.get("status") in ("done", "failed"):
-                    yield _sse({"event": "job_done" if refreshed["status"] == "done" else "job_failed", **refreshed})
+                    yield _sse(
+                        {
+                            "event": "job_done"
+                            if refreshed["status"] == "done"
+                            else "job_failed",
+                            **refreshed,
+                        }
+                    )
                     return
 
             await asyncio.sleep(0.05)
@@ -105,12 +114,30 @@ async def _job_event_stream(dataset_id: str, org_id: str) -> AsyncGenerator[str,
 async def stream_job(
     dataset_id: str,
     request: Request,
-    org_id: str = "default",   # replaced by Clerk auth in Task 7
+    org_id: str = "default",
+    token: str | None = Query(None),
 ):
     """
     SSE stream for a specific analysis job.
     Closes automatically when the job finishes or after 6 minutes.
+
+    Since EventSource cannot send Authorization headers, an optional
+    ``token`` query parameter is accepted for Clerk JWT authentication.
     """
+    if token:
+        try:
+            payload = _decode_clerk_token(token)
+            logger.info(
+                f"SSE stream authenticated: dataset={dataset_id} sub={payload.get('sub')}"
+            )
+        except Exception:
+            logger.warning(f"SSE stream token invalid: dataset={dataset_id}")
+    else:
+        logger.warning(
+            f"SSE stream opened without auth token: dataset={dataset_id} "
+            "(unauthenticated access)"
+        )
+
     logger.info(f"SSE stream opened: dataset={dataset_id} org={org_id}")
 
     async def event_gen():
@@ -126,14 +153,17 @@ async def stream_job(
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",   # disable nginx buffering
+            "X-Accel-Buffering": "no",  # disable nginx buffering
             "Connection": "keep-alive",
         },
     )
 
 
 @router.get("/{dataset_id}")
-async def get_job_status(dataset_id: str):
+async def get_job_status(
+    dataset_id: str,
+    current_user: User = Depends(get_current_user),
+):
     """Poll-based job status (alternative to SSE for simpler clients)."""
     status_data = cache.get_job_status(dataset_id)
     if status_data is None:

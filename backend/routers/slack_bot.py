@@ -21,6 +21,7 @@ Setup:
        SLACK_BOT_TOKEN       — Bot User OAuth Token (xoxb-...)
        SUSHI_API_URL         — internal URL of this backend
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -52,6 +53,11 @@ _TIMESTAMP_TOLERANCE_S = 300  # 5 minutes
 def _verify_slack_signature(body: bytes, timestamp: str, signature: str) -> bool:
     """Verify Slack's HMAC-SHA256 request signature."""
     if not _SIGNING_SECRET:
+        if os.getenv("ENVIRONMENT") == "production":
+            logger.error(
+                "SLACK_SIGNING_SECRET not set in production — rejecting request"
+            )
+            return False
         logger.warning("SLACK_SIGNING_SECRET not set — skipping verification")
         return True
 
@@ -64,11 +70,14 @@ def _verify_slack_signature(body: bytes, timestamp: str, signature: str) -> bool
         return False
 
     base = f"v0:{timestamp}:{body.decode('utf-8')}"
-    expected = "v0=" + hmac.new(
-        _SIGNING_SECRET.encode(),
-        base.encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "v0="
+        + hmac.new(
+            _SIGNING_SECRET.encode(),
+            base.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+    )
     return hmac.compare_digest(expected, signature or "")
 
 
@@ -81,7 +90,9 @@ def _slack_post(method: str, payload: dict[str, Any]) -> dict[str, Any]:
         "Authorization": f"Bearer {_BOT_TOKEN}",
         "Content-Type": "application/json; charset=utf-8",
     }
-    resp = httpx.post(f"{_SLACK_API}/{method}", json=payload, headers=headers, timeout=10)
+    resp = httpx.post(
+        f"{_SLACK_API}/{method}", json=payload, headers=headers, timeout=10
+    )
     return resp.json()
 
 
@@ -159,10 +170,23 @@ def _format_report_blocks(dataset_id: str, data: dict) -> list[dict]:
         {
             "type": "section",
             "fields": [
-                {"type": "mrkdwn", "text": f"*Rows:*\n{rows:,}" if isinstance(rows, int) else f"*Rows:*\n{rows}"},
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Rows:*\n{rows:,}"
+                    if isinstance(rows, int)
+                    else f"*Rows:*\n{rows}",
+                },
                 {"type": "mrkdwn", "text": f"*Columns:*\n{cols}"},
-                {"type": "mrkdwn", "text": f"*Quality:*\n{quality_emoji} {score}/100 ({grade})"},
-                {"type": "mrkdwn", "text": f"*Duplicates:*\n{dups:,}" if isinstance(dups, int) else f"*Duplicates:*\n{dups}"},
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Quality:*\n{quality_emoji} {score}/100 ({grade})",
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Duplicates:*\n{dups:,}"
+                    if isinstance(dups, int)
+                    else f"*Duplicates:*\n{dups}",
+                },
             ],
         },
     ]
@@ -171,18 +195,22 @@ def _format_report_blocks(dataset_id: str, data: dict) -> list[dict]:
         blocks.append({"type": "divider"})
         # Truncate long narratives for Slack (3000 char limit per block)
         snippet = narrative[:800] + ("…" if len(narrative) > 800 else "")
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": f"*AI Summary*\n{snippet}"},
-        })
+        blocks.append(
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*AI Summary*\n{snippet}"},
+            }
+        )
 
     blocks.append({"type": "divider"})
-    blocks.append({
-        "type": "context",
-        "elements": [
-            {"type": "mrkdwn", "text": f"Dataset ID: `{dataset_id}`"},
-        ],
-    })
+    blocks.append(
+        {
+            "type": "context",
+            "elements": [
+                {"type": "mrkdwn", "text": f"Dataset ID: `{dataset_id}`"},
+            ],
+        }
+    )
     return blocks
 
 
@@ -275,7 +303,7 @@ async def slack_events(
         text: str = event.get("text", "")
         # Strip the bot mention (<@BOTID>) from the text
         mention_end = text.find(">")
-        command_text = text[mention_end + 1:].strip() if mention_end >= 0 else text
+        command_text = text[mention_end + 1 :].strip() if mention_end >= 0 else text
 
         org_id = "default"
         response = _handle_command(command_text, channel, event.get("user", ""), org_id)
@@ -312,10 +340,12 @@ async def slack_commands(
 
     # Slack expects a 200 with response_type to ack slash commands
     if response_text:
-        return JSONResponse({
-            "response_type": "ephemeral",
-            "text": response_text,
-        })
+        return JSONResponse(
+            {
+                "response_type": "ephemeral",
+                "text": response_text,
+            }
+        )
 
     # If we already posted to channel (_reply), return empty 200
     return JSONResponse({"response_type": "ephemeral", "text": ""})

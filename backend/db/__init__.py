@@ -1,17 +1,19 @@
-from .connection import engine, AsyncSessionLocal, get_db
+from .connection import AsyncSessionLocal, engine, get_db
 from .models import (
-    Base,
-    Organization,
-    User,
-    OrgMember,
-    Dataset,
     Analysis,
+    AuditLog,
+    Base,
+    DataConnector,
+    Dataset,
+    DatasetComment,
     Monitor,
     MonitorRun,
+    Organization,
+    OrgMember,
     PipelineRecipe,
     PipelineRecipeVersion,
     PipelineRun,
-    AuditLog,
+    User,
 )
 
 __all__ = [
@@ -26,6 +28,8 @@ __all__ = [
     "Analysis",
     "Monitor",
     "MonitorRun",
+    "DataConnector",
+    "DatasetComment",
     "PipelineRecipe",
     "PipelineRecipeVersion",
     "PipelineRun",

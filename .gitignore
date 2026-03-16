@@ -62,3 +62,6 @@ coverage/
 
 # Sushi local dev state
 backend/.last_upload/
+
+# Claude temp files
+tmpclaude-*

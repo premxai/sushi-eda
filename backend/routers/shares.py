@@ -12,6 +12,7 @@ They map: token → {dataset_id, org_id, analysis_id, created_by, expires_at}
 The public GET endpoint does NOT require Clerk auth — it can be embedded
 in an iframe or shared via a link.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,15 +21,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from auth import get_current_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Analysis, Dataset, User
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["shares"])
 
@@ -38,6 +38,7 @@ SHARE_KEY_PREFIX = "share:"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post("/datasets/{dataset_id}/share")
 async def create_share(
@@ -58,7 +59,9 @@ async def create_share(
           "ttl_hours": int
         }
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
 
     # Verify dataset + get latest analysis
     ds_result = await db.execute(
@@ -76,7 +79,9 @@ async def create_share(
     )
     analysis = an_result.scalar_one_or_none()
     if analysis is None:
-        raise HTTPException(status_code=404, detail="No analysis found for this dataset")
+        raise HTTPException(
+            status_code=404, detail="No analysis found for this dataset"
+        )
 
     token = str(uuid.uuid4())
     ttl_seconds = ttl_hours * 3600
@@ -138,7 +143,9 @@ async def get_shared_report(
     }
 
 
-@router.delete("/datasets/{dataset_id}/share/{token}", status_code=204, response_model=None)
+@router.delete(
+    "/datasets/{dataset_id}/share/{token}", status_code=204, response_model=None
+)
 async def revoke_share(
     dataset_id: str,
     token: str,
@@ -147,13 +154,17 @@ async def revoke_share(
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke a share token immediately (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
 
     payload = _get_share(token)
     if payload is None:
         raise HTTPException(status_code=404, detail="Share token not found")
     if payload.get("dataset_id") != dataset_id:
-        raise HTTPException(status_code=403, detail="Token does not belong to this dataset")
+        raise HTTPException(
+            status_code=403, detail="Token does not belong to this dataset"
+        )
 
     _delete_share(token)
     logger.info(f"Revoked share token {token[:8]}... for dataset {dataset_id}")
@@ -161,13 +172,14 @@ async def revoke_share(
 
 # ── Redis helpers ──────────────────────────────────────────────────────────────
 
+
 def _share_key(token: str) -> str:
     return f"{SHARE_KEY_PREFIX}{token}"
 
 
 def _set_share(token: str, payload: dict[str, Any], ttl: int) -> None:
     try:
-        cache._client.setex(_share_key(token), ttl, json.dumps(payload))
+        cache.client.setex(_share_key(token), ttl, json.dumps(payload))
     except Exception as e:
         logger.error(f"Failed to store share token: {e}")
         raise HTTPException(status_code=500, detail="Failed to create share link")
@@ -175,7 +187,7 @@ def _set_share(token: str, payload: dict[str, Any], ttl: int) -> None:
 
 def _get_share(token: str) -> dict[str, Any] | None:
     try:
-        data = cache._client.get(_share_key(token))
+        data = cache.client.get(_share_key(token))
         return json.loads(data) if data else None
     except Exception as e:
         logger.error(f"Failed to retrieve share token: {e}")
@@ -184,6 +196,6 @@ def _get_share(token: str) -> dict[str, Any] | None:
 
 def _delete_share(token: str) -> None:
     try:
-        cache._client.delete(_share_key(token))
+        cache.client.delete(_share_key(token))
     except Exception as e:
         logger.warning(f"Failed to delete share token: {e}")

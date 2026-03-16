@@ -15,6 +15,7 @@ Routes:
 Supported connector types:
   postgres | s3 | google_sheets | rest
 """
+
 from __future__ import annotations
 
 import io
@@ -24,16 +25,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from auth import get_current_user, validate_org_access
 from cache import cache
 from connectors.crypto import decrypt_config, encrypt_config
 from db import get_db
 from db.models import DataConnector, Dataset, User
+from defaults import resolve_org_id
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from storage import storage
 from worker import analyze_dataset
 
@@ -95,7 +96,9 @@ async def create_connector(
       { "name": "...", "type": "rest", "base_url": "...", "endpoints": ["/users"],
         "headers": { "X-API-Key": "..." }, "bearer_token": "...", "data_key": "data" }
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
 
     connector_type = str(body.get("type", "")).lower().strip()
     if connector_type not in SUPPORTED_CONNECTOR_TYPES:
@@ -110,7 +113,7 @@ async def create_connector(
     encrypted = encrypt_config(creds)
 
     connector = DataConnector(
-        org_id=org_id,
+        org_id=resolve_org_id(org_id),
         created_by=current_user.id,
         name=name,
         connector_type=connector_type,
@@ -127,6 +130,8 @@ async def create_connector(
 @router.get("")
 async def list_connectors(
     org_id: str = Query(default="default"),
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -135,6 +140,8 @@ async def list_connectors(
         select(DataConnector)
         .where(DataConnector.org_id == org_id)
         .order_by(DataConnector.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     connectors = result.scalars().all()
     return {"connectors": [_connector_summary(c) for c in connectors]}
@@ -159,7 +166,9 @@ async def delete_connector(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     await db.delete(c)
     await db.commit()
@@ -173,7 +182,9 @@ async def test_connector(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
 
@@ -196,7 +207,9 @@ async def list_connector_tables(
     """
     List importable resources for a connector.
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
 
@@ -239,10 +252,14 @@ async def list_connector_columns(
     """
     List columns for a specific table (postgres only).
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     if c.connector_type != "postgres":
-        raise HTTPException(status_code=400, detail="Column listing only supported for postgres")
+        raise HTTPException(
+            status_code=400, detail="Column listing only supported for postgres"
+        )
 
     params = decrypt_config(c.config_encrypted)
     from connectors.postgres import list_columns
@@ -262,7 +279,9 @@ async def preview_connector(
     """
     Preview rows without importing.
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
     limit = min(int(body.get("limit", 100)), 500)
@@ -301,7 +320,9 @@ async def preview_connector(
 
         endpoint = str(body.get("table") or body.get("endpoint") or "").strip()
         if not endpoint:
-            raise HTTPException(status_code=400, detail="table (endpoint) is required for REST preview")
+            raise HTTPException(
+                status_code=400, detail="table (endpoint) is required for REST preview"
+            )
         return preview_table(params, table=endpoint, limit=limit)
 
     raise HTTPException(status_code=400, detail="Unknown connector type")
@@ -319,7 +340,9 @@ async def import_from_connector(
     Import data from a connector as a new Dataset.
     Saves to object storage as Parquet and enqueues a Celery analysis job.
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     c = await _get_connector_or_404(connector_id, org_id, db)
     params = decrypt_config(c.config_encrypted)
     dataset_name = body.get("name", "").strip() or "Imported dataset"
@@ -355,9 +378,13 @@ async def import_from_connector(
 
         endpoint = str(body.get("table") or body.get("endpoint") or "").strip()
         if not endpoint:
-            raise HTTPException(status_code=400, detail="table (endpoint) is required for REST import")
+            raise HTTPException(
+                status_code=400, detail="table (endpoint) is required for REST import"
+            )
         df = fetch_table_as_polars(params, table=endpoint)
-        source_label = re.sub(r"[^a-zA-Z0-9._-]+", "_", endpoint.strip("/")) or "rest_endpoint"
+        source_label = (
+            re.sub(r"[^a-zA-Z0-9._-]+", "_", endpoint.strip("/")) or "rest_endpoint"
+        )
 
     else:
         raise HTTPException(status_code=400, detail="Unknown connector type")
@@ -381,7 +408,7 @@ async def import_from_connector(
 
     dataset = Dataset(
         id=dataset_id,
-        org_id=org_id,
+        org_id=resolve_org_id(org_id),
         created_by=current_user.id,
         name=dataset_name,
         original_filename=filename,

@@ -20,7 +20,13 @@ interface CommandPaletteProps {
   sections?: string[];
 }
 
-export function CommandPalette({ onSectionChange, sections = [] }: CommandPaletteProps) {
+const isMac =
+  typeof navigator !== "undefined" && navigator.platform.includes("Mac");
+
+export function CommandPalette({
+  onSectionChange,
+  sections = [],
+}: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
 
@@ -44,7 +50,10 @@ export function CommandPalette({ onSectionChange, sections = [] }: CommandPalett
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)}>
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+      onClick={() => setOpen(false)}
+    >
       <div className="fixed left-1/2 top-1/2 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 px-4">
         <Command
           className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
@@ -65,35 +74,45 @@ export function CommandPalette({ onSectionChange, sections = [] }: CommandPalett
             {sections.length > 0 && (
               <Command.Group heading="Navigate" className="mb-2">
                 <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("overview"))}
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("overview"))
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   <Home className="h-4 w-4" />
                   <span>Overview</span>
                 </Command.Item>
                 <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("columns"))}
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("columns"))
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   <Layers className="h-4 w-4" />
                   <span>Column Analysis</span>
                 </Command.Item>
                 <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("correlations"))}
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("correlations"))
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span>Correlations</span>
                 </Command.Item>
                 <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("outliers"))}
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("outliers"))
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   <TrendingUp className="h-4 w-4" />
                   <span>Outliers</span>
                 </Command.Item>
                 <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("insights"))}
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("insights"))
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                 >
                   <FileText className="h-4 w-4" />
@@ -105,6 +124,76 @@ export function CommandPalette({ onSectionChange, sections = [] }: CommandPalett
                 >
                   <Table className="h-4 w-4" />
                   <span>Data Table</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("statistics"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Statistics</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() => handleSelect(() => onSectionChange?.("sql"))}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <Table className="h-4 w-4" />
+                  <span>SQL</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("cleaning"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Cleaning</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("transforms"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <GitCompare className="h-4 w-4" />
+                  <span>Transforms</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("monitors"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span>Monitors</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("report"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Report</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("visualizations"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Visualizations</span>
+                </Command.Item>
+                <Command.Item
+                  onSelect={() =>
+                    handleSelect(() => onSectionChange?.("comments"))
+                  }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Comments</span>
                 </Command.Item>
               </Command.Group>
             )}
@@ -118,7 +207,13 @@ export function CommandPalette({ onSectionChange, sections = [] }: CommandPalett
                 <span>Compare Datasets</span>
               </Command.Item>
               <Command.Item
-                onSelect={() => handleSelect(() => document.querySelector<HTMLButtonElement>('[aria-label*="Export"]')?.click())}
+                onSelect={() =>
+                  handleSelect(() =>
+                    document
+                      .querySelector<HTMLButtonElement>("[data-export-pdf]")
+                      ?.click(),
+                  )
+                }
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
               >
                 <Download className="h-4 w-4" />
@@ -127,7 +222,11 @@ export function CommandPalette({ onSectionChange, sections = [] }: CommandPalett
             </Command.Group>
           </Command.List>
           <div className="border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
-            Press <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono">⌘K</kbd> to toggle
+            Press{" "}
+            <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono">
+              {isMac ? "⌘K" : "Ctrl+K"}
+            </kbd>{" "}
+            to toggle
           </div>
         </Command>
       </div>

@@ -26,31 +26,33 @@ Routes:
   GET  /datasets/{dataset_id}/export/excel
   GET  /datasets/{dataset_id}/export/markdown
 """
+
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any, Optional
 
 import pandas as pd
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from fastapi.responses import Response
-from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from advanced_stats import AdvancedStatistics
 from auth import get_current_user, validate_org_access
+from db import get_db
+from db.models import Analysis, Dataset, User
 from defaults import resolve_org_id
 from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi.responses import Response
+from loguru import logger
 from polars_loader import parse_to_polars
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from storage import storage
 from visualizer import Visualizer
-from db import get_db
-from db.models import Analysis, Dataset, User
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
     return {
@@ -67,9 +69,14 @@ def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
         "created_at": d.created_at.isoformat(),
     }
 
-async def _get_dataset_or_404(dataset_id: str, org_id: str, db: AsyncSession) -> Dataset:
+
+async def _get_dataset_or_404(
+    dataset_id: str, org_id: str, db: AsyncSession
+) -> Dataset:
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -91,13 +98,21 @@ async def _get_latest_analysis(dataset_id: str, db: AsyncSession) -> Analysis:
     )
     analysis = result.scalar_one_or_none()
     if analysis is None:
-        raise HTTPException(status_code=404, detail="No analysis found for this dataset")
+        raise HTTPException(
+            status_code=404, detail="No analysis found for this dataset"
+        )
     return analysis
+
+
+@lru_cache(maxsize=32)
+def _cached_download(file_key: str) -> bytes:
+    """Download from R2 with in-process LRU cache."""
+    return storage.download(file_key)
 
 
 def _load_polars_from_r2(file_key: str, file_format: str):
     """Download from R2 and return a Polars DataFrame."""
-    data = storage.download(file_key)
+    data = _cached_download(file_key)
     try:
         return parse_to_polars(data, file_format)
     except ValueError as e:
@@ -110,6 +125,7 @@ def _load_df_from_r2(file_key: str, file_format: str) -> pd.DataFrame:
 
 
 # ── Dataset CRUD ───────────────────────────────────────────────────────────────
+
 
 @router.get("")
 async def list_datasets(
@@ -141,9 +157,13 @@ async def toggle_star(
     db: AsyncSession = Depends(get_db),
 ):
     """Toggle starred status on a dataset (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -161,9 +181,13 @@ async def archive_dataset(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-archive a dataset (moves to trash, editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -181,9 +205,13 @@ async def restore_dataset(
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a dataset from the archive (editor+)."""
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -203,7 +231,9 @@ async def get_dataset(
     """Get dataset metadata (viewer+)."""
     await validate_org_access(org_id, current_user, db)
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id))
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -224,7 +254,9 @@ async def delete_dataset(
 ):
     """Delete a dataset, its analyses, and R2 files (admin|editor)."""
     effective_org = resolve_org_id(org_id)
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     result = await db.execute(
         select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == effective_org)
     )
@@ -243,6 +275,7 @@ async def delete_dataset(
 
 
 # ── Analysis retrieval ─────────────────────────────────────────────────────────
+
 
 @router.get("/{dataset_id}/analysis")
 async def get_dataset_analysis(
@@ -277,11 +310,14 @@ async def regenerate_narrative(
     Useful after the initial job ran without ANTHROPIC_API_KEY set.
     Returns the new narrative and updates Analysis.ai_narrative in DB.
     """
-    await validate_org_access(org_id, current_user, db, allowed_roles=("admin", "editor"))
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
     await _get_dataset_or_404(dataset_id, org_id, db)
     analysis = await _get_latest_analysis(dataset_id, db)
 
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+
     await check_credits(org_id, cost=CREDIT_COSTS["narrative"], db=db)
 
     from ai_narrative import generate_narrative
@@ -362,6 +398,7 @@ async def get_analysis(
 
 # ── AI Endpoints ──────────────────────────────────────────────────────────────
 
+
 @router.post("/{dataset_id}/ai/chat")
 async def ai_chat(
     dataset_id: str,
@@ -387,11 +424,13 @@ async def ai_chat(
     """
     await validate_org_access(org_id, current_user, db)
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+
     await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
 
     from ai_chat import ask_dataset
+
     result = ask_dataset(pl_df, question, chat_history=chat_history, limit=limit)
     if result.get("error") is None:
         await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
@@ -415,8 +454,10 @@ async def ai_chat_stream(
     Content-Type: text/event-stream
     """
     from fastapi.responses import StreamingResponse
+
     await validate_org_access(org_id, current_user, db)
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+
     await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
@@ -424,6 +465,7 @@ async def ai_chat_stream(
     await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
 
     from ai_chat import ask_dataset_stream
+
     return StreamingResponse(
         ask_dataset_stream(pl_df, question, chat_history=chat_history, limit=limit),
         media_type="text/event-stream",
@@ -453,9 +495,11 @@ async def ai_cleaning_suggestions(
     analysis = await _get_latest_analysis(dataset_id, db)
 
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
+
     await check_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
 
     from ai_cleaning import generate_cleaning_suggestions
+
     suggestions = generate_cleaning_suggestions(analysis.report)
     if suggestions:
         await consume_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
@@ -476,10 +520,12 @@ async def get_org_credits(
     """Return AI credit usage for an organisation (any member)."""
     await validate_org_access(org_id, current_user, db)
     from ai_credits import get_credit_status
+
     return await get_credit_status(org_id, db)
 
 
 # ── Visualizations ─────────────────────────────────────────────────────────────
+
 
 @router.get("/{dataset_id}/visualize/{column_name}")
 async def visualize_column(
@@ -500,7 +546,11 @@ async def visualize_column(
 
     viz = Visualizer(df)
     is_numeric = pd.api.types.is_numeric_dtype(df[column_name])
-    resolved = chart_type if chart_type != "auto" else ("distribution" if is_numeric else "categorical_bar")
+    resolved = (
+        chart_type
+        if chart_type != "auto"
+        else ("distribution" if is_numeric else "categorical_bar")
+    )
 
     if resolved == "distribution":
         return viz.create_distribution_plot(column_name)
@@ -526,6 +576,7 @@ async def visualize_all(
 
 
 # ── Advanced Stats ─────────────────────────────────────────────────────────────
+
 
 @router.get("/{dataset_id}/stats/advanced")
 async def advanced_stats(
@@ -571,7 +622,9 @@ async def logistic_regression(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).logistic_regression(x_col, y_col, positive_class=positive_class)
+    return AdvancedStatistics(df).logistic_regression(
+        x_col, y_col, positive_class=positive_class
+    )
 
 
 @router.post("/{dataset_id}/stats/regression/polynomial")
@@ -671,8 +724,11 @@ async def correlation_test(
     method: pearson | spearman | kendall  (viewer+).
     """
     from scipy import stats as scipy_stats
+
     if method not in ("pearson", "spearman", "kendall"):
-        raise HTTPException(status_code=400, detail="method must be pearson | spearman | kendall")
+        raise HTTPException(
+            status_code=400, detail="method must be pearson | spearman | kendall"
+        )
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
@@ -681,17 +737,25 @@ async def correlation_test(
     data = df[[col1, col2]].dropna()
     if len(data) < 3:
         raise HTTPException(status_code=422, detail="Insufficient data")
-    fn = {"pearson": scipy_stats.pearsonr, "spearman": scipy_stats.spearmanr, "kendall": scipy_stats.kendalltau}[method]
+    fn = {
+        "pearson": scipy_stats.pearsonr,
+        "spearman": scipy_stats.spearmanr,
+        "kendall": scipy_stats.kendalltau,
+    }[method]
     stat, p = fn(data[col1], data[col2])
     return {
         "test": f"{method.title()} correlation",
-        "column1": col1, "column2": col2,
-        "coefficient": float(stat), "p_value": float(p),
-        "significant": p < 0.05, "n": int(len(data)),
+        "column1": col1,
+        "column2": col2,
+        "coefficient": float(stat),
+        "p_value": float(p),
+        "significant": p < 0.05,
+        "n": int(len(data)),
     }
 
 
 # ── DuckDB SQL Query ───────────────────────────────────────────────────────────
+
 
 @router.post("/{dataset_id}/stats/time_series/decompose")
 async def time_series_decompose(
@@ -759,7 +823,9 @@ async def cohort_analysis(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).cohort_analysis(entity_col=entity_col, date_col=date_col, freq=freq)
+    return AdvancedStatistics(df).cohort_analysis(
+        entity_col=entity_col, date_col=date_col, freq=freq
+    )
 
 
 @router.post("/{dataset_id}/stats/ab_test")
@@ -849,6 +915,7 @@ async def explain_dataset_query(
 
 # ── Exports ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/{dataset_id}/export/excel")
 async def export_excel(
     dataset_id: str,
@@ -885,5 +952,7 @@ async def export_markdown(
     return Response(
         content=md,
         media_type="text/markdown",
-        headers={"Content-Disposition": f"attachment; filename={dataset.name}_report.md"},
+        headers={
+            "Content-Disposition": f"attachment; filename={dataset.name}_report.md"
+        },
     )

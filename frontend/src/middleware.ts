@@ -2,11 +2,15 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Routes that are publicly accessible without auth
 const isPublicRoute = createRouteMatcher([
-  "/",              // landing page
+  "/", // landing page
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/webhooks(.*)",  // Clerk webhooks bypass auth
-  "/share/(.*)",        // public shareable report links
+  "/api/webhooks(.*)", // Clerk webhooks bypass auth
+  "/share/(.*)", // public shareable report links
+  "/pricing",
+  "/docs(.*)",
+  "/changelog(.*)",
+  "/catalog(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

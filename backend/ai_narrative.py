@@ -11,6 +11,7 @@ The prompt is tuned to produce markdown with:
   - Data quality assessment
   - Top recommendations
 """
+
 from __future__ import annotations
 
 import os
@@ -19,11 +20,15 @@ from typing import Any
 from loguru import logger
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-AI_MODEL = os.getenv("AI_MODEL", "claude-haiku-4-5-20251001")  # cheap & fast for narratives
+AI_MODEL = os.getenv(
+    "AI_MODEL", "claude-haiku-4-5-20251001"
+)  # cheap & fast for narratives
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "1024"))
 
 
-def generate_narrative(report: dict[str, Any], dataset_name: str = "the dataset") -> str | None:
+def generate_narrative(
+    report: dict[str, Any], dataset_name: str = "the dataset"
+) -> str | None:
     """
     Generate a markdown insight narrative for an EDA report.
 
@@ -36,6 +41,7 @@ def generate_narrative(report: dict[str, Any], dataset_name: str = "the dataset"
 
     try:
         import anthropic
+
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         prompt = _build_prompt(report, dataset_name)
@@ -64,7 +70,9 @@ def _build_prompt(report: dict[str, Any], dataset_name: str) -> str:
     numeric_cols = [c for c in columns if c.get("is_numeric") and c.get("stats")]
     categorical_cols = [c for c in columns if not c.get("is_numeric")]
 
-    top_outlier_cols = sorted(outliers, key=lambda x: x["outlier_count"], reverse=True)[:3]
+    top_outlier_cols = sorted(outliers, key=lambda x: x["outlier_count"], reverse=True)[
+        :3
+    ]
     high_missing = [c for c in columns if c["missing_percent"] > 10]
 
     # Find highly correlated pairs
@@ -81,17 +89,17 @@ def _build_prompt(report: dict[str, Any], dataset_name: str) -> str:
     prompt = f"""You are a senior data analyst. Analyze the following EDA report for "{dataset_name}" and write a concise, insightful markdown narrative.
 
 ## Dataset Overview
-- Rows: {basic.get('rows', '?'):,}
-- Columns: {basic.get('columns', '?')}
-- Memory: {basic.get('memory_usage_mb', '?')} MB
-- Duplicate rows: {basic.get('duplicate_rows', 0)}
-- Total missing values: {basic.get('total_missing', 0)}
+- Rows: {basic.get("rows", 0):,}
+- Columns: {basic.get("columns", "?")}
+- Memory: {basic.get("memory_usage_mb", "?")} MB
+- Duplicate rows: {basic.get("duplicate_rows", 0)}
+- Total missing values: {basic.get("total_missing", 0)}
 
 ## Data Quality Score
-- Overall: {quality.get('overall_score', '?')}/100 (Grade: {quality.get('grade', '?')})
-- Missing data score: {quality.get('breakdown', {}).get('missing_data', {}).get('score', '?')}
-- Duplicates score: {quality.get('breakdown', {}).get('duplicates', {}).get('score', '?')}
-- Outliers score: {quality.get('breakdown', {}).get('outliers', {}).get('score', '?')}
+- Overall: {quality.get("overall_score", "?")}/100 (Grade: {quality.get("grade", "?")})
+- Missing data score: {quality.get("breakdown", {}).get("missing_data", {}).get("score", "?")}
+- Duplicates score: {quality.get("breakdown", {}).get("duplicates", {}).get("score", "?")}
+- Outliers score: {quality.get("breakdown", {}).get("outliers", {}).get("score", "?")}
 
 ## Numeric Columns ({len(numeric_cols)} total)
 {_format_numeric_cols(numeric_cols[:8])}
@@ -100,13 +108,13 @@ def _build_prompt(report: dict[str, Any], dataset_name: str) -> str:
 {_format_categorical_cols(categorical_cols[:5])}
 
 ## Columns with Missing Data (>10%)
-{', '.join(f"{c['name']} ({c['missing_percent']:.1f}%)" for c in high_missing) or 'None'}
+{", ".join(f"{c['name']} ({c['missing_percent']:.1f}%)" for c in high_missing) or "None"}
 
 ## Top Outlier Columns
-{_format_outliers(top_outlier_cols) or 'None detected'}
+{_format_outliers(top_outlier_cols) or "None detected"}
 
 ## Strong Correlations (|r| > 0.7)
-{chr(10).join(corr_pairs) or 'None found'}
+{chr(10).join(corr_pairs) or "None found"}
 
 ---
 
@@ -126,9 +134,9 @@ def _format_numeric_cols(cols: list[dict]) -> str:
     for c in cols:
         s = c.get("stats") or {}
         lines.append(
-            f"- {c['name']}: mean={s.get('mean','?')}, std={s.get('std','?')}, "
-            f"range=[{s.get('min','?')} – {s.get('max','?')}], "
-            f"skew={s.get('skewness','?')}, missing={c['missing_percent']:.1f}%"
+            f"- {c['name']}: mean={s.get('mean', '?')}, std={s.get('std', '?')}, "
+            f"range=[{s.get('min', '?')} – {s.get('max', '?')}], "
+            f"skew={s.get('skewness', '?')}, missing={c['missing_percent']:.1f}%"
         )
     return "\n".join(lines) or "None"
 

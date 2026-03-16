@@ -63,7 +63,12 @@ export default function SharedReportPage() {
     if (!token) return;
     fetch(`${API_BASE}/share/${token}`)
       .then((r) => {
-        if (!r.ok) throw new Error(r.status === 404 ? "Link not found or expired" : "Failed to load report");
+        if (!r.ok)
+          throw new Error(
+            r.status === 404
+              ? "Link not found or expired"
+              : "Failed to load report",
+          );
         return r.json();
       })
       .then(setData)
@@ -74,7 +79,9 @@ export default function SharedReportPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-neutral-400 text-sm">Loading shared report…</div>
+        <div className="animate-pulse text-neutral-400 text-sm">
+          Loading shared report…
+        </div>
       </div>
     );
   }
@@ -84,8 +91,12 @@ export default function SharedReportPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
-          <p className="text-neutral-700 font-medium">{error || "Report not found"}</p>
-          <p className="text-neutral-400 text-sm">This link may have expired or been revoked.</p>
+          <p className="text-neutral-700 font-medium">
+            {error || "Report not found"}
+          </p>
+          <p className="text-neutral-400 text-sm">
+            This link may have expired or been revoked.
+          </p>
         </div>
       </div>
     );
@@ -104,7 +115,9 @@ export default function SharedReportPage() {
             <Image src="/sushi-logo.png" alt="Sushi" width={32} height={32} />
             <div>
               <p className="text-xs text-neutral-400">Shared Analysis</p>
-              <h1 className="text-base font-semibold text-neutral-900">{data.dataset_name}</h1>
+              <h1 className="text-base font-semibold text-neutral-900">
+                {data.dataset_name}
+              </h1>
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-neutral-400">
@@ -120,12 +133,25 @@ export default function SharedReportPage() {
           {[
             { label: "Rows", value: basic.rows?.toLocaleString() ?? "—" },
             { label: "Columns", value: basic.columns ?? "—" },
-            { label: "Missing", value: basic.total_missing?.toLocaleString() ?? "—" },
-            { label: "Quality", value: quality.overall_score ? `${quality.overall_score}/100` : "—" },
+            {
+              label: "Missing",
+              value: basic.total_missing?.toLocaleString() ?? "—",
+            },
+            {
+              label: "Quality",
+              value: quality.overall_score
+                ? `${quality.overall_score}/100`
+                : "—",
+            },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl border border-neutral-200 px-4 py-3">
+            <div
+              key={label}
+              className="bg-white rounded-xl border border-neutral-200 px-4 py-3"
+            >
               <p className="text-xs text-neutral-400">{label}</p>
-              <p className="text-xl font-semibold text-neutral-900 mt-0.5">{value}</p>
+              <p className="text-xl font-semibold text-neutral-900 mt-0.5">
+                {value}
+              </p>
             </div>
           ))}
         </div>
@@ -136,14 +162,19 @@ export default function SharedReportPage() {
             <p className="text-xs font-medium text-violet-500 uppercase tracking-wide mb-3">
               AI Analysis
             </p>
-            <div
-              className="prose prose-sm prose-neutral max-w-none text-neutral-700"
-              dangerouslySetInnerHTML={{
-                __html: data.analysis.ai_narrative
-                  .replace(/\n/g, "<br/>")
-                  .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-              }}
-            />
+            <div className="prose prose-sm prose-neutral max-w-none text-neutral-700">
+              {data.analysis.ai_narrative
+                .split("\n")
+                .map((line: string, i: number) => (
+                  <p key={i} style={{ marginBottom: 8 }}>
+                    {line
+                      .split(/\*\*(.*?)\*\*/)
+                      .map((part: string, j: number) =>
+                        j % 2 === 1 ? <strong key={j}>{part}</strong> : part,
+                      )}
+                  </p>
+                ))}
+            </div>
           </div>
         )}
 
@@ -160,27 +191,43 @@ export default function SharedReportPage() {
               <table className="w-full text-xs">
                 <thead className="bg-neutral-50">
                   <tr>
-                    {["Column", "Type", "Missing %", "Unique", "Stats"].map((h) => (
-                      <th key={h} className="px-4 py-2 text-left font-medium text-neutral-500">
-                        {h}
-                      </th>
-                    ))}
+                    {["Column", "Type", "Missing %", "Unique", "Stats"].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="px-4 py-2 text-left font-medium text-neutral-500"
+                        >
+                          {h}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {report.column_analysis?.map((col: ColumnAnalysis) => (
-                    <tr key={col.name} className="border-t border-neutral-100 hover:bg-neutral-50">
-                      <td className="px-4 py-2 font-medium text-neutral-800">{col.name}</td>
-                      <td className="px-4 py-2 text-neutral-500">{col.dtype}</td>
-                      <td className="px-4 py-2 text-neutral-600">{col.missing_percent?.toFixed(1)}%</td>
-                      <td className="px-4 py-2 text-neutral-600">{col.unique_count?.toLocaleString()}</td>
+                    <tr
+                      key={col.name}
+                      className="border-t border-neutral-100 hover:bg-neutral-50"
+                    >
+                      <td className="px-4 py-2 font-medium text-neutral-800">
+                        {col.name}
+                      </td>
+                      <td className="px-4 py-2 text-neutral-500">
+                        {col.dtype}
+                      </td>
+                      <td className="px-4 py-2 text-neutral-600">
+                        {col.missing_percent?.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-2 text-neutral-600">
+                        {col.unique_count?.toLocaleString()}
+                      </td>
                       <td className="px-4 py-2 text-neutral-500">
                         {col.stats ? (
                           <span>
                             μ={col.stats.mean} · σ={col.stats.std}
                           </span>
                         ) : (
-                          col.top_values?.[0]?.value ?? "—"
+                          (col.top_values?.[0]?.value ?? "—")
                         )}
                       </td>
                     </tr>
@@ -193,8 +240,8 @@ export default function SharedReportPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-neutral-400">
-          Shared via Sushi · Analysis v{data.analysis.version} ·
-          Generated in {data.analysis.duration_seconds?.toFixed(1)}s
+          Shared via Sushi · Analysis v{data.analysis.version} · Generated in{" "}
+          {data.analysis.duration_seconds?.toFixed(1)}s
         </p>
       </div>
     </div>
