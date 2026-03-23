@@ -11,4 +11,6 @@ export const Buffer = {
   },
 };
 
-export default { Buffer };
+const bufferShim = { Buffer };
+
+export default bufferShim;

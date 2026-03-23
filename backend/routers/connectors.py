@@ -44,13 +44,18 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 SUPPORTED_CONNECTOR_TYPES = ("postgres", "s3", "google_sheets", "rest")
 
 
+def _resolved_org_id(org_id: str) -> str:
+    return resolve_org_id(org_id)
+
+
 async def _get_connector_or_404(
     connector_id: str, org_id: str, db: AsyncSession
 ) -> DataConnector:
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(DataConnector).where(
             DataConnector.id == connector_id,
-            DataConnector.org_id == org_id,
+            DataConnector.org_id == resolved_org_id,
         )
     )
     conn = result.scalar_one_or_none()
@@ -112,8 +117,9 @@ async def create_connector(
     creds = {k: v for k, v in body.items() if k not in ("name", "type")}
     encrypted = encrypt_config(creds)
 
+    resolved_org_id = _resolved_org_id(org_id)
     connector = DataConnector(
-        org_id=resolve_org_id(org_id),
+        org_id=resolved_org_id,
         created_by=current_user.id,
         name=name,
         connector_type=connector_type,
@@ -136,9 +142,10 @@ async def list_connectors(
     db: AsyncSession = Depends(get_db),
 ):
     await validate_org_access(org_id, current_user, db)
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(DataConnector)
-        .where(DataConnector.org_id == org_id)
+        .where(DataConnector.org_id == resolved_org_id)
         .order_by(DataConnector.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -408,7 +415,7 @@ async def import_from_connector(
 
     dataset = Dataset(
         id=dataset_id,
-        org_id=resolve_org_id(org_id),
+        org_id=_resolved_org_id(org_id),
         created_by=current_user.id,
         name=dataset_name,
         original_filename=filename,

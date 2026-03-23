@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Bell,
   BookOpen,
   CheckCircle2,
   ChevronDown,
@@ -12,7 +11,6 @@ import {
   Sigma,
   TerminalSquare,
   Upload,
-  Unplug,
   X,
 } from "lucide-react";
 
@@ -59,16 +57,17 @@ const STEPS: Step[] = [
     icon: FlaskConical,
   },
   {
-    id: "monitor",
-    label: "Create a monitor",
-    description: "Set a quality threshold alert that runs on a schedule.",
-    icon: Bell,
+    id: "report",
+    label: "Review the report",
+    description: "Open the report section and export a launch-ready summary.",
+    icon: CheckCircle2,
   },
   {
-    id: "connect",
-    label: "Connect a data source",
-    description: "Link a PostgreSQL, S3, Google Sheets, or REST API connector.",
-    icon: Unplug,
+    id: "reopen",
+    label: "Reopen saved work",
+    description: "Use My Datasets to jump back into a previous analysis session.",
+    icon: BookOpen,
+    href: "/datasets",
   },
   {
     id: "catalog",
@@ -129,7 +128,7 @@ export function OnboardingChecklist({ activeSection, hasDataset }: Props) {
     if (activeSection === "sql") next.add("sql");
     if (activeSection === "statistics") next.add("stats");
     if (activeSection === "transforms") next.add("transform");
-    if (activeSection === "monitors") next.add("monitor");
+    if (activeSection === "report") next.add("report");
     if (
       JSON.stringify(Array.from(next).sort()) !==
       JSON.stringify(Array.from(prev).sort())

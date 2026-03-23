@@ -21,17 +21,16 @@ const PLANS = [
     ctaHref: "/sign-up",
     credits: "100 AI credits / month",
     features: [
-      "100 AI credits / month",
-      "Up to 5 datasets",
-      "AI narrative & cleaning suggestions",
-      "Natural-language SQL queries",
-      "Shareable public reports",
-      "CSV, Excel, Parquet, JSON upload",
+      "Core dataset upload and profiling",
+      "Visualizations, correlations, and outlier review",
+      "Report export and public share links",
+      "Compare two datasets",
+      "CSV, Excel, Parquet, JSON, TSV, and SQLite upload",
     ],
     missing: [
-      "Data connectors (PostgreSQL, S3)",
-      "Dataset monitors & alerts",
-      "Priority support",
+      "Saved connectors and automated imports",
+      "Scheduled monitors and pipeline automation",
+      "Advanced team administration",
     ],
   },
   {
@@ -45,17 +44,14 @@ const PLANS = [
     ctaHref: "/sign-up?plan=pro",
     credits: "2,000 AI credits / month",
     features: [
-      "2,000 AI credits / month",
-      "Unlimited datasets",
-      "AI narrative & cleaning suggestions",
-      "Natural-language SQL queries",
-      "Shareable public reports",
-      "CSV, Excel, Parquet, JSON upload",
-      "PostgreSQL & S3 connectors",
-      "Dataset monitors + Slack alerts",
-      "Email support",
+      "Everything in Free",
+      "Higher AI usage limits",
+      "SQL exploration and AI-assisted workflows",
+      "Connector import flows for supported sources",
+      "Manual monitor runs and pipeline execution",
+      "Priority launch support",
     ],
-    missing: [],
+    missing: ["Some automation and integration surfaces remain beta"],
   },
   {
     name: "Team",
@@ -68,16 +64,12 @@ const PLANS = [
     ctaHref: "mailto:team@sushi-eda.com",
     credits: "Unlimited AI credits",
     features: [
-      "Unlimited AI credits",
-      "Unlimited datasets",
       "Everything in Pro",
-      "Up to 20 team members",
-      "RBAC (admin / editor / viewer)",
-      "Audit log",
-      "Dedicated Slack support",
-      "SLA guarantee",
+      "Expanded team permissions and audit visibility",
+      "Dedicated onboarding for connectors and monitoring",
+      "Shared launch planning and support",
     ],
-    missing: [],
+    missing: ["Custom enterprise controls are handled case-by-case during MVP launch"],
   },
 ];
 
@@ -92,11 +84,11 @@ const FAQ = [
   },
   {
     q: "What file formats are supported?",
-    a: "CSV, TSV, Excel (.xlsx/.xls), Parquet, JSON, and SQLite. You can also import directly from PostgreSQL databases and S3-compatible buckets on Pro and Team.",
+    a: "CSV, TSV, Excel (.xlsx/.xls), Parquet, JSON, and SQLite. Connector-based imports are available on supported Pro and Team setups during the MVP launch period.",
   },
   {
     q: "Is my data secure?",
-    a: "All files are encrypted at rest (AES-256) and in transit (TLS 1.3). We store files in Cloudflare R2 and never train AI models on your data.",
+    a: "Files are encrypted in transit and stored in managed cloud infrastructure. For MVP launch, advanced enterprise controls and data residency reviews are handled directly with the team.",
   },
   {
     q: "Do you offer annual billing?",
@@ -128,7 +120,7 @@ export default function PricingPage() {
         </h1>
         <p className="mt-4 text-lg text-neutral-500">
           Start free. Upgrade when your data needs grow.
-          No per-seat fees. No surprise bills.
+          MVP launch pricing reflects the features shipping today, with beta surfaces enabled selectively.
         </p>
       </section>
 

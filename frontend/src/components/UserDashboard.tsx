@@ -1053,7 +1053,7 @@ export function UserDashboard(props: UserDashboardProps) {
           <div style={{ display: "flex", gap: 20 }}>
             {[
               { href: "/datasets", label: "My Datasets" },
-              { href: "/connectors", label: "Connectors" },
+              { href: "/docs", label: "Docs" },
             ].map((item) => (
               <Link
                 key={item.href}
@@ -1191,7 +1191,7 @@ export function UserDashboard(props: UserDashboardProps) {
                 datasets={datasets}
                 onDatasetPick={handleDatasetClick}
               />
-              {/* Quick connect tiles */}
+              {/* Launch-safe quick actions */}
               <div
                 style={{
                   display: "grid",
@@ -1200,19 +1200,19 @@ export function UserDashboard(props: UserDashboardProps) {
                   marginTop: 12,
                 }}
               >
-                {[
+                {[ 
                   {
-                    href: "/connectors",
+                    href: "/compare",
                     icon: <Database size={16} style={{ color: "#9060f8" }} />,
-                    label: "Connect DB",
-                    sub: "PostgreSQL, MySQL",
+                    label: "Compare Files",
+                    sub: "Side-by-side dataset review",
                     bg: "rgba(144,96,248,0.1)",
                   },
                   {
-                    href: "/pipelines",
+                    href: "/datasets",
                     icon: <TrendingUp size={16} style={{ color: "#00d4e8" }} />,
-                    label: "Pipelines",
-                    sub: "Automate workflows",
+                    label: "Reopen Work",
+                    sub: "Jump back into saved datasets",
                     bg: "rgba(0,212,232,0.1)",
                   },
                 ].map((a) => (
@@ -1677,7 +1677,7 @@ export function UserDashboard(props: UserDashboardProps) {
                     fontWeight: 500,
                   }}
                 >
-                  Open catalog →
+                  Open datasets →
                 </Link>
               </div>
               <div

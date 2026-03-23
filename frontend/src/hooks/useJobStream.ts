@@ -1,26 +1,14 @@
-/**
- * useJobStream — React hook that opens an SSE stream for a dataset analysis job.
- *
- * Usage:
- *   const { status, progress, error, analysisId } = useJobStream(datasetId, orgId);
- *
- * The hook automatically:
- *   - Opens the SSE connection as soon as datasetId is non-null
- *   - Updates status in real time as events arrive
- *   - Closes the connection on job_done, job_failed, or component unmount
- *   - Falls back to polling every 3s if SSE isn't supported
- */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, getBrowserClerkToken } from "@/lib/api";
 
 export type JobStatus = "pending" | "processing" | "done" | "failed" | "idle";
 
 interface JobStreamState {
   status: JobStatus;
-  progress: number; // 0–100
-  stage: string; // e.g. "analyzing", "saving"
+  progress: number;
+  stage: string;
   analysisId: string | null;
   error: string | null;
   durationSeconds: number | null;
@@ -49,106 +37,137 @@ export function useJobStream(
       return;
     }
 
+    let cancelled = false;
     setState({ ...INITIAL_STATE, status: "pending" });
 
-    // ── SSE path ──────────────────────────────────────────────────────────────
-    if (typeof EventSource !== "undefined") {
-      const url = `${API_BASE}/jobs/${datasetId}/stream?org_id=${orgId}`;
-      const es = new EventSource(url);
-      esRef.current = es;
+    const setup = async () => {
+      const token = await getBrowserClerkToken();
+      if (cancelled) return;
 
-      es.onmessage = (e) => {
-        try {
-          const payload = JSON.parse(e.data) as Record<string, unknown>;
-          const event = payload.event as string;
+      if (typeof EventSource !== "undefined") {
+        const params = new URLSearchParams({ org_id: orgId });
+        if (token) params.set("token", token);
 
-          if (event === "heartbeat") return;
+        const es = new EventSource(
+          `${API_BASE}/jobs/${datasetId}/stream?${params.toString()}`,
+        );
+        esRef.current = es;
 
-          if (event === "status") {
-            setState((prev) => ({
-              ...prev,
-              status: (payload.status as JobStatus) ?? prev.status,
-              progress: (payload.progress as number) ?? prev.progress,
-              stage: (payload.stage as string) ?? prev.stage,
-            }));
-            return;
+        es.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data) as Record<string, unknown>;
+            const type = payload.event as string;
+
+            if (type === "heartbeat") return;
+
+            if (type === "status") {
+              setState((prev) => ({
+                ...prev,
+                status: (payload.status as JobStatus) ?? prev.status,
+                progress: (payload.progress as number) ?? prev.progress,
+                stage: (payload.stage as string) ?? prev.stage,
+              }));
+              return;
+            }
+
+            if (type === "job_done") {
+              setState({
+                status: "done",
+                progress: 100,
+                stage: "complete",
+                analysisId: (payload.analysis_id as string) ?? null,
+                error: null,
+                durationSeconds: (payload.duration_seconds as number) ?? null,
+              });
+              es.close();
+              return;
+            }
+
+            if (type === "job_failed") {
+              setState({
+                status: "failed",
+                progress: 0,
+                stage: "",
+                analysisId: null,
+                error: (payload.error as string) ?? "Analysis failed",
+                durationSeconds: null,
+              });
+              es.close();
+              return;
+            }
+
+            if (type === "error") {
+              setState({
+                status: "failed",
+                progress: 0,
+                stage: "",
+                analysisId: null,
+                error: (payload.detail as string) ?? "Analysis job unavailable",
+                durationSeconds: null,
+              });
+              es.close();
+              return;
+            }
+
+            if (type === "timeout") {
+              setState((prev) => ({
+                ...prev,
+                status: "failed",
+                error: "Analysis timed out. Please try again.",
+              }));
+              es.close();
+            }
+          } catch {
+            // Ignore malformed SSE payloads.
           }
+        };
 
-          if (event === "job_done") {
-            setState({
-              status: "done",
-              progress: 100,
-              stage: "complete",
-              analysisId: (payload.analysis_id as string) ?? null,
-              error: null,
-              durationSeconds: (payload.duration_seconds as number) ?? null,
-            });
-            es.close();
-            return;
-          }
+        es.onerror = () => {
+          es.close();
+          startPolling(datasetId, orgId, token, setState, pollRef);
+        };
+        return;
+      }
 
-          if (event === "job_failed") {
-            setState({
-              status: "failed",
-              progress: 0,
-              stage: "",
-              analysisId: null,
-              error: (payload.error as string) ?? "Analysis failed",
-              durationSeconds: null,
-            });
-            es.close();
-            return;
-          }
+      startPolling(datasetId, orgId, token, setState, pollRef);
+    };
 
-          if (event === "timeout") {
-            setState((prev) => ({
-              ...prev,
-              status: "failed",
-              error: "Analysis timed out. Please try again.",
-            }));
-            es.close();
-          }
-        } catch {
-          // ignore malformed messages
-        }
-      };
+    void setup();
 
-      es.onerror = () => {
-        // SSE connection dropped — fall back to polling
-        es.close();
-        _startPolling(datasetId, orgId, setState, pollRef);
-      };
-
-      return () => {
-        es.close();
-        esRef.current = null;
-        _clearPolling(pollRef);
-      };
-    }
-
-    // ── Polling fallback (no EventSource) ─────────────────────────────────────
-    _startPolling(datasetId, orgId, setState, pollRef);
-    return () => _clearPolling(pollRef);
+    return () => {
+      cancelled = true;
+      esRef.current?.close();
+      esRef.current = null;
+      clearPolling(pollRef);
+    };
   }, [datasetId, orgId]);
 
   return state;
 }
 
-// ── Polling helper ────────────────────────────────────────────────────────────
-
-function _startPolling(
+function startPolling(
   datasetId: string,
   orgId: string,
+  token: string | null,
   setState: React.Dispatch<React.SetStateAction<JobStreamState>>,
   pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
 ) {
-  _clearPolling(pollRef);
+  clearPolling(pollRef);
 
   pollRef.current = setInterval(async () => {
     try {
-      const res = await fetch(`${API_BASE}/jobs/${datasetId}?org_id=${orgId}`);
-      if (!res.ok) return;
-      const payload = await res.json();
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${API_BASE}/jobs/${datasetId}?org_id=${orgId}`,
+        { headers },
+      );
+      if (!response.ok) return;
+
+      const payload = await response.json();
       const status: JobStatus = payload.status ?? "pending";
 
       setState((prev) => ({
@@ -162,15 +181,15 @@ function _startPolling(
       }));
 
       if (status === "done" || status === "failed") {
-        _clearPolling(pollRef);
+        clearPolling(pollRef);
       }
     } catch {
-      // network error — keep polling
+      // Keep polling through transient network failures.
     }
   }, 3000);
 }
 
-function _clearPolling(
+function clearPolling(
   pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
 ) {
   if (pollRef.current !== null) {

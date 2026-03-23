@@ -607,7 +607,7 @@ export default function Home() {
           <KeyboardShortcuts />
           <CommandPalette
             onSectionChange={(s) => handleSectionChange(s as NavSection)}
-            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "monitors", "data"]}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "data"]}
           />
         </div>
       </div>

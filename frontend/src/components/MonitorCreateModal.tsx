@@ -22,6 +22,7 @@ const CONDITIONS = [
   { value: "lt", label: "drops below (<)" },
   { value: "gt", label: "exceeds (>)" },
   { value: "eq", label: "equals (=)" },
+  { value: "change_pct", label: "changes materially (delta %)" },
 ];
 
 const SCHEDULES = [
@@ -46,6 +47,7 @@ export default function MonitorCreateModal({
   if (!open) return null;
 
   const needsColumn = checkType === "null_rate" || checkType === "column_drift";
+  const canSave = !!name && !!threshold && (!needsColumn || !!columnName.trim()) && !saving;
 
   async function handleSave() {
     if (!name || !threshold) return;
@@ -151,7 +153,7 @@ export default function MonitorCreateModal({
 
         <button
           onClick={handleSave}
-          disabled={!name || !threshold || saving}
+          disabled={!canSave}
           className="w-full py-2.5 rounded-xl bg-neutral-900 text-white text-sm font-medium
                      hover:bg-neutral-700 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
         >

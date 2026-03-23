@@ -448,6 +448,21 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px" }}>
+        <div style={{
+          marginBottom: 18,
+          padding: "12px 14px",
+          borderRadius: 12,
+          background: "rgba(245,158,11,0.08)",
+          border: "1px solid rgba(245,158,11,0.18)",
+        }}>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: "#111010", margin: 0 }}>
+            Team administration is in launch preview
+          </p>
+          <p style={{ fontSize: 12.5, color: "#6b6860", margin: "4px 0 0", lineHeight: 1.5 }}>
+            Use this page as an investor-proof surface for role management and audit visibility. For the MVP launch, keep it behind authenticated admin access and do not overpromise enterprise controls beyond what you have tested.
+          </p>
+        </div>
+
         {/* Tabs */}
         <div style={{
           display: "flex", gap: 4, marginBottom: 24,

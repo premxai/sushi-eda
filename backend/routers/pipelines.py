@@ -22,10 +22,22 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from croniter import croniter
 
 router = APIRouter(tags=["pipelines"])
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+
+def _resolved_org_id(org_id: str) -> str:
+    return resolve_org_id(org_id)
+
+
+def _validate_schedule(schedule: str) -> str:
+    normalized = (schedule or "").strip() or "0 * * * *"
+    if not croniter.is_valid(normalized):
+        raise HTTPException(status_code=400, detail="Invalid cron schedule")
+    return normalized
 
 
 def _pipeline_dict(p: PipelineRecipe) -> dict[str, Any]:
@@ -66,10 +78,11 @@ def _run_dict(r: PipelineRun) -> dict[str, Any]:
 async def _get_pipeline_or_404(
     pipeline_id: str, org_id: str, db: AsyncSession
 ) -> PipelineRecipe:
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(PipelineRecipe).where(
             PipelineRecipe.id == pipeline_id,
-            PipelineRecipe.org_id == org_id,
+            PipelineRecipe.org_id == resolved_org_id,
         )
     )
     pipeline = result.scalar_one_or_none()
@@ -89,6 +102,7 @@ async def create_pipeline(
     await validate_org_access(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
+    resolved_org_id = _resolved_org_id(org_id)
 
     name = (body.get("name") or "").strip()
     if not name:
@@ -98,7 +112,7 @@ async def create_pipeline(
     if source_dataset_id:
         ds = await db.execute(
             select(Dataset).where(
-                Dataset.id == source_dataset_id, Dataset.org_id == org_id
+                Dataset.id == source_dataset_id, Dataset.org_id == resolved_org_id
             )
         )
         if ds.scalar_one_or_none() is None:
@@ -108,8 +122,10 @@ async def create_pipeline(
     if not isinstance(graph, dict):
         raise HTTPException(status_code=400, detail="graph must be an object")
 
+    schedule = _validate_schedule(str(body.get("schedule", "0 * * * *")))
+
     pipeline = PipelineRecipe(
-        org_id=resolve_org_id(org_id),
+        org_id=resolved_org_id,
         created_by=current_user.id,
         source_dataset_id=source_dataset_id,
         name=name,
@@ -117,7 +133,7 @@ async def create_pipeline(
         graph=graph,
         destination_type=body.get("destination_type", "dataset"),
         destination_config=body.get("destination_config"),
-        schedule=body.get("schedule", "0 * * * *"),
+        schedule=schedule,
         is_active=bool(body.get("is_active", True)),
     )
     db.add(pipeline)
@@ -148,9 +164,10 @@ async def list_pipelines(
 ):
     """List pipelines in an org (viewer+)."""
     await validate_org_access(org_id, current_user, db)
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(PipelineRecipe)
-        .where(PipelineRecipe.org_id == org_id)
+        .where(PipelineRecipe.org_id == resolved_org_id)
         .order_by(PipelineRecipe.updated_at.desc())
         .limit(limit)
         .offset(offset)
@@ -193,7 +210,7 @@ async def update_pipeline(
         if source_dataset_id:
             ds = await db.execute(
                 select(Dataset).where(
-                    Dataset.id == source_dataset_id, Dataset.org_id == org_id
+                    Dataset.id == source_dataset_id, Dataset.org_id == _resolved_org_id(org_id)
                 )
             )
             if ds.scalar_one_or_none() is None:
@@ -207,6 +224,8 @@ async def update_pipeline(
     for field in ("name", "description", "destination_type", "schedule", "is_active"):
         if field in body:
             value = body[field]
+            if field == "schedule":
+                value = _validate_schedule(str(value))
             if getattr(pipeline, field) != value:
                 setattr(pipeline, field, value)
                 changed = True

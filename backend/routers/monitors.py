@@ -36,6 +36,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from croniter import croniter
 
 router = APIRouter(tags=["monitors"])
 
@@ -47,14 +48,26 @@ _VALID_CHECK_TYPES = frozenset(
 _VALID_CONDITIONS = frozenset(["lt", "gt", "eq", "change_pct"])
 
 
+def _resolved_org_id(org_id: str) -> str:
+    return resolve_org_id(org_id)
+
+
+def _validate_schedule(schedule: str) -> str:
+    normalized = (schedule or "").strip() or "0 * * * *"
+    if not croniter.is_valid(normalized):
+        raise HTTPException(status_code=400, detail="Invalid cron schedule")
+    return normalized
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
 async def _get_monitor_or_404(
     monitor_id: str, org_id: str, db: AsyncSession
 ) -> Monitor:
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
-        select(Monitor).where(Monitor.id == monitor_id, Monitor.org_id == org_id)
+        select(Monitor).where(Monitor.id == monitor_id, Monitor.org_id == resolved_org_id)
     )
     m = result.scalar_one_or_none()
     if m is None:
@@ -108,8 +121,9 @@ async def create_monitor(
     )
 
     # Verify dataset belongs to org
+    resolved_org_id = _resolved_org_id(org_id)
     ds = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == resolved_org_id)
     )
     if ds.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -126,17 +140,24 @@ async def create_monitor(
             status_code=400,
             detail=f"Invalid condition. Choose from: {sorted(_VALID_CONDITIONS)}",
         )
+    if check_type in {"null_rate", "column_drift"} and not body.get("column_name"):
+        raise HTTPException(
+            status_code=400,
+            detail="column_name is required for null_rate and column_drift monitors",
+        )
+
+    schedule = _validate_schedule(str(body.get("schedule", "0 * * * *")))
 
     monitor = Monitor(
         dataset_id=dataset_id,
-        org_id=resolve_org_id(org_id),
+        org_id=resolved_org_id,
         created_by=current_user.id,
         name=body.get("name", "Unnamed monitor"),
         check_type=check_type,
         column_name=body.get("column_name"),
         condition=condition,
         threshold=float(body.get("threshold", 0)),
-        schedule=body.get("schedule", "0 * * * *"),
+        schedule=schedule,
         is_active=body.get("is_active", True),
     )
     db.add(monitor)
@@ -157,9 +178,10 @@ async def list_monitors(
     db: AsyncSession = Depends(get_db),
 ):
     await validate_org_access(org_id, current_user, db)
+    resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(Monitor)
-        .where(Monitor.dataset_id == dataset_id, Monitor.org_id == org_id)
+        .where(Monitor.dataset_id == dataset_id, Monitor.org_id == resolved_org_id)
         .order_by(Monitor.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -199,7 +221,17 @@ async def update_monitor(
             val = body[field]
             if field == "threshold":
                 val = float(val)
+            if field == "schedule":
+                val = _validate_schedule(str(val))
             setattr(m, field, val)
+    if (
+        m.check_type in {"null_rate", "column_drift"}
+        and not (m.column_name or "").strip()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="column_name is required for null_rate and column_drift monitors",
+        )
 
     await db.commit()
     await db.refresh(m)
