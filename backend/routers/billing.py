@@ -11,12 +11,14 @@ Routes:
 from __future__ import annotations
 
 import os
+import uuid
 from typing import Any
 
 import stripe
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import Organization, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
@@ -84,6 +86,10 @@ PLANS = {
 _PLAN_CREDIT_LIMITS = {"free": 100, "pro": 2000, "team": -1}
 
 
+def _resolved_org_id(org_id: str) -> str:
+    return resolve_org_id(org_id)
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
@@ -108,6 +114,7 @@ async def create_checkout_session(
         raise HTTPException(status_code=503, detail="Stripe not configured")
 
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin",))
+    resolved_org_id = _resolved_org_id(org_id)
 
     plan_data = PLANS.get(plan)
     if not plan_data or plan == "free":
@@ -126,13 +133,13 @@ async def create_checkout_session(
     if not customer_id:
         customer = stripe.Customer.create(
             email=current_user.email,
-            metadata={"org_id": org_id, "user_id": str(current_user.id)},
+            metadata={"org_id": resolved_org_id, "user_id": str(current_user.id)},
         )
         customer_id = customer.id
         if org:
             await db.execute(
                 update(Organization)
-                .where(Organization.id == org_id)
+                .where(Organization.id == uuid.UUID(resolved_org_id))
                 .values(stripe_customer_id=customer_id)
             )
             await db.commit()
@@ -142,10 +149,10 @@ async def create_checkout_session(
         payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
-        success_url=f"{FRONTEND_URL}/settings/billing?success=1&org={org_id}",
+        success_url=f"{FRONTEND_URL}/settings/billing?success=1&org={resolved_org_id}",
         cancel_url=f"{FRONTEND_URL}/settings/billing?cancel=1",
-        metadata={"org_id": org_id, "plan": plan},
-        subscription_data={"metadata": {"org_id": org_id, "plan": plan}},
+        metadata={"org_id": resolved_org_id, "plan": plan},
+        subscription_data={"metadata": {"org_id": resolved_org_id, "plan": plan}},
     )
     return {"checkout_url": session.url, "session_id": session.id}
 
@@ -161,8 +168,9 @@ async def create_billing_portal(
         raise HTTPException(status_code=503, detail="Stripe not configured")
 
     await validate_org_access(org_id, current_user, db, allowed_roles=("admin",))
+    resolved_org_id = _resolved_org_id(org_id)
 
-    org = await _get_org(org_id, db)
+    org = await _get_org(resolved_org_id, db)
     if not org or not org.stripe_customer_id:
         raise HTTPException(
             status_code=404, detail="No billing account found for this org"
@@ -170,7 +178,7 @@ async def create_billing_portal(
 
     session = stripe.billing_portal.Session.create(
         customer=org.stripe_customer_id,
-        return_url=f"{FRONTEND_URL}/settings/billing?org={org_id}",
+        return_url=f"{FRONTEND_URL}/settings/billing?org={resolved_org_id}",
     )
     return {"portal_url": session.url}
 
@@ -257,7 +265,9 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 async def _get_org(org_id: str, db: AsyncSession) -> Organization | None:
-    result = await db.execute(select(Organization).where(Organization.id == org_id))
+    result = await db.execute(
+        select(Organization).where(Organization.id == uuid.UUID(_resolved_org_id(org_id)))
+    )
     return result.scalar_one_or_none()
 
 
@@ -268,7 +278,10 @@ async def _activate_plan(
     credit_limit = _PLAN_CREDIT_LIMITS.get(plan, 100)
 
     # Fetch current org to check if plan is actually changing
-    result = await db.execute(select(Organization).where(Organization.id == org_id))
+    resolved_org_id = _resolved_org_id(org_id)
+    result = await db.execute(
+        select(Organization).where(Organization.id == uuid.UUID(resolved_org_id))
+    )
     org = result.scalar_one_or_none()
 
     values: dict[str, Any] = {
@@ -283,11 +296,13 @@ async def _activate_plan(
         values["ai_credits_used"] = 0
 
     await db.execute(
-        update(Organization).where(Organization.id == org_id).values(**values)
+        update(Organization)
+        .where(Organization.id == uuid.UUID(resolved_org_id))
+        .values(**values)
     )
     await db.commit()
     logger.info(
-        f"Activated plan '{plan}' for org {org_id} (credits_limit={credit_limit})"
+        f"Activated plan '{plan}' for org {resolved_org_id} (credits_limit={credit_limit})"
     )
 
 

@@ -370,6 +370,129 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
 
   const isLocal = datasetId === "local";
   const noDataset = !datasetId;
+  const availableCategoryLikeCols = [...nonNumericCols, ...numericCols];
+
+  const runBlocker = useMemo(() => {
+    if (noDataset) return "Upload a dataset to run statistical tests.";
+
+    if (
+      activeTest === "ttest" ||
+      activeTest === "mann_whitney" ||
+      activeTest === "correlation" ||
+      activeTest === "linear_regression" ||
+      activeTest === "polynomial_regression"
+    ) {
+      if (numericCols.length < 2) {
+        return "This test needs at least two numeric columns.";
+      }
+      if (!col1 || !col2) {
+        return "Select two numeric columns.";
+      }
+      if (col1 === col2) {
+        return "Choose two different numeric columns.";
+      }
+      return null;
+    }
+
+    if (activeTest === "chi_square") {
+      if (availableCategoryLikeCols.length < 2) {
+        return "This test needs two columns with categorical-like values.";
+      }
+      if (!catCol1 || !catCol2) {
+        return "Select two columns to compare.";
+      }
+      if (catCol1 === catCol2) {
+        return "Choose two different columns.";
+      }
+      return null;
+    }
+
+    if (activeTest === "anova") {
+      if (numericCols.length < 1 || allCols.length < 2) {
+        return "ANOVA needs one numeric column and one grouping column.";
+      }
+      if (!col1 || !groupCol) {
+        return "Select a numeric column and a grouping column.";
+      }
+      if (col1 === groupCol) {
+        return "Grouping column must be different from the numeric column.";
+      }
+      return null;
+    }
+
+    if (activeTest === "logistic_regression") {
+      if (numericCols.length < 1) {
+        return "Logistic regression needs a numeric predictor column.";
+      }
+      if (!logisticTarget) {
+        return "Select a binary target column.";
+      }
+      if (logisticClasses.length !== 2) {
+        return "Target column must have exactly two classes in the loaded dataset.";
+      }
+      return null;
+    }
+
+    if (activeTest === "decomposition" || activeTest === "arima") {
+      if (numericCols.length < 1 || allCols.length < 2) {
+        return "Time-series analysis needs one date-like column and one numeric column.";
+      }
+      if (!tsDateCol || !tsValueCol) {
+        return "Select a date column and a numeric value column.";
+      }
+      if (tsDateCol === tsValueCol) {
+        return "Date and value columns must be different.";
+      }
+      return null;
+    }
+
+    if (activeTest === "cohort") {
+      if (allCols.length < 2) {
+        return "Cohort analysis needs an entity column and a date column.";
+      }
+      if (!cohortEntityCol || !cohortDateCol) {
+        return "Select an entity column and a date column.";
+      }
+      if (cohortEntityCol === cohortDateCol) {
+        return "Entity and date columns must be different.";
+      }
+      return null;
+    }
+
+    if (activeTest === "ab_test") {
+      if (controlTotal < 1 || variantTotal < 1) {
+        return "Control and variant totals must be at least 1.";
+      }
+      if (controlConversions > controlTotal || variantConversions > variantTotal) {
+        return "Conversions cannot exceed totals.";
+      }
+      return null;
+    }
+
+    return null;
+  }, [
+    activeTest,
+    allCols.length,
+    availableCategoryLikeCols.length,
+    catCol1,
+    catCol2,
+    cohortDateCol,
+    cohortEntityCol,
+    col1,
+    col2,
+    controlConversions,
+    controlTotal,
+    groupCol,
+    logisticClasses.length,
+    logisticTarget,
+    noDataset,
+    numericCols.length,
+    tsDateCol,
+    tsValueCol,
+    variantConversions,
+    variantTotal,
+  ]);
+  const canRun = !running && !runBlocker;
 
   return (
     <div className="space-y-4">
@@ -717,12 +840,18 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
           <button
             type="button"
             onClick={handleRun}
-            disabled={running || noDataset}
+            disabled={!canRun}
             className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />} Run
           </button>
         </div>
+
+        {runBlocker && (
+          <p className="mb-3 text-sm text-amber-700">
+            {runBlocker}
+          </p>
+        )}
 
         {result && <ResultCard result={result} />}
       </div>

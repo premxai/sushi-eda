@@ -213,7 +213,7 @@ export function ReportSection({ report, fileName = "dataset" }: Props) {
     } finally {
       setExporting(false);
     }
-  }, [report, fileName, qs, info, cols, topCorrs, firingOutliers, missingPct]);
+  }, [fileName, qs, info, cols, topCorrs, firingOutliers, missingPct]);
 
   function saveNote() {
     try { localStorage.setItem(PINNED_KEY, noteText); } catch {}

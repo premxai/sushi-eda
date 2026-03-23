@@ -19,6 +19,7 @@ from typing import Any
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import AuditLog, OrgMember, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(tags=["admin"])
 
 DEV_ORG = os.getenv("DEV_ORG", "") if os.getenv("ENVIRONMENT") == "development" else ""
+
+
+def _org_uuid(org_id: str) -> uuid.UUID:
+    return uuid.UUID(resolve_org_id(org_id))
 
 
 def _audit_dict(a: AuditLog) -> dict[str, Any]:
@@ -69,7 +74,7 @@ async def list_audit_logs(
 ) -> dict:
     if org_id != DEV_ORG:
         await validate_org_access(org_id, current_user, db, allowed_roles=("admin",))
-        org_uuid = uuid.UUID(org_id)
+        org_uuid = _org_uuid(org_id)
     else:
         org_uuid = None  # dev: return all
 
@@ -102,7 +107,7 @@ async def write_audit_log(
         await validate_org_access(
             org_id, current_user, db, allowed_roles=("admin", "editor")
         )
-        org_uuid = uuid.UUID(org_id)
+        org_uuid = _org_uuid(org_id)
 
     log = AuditLog(
         org_id=org_uuid,
@@ -132,7 +137,7 @@ async def list_members(
         await validate_org_access(
             org_id, current_user, db, allowed_roles=("admin", "editor", "viewer")
         )
-        org_uuid = uuid.UUID(org_id)
+        org_uuid = _org_uuid(org_id)
         stmt = (
             select(OrgMember)
             .where(OrgMember.org_id == org_uuid)
@@ -163,7 +168,7 @@ async def update_member_role(
 ) -> dict:
     if org_id != DEV_ORG:
         await validate_org_access(org_id, current_user, db, allowed_roles=("admin",))
-        org_uuid = uuid.UUID(org_id)
+        org_uuid = _org_uuid(org_id)
     else:
         org_uuid = None
 
@@ -215,7 +220,7 @@ async def remove_member(
 ) -> None:
     if org_id != DEV_ORG:
         await validate_org_access(org_id, current_user, db, allowed_roles=("admin",))
-        org_uuid = uuid.UUID(org_id)
+        org_uuid = _org_uuid(org_id)
     else:
         org_uuid = None
 

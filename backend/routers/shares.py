@@ -25,6 +25,7 @@ from auth import get_current_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Analysis, Dataset, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select
@@ -35,6 +36,17 @@ router = APIRouter(tags=["shares"])
 # Default TTL for share links (7 days)
 SHARE_TTL_SECONDS = int(os.getenv("SHARE_TTL_SECONDS", str(7 * 24 * 3600)))
 SHARE_KEY_PREFIX = "share:"
+
+
+def _parse_uuid(value: str, field_name: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid {field_name}") from exc
+
+
+def _effective_org_uuid(org_id: str) -> uuid.UUID:
+    return _parse_uuid(resolve_org_id(org_id), "org_id")
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -62,10 +74,14 @@ async def create_share(
     await validate_org_access(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
+    effective_org_id = _effective_org_uuid(org_id)
+    dataset_uuid = _parse_uuid(dataset_id, "dataset_id")
 
-    # Verify dataset + get latest analysis
     ds_result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == org_id)
+        select(Dataset).where(
+            Dataset.id == dataset_uuid,
+            Dataset.org_id == effective_org_id,
+        )
     )
     dataset = ds_result.scalar_one_or_none()
     if dataset is None:
@@ -73,7 +89,7 @@ async def create_share(
 
     an_result = await db.execute(
         select(Analysis)
-        .where(Analysis.dataset_id == dataset_id)
+        .where(Analysis.dataset_id == dataset_uuid, Analysis.org_id == effective_org_id)
         .order_by(Analysis.version.desc())
         .limit(1)
     )
@@ -88,8 +104,8 @@ async def create_share(
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
     payload = {
-        "dataset_id": dataset_id,
-        "org_id": org_id,
+        "dataset_id": str(dataset.id),
+        "org_id": str(dataset.org_id),
         "analysis_id": str(analysis.id),
         "dataset_name": dataset.name,
         "created_by": str(current_user.id),
@@ -122,8 +138,16 @@ async def get_shared_report(
     if payload is None:
         raise HTTPException(status_code=404, detail="Share link not found or expired")
 
-    analysis_id = payload["analysis_id"]
-    result = await db.execute(select(Analysis).where(Analysis.id == analysis_id))
+    analysis_id = _parse_uuid(payload["analysis_id"], "analysis_id")
+    dataset_id = _parse_uuid(payload["dataset_id"], "dataset_id")
+    org_id = _parse_uuid(payload["org_id"], "org_id")
+    result = await db.execute(
+        select(Analysis).where(
+            Analysis.id == analysis_id,
+            Analysis.dataset_id == dataset_id,
+            Analysis.org_id == org_id,
+        )
+    )
     analysis = result.scalar_one_or_none()
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
@@ -157,11 +181,15 @@ async def revoke_share(
     await validate_org_access(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
+    dataset_uuid = _parse_uuid(dataset_id, "dataset_id")
+    effective_org_id = _effective_org_uuid(org_id)
 
     payload = _get_share(token)
     if payload is None:
         raise HTTPException(status_code=404, detail="Share token not found")
-    if payload.get("dataset_id") != dataset_id:
+    if payload.get("dataset_id") != str(dataset_uuid) or payload.get("org_id") != str(
+        effective_org_id
+    ):
         raise HTTPException(
             status_code=403, detail="Token does not belong to this dataset"
         )

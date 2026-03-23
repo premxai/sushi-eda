@@ -15,6 +15,7 @@ import {
   createComment,
   deleteComment,
   editComment,
+  getApiErrorMessage,
   listComments,
 } from "@/lib/api";
 
@@ -52,6 +53,13 @@ function avatarColor(name: string) {
   for (let i = 0; i < name.length; i++)
     h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function normalizeThread(comment: CommentThread): CommentThread {
+  return {
+    ...comment,
+    replies: comment.replies ?? [],
+  };
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
@@ -102,10 +110,12 @@ function CommentCard({
   const [editVal, setEditVal] = useState(comment.content);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleSaveEdit = async () => {
     if (!editVal.trim()) return;
     setSaving(true);
+    setActionError(null);
     try {
       const updated = await editComment(
         comment.comment_id,
@@ -114,6 +124,8 @@ function CommentCard({
       );
       onEdited(comment.comment_id, updated.content);
       setEditing(false);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "Failed to save comment"));
     } finally {
       setSaving(false);
     }
@@ -124,8 +136,13 @@ function CommentCard({
       setConfirmDelete(true);
       return;
     }
-    await deleteComment(comment.comment_id, orgId);
-    onDeleted(comment.comment_id);
+    setActionError(null);
+    try {
+      await deleteComment(comment.comment_id, orgId);
+      onDeleted(comment.comment_id);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "Failed to delete comment"));
+    }
   };
 
   return (
@@ -257,6 +274,11 @@ function CommentCard({
             )}
           </div>
         )}
+        {actionError && (
+          <p style={{ fontSize: 11.5, color: "#dc2626", marginTop: 6 }}>
+            {actionError}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -310,30 +332,39 @@ export function CommentsSection({
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [posting, setPosting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
-    if (!datasetId) return;
+    if (!datasetId) {
+      setThreads([]);
+      return;
+    }
     setLoading(true);
+    setRequestError(null);
     try {
       const data = await listComments(datasetId, orgId);
-      setThreads(data);
+      setThreads(data.map(normalizeThread));
+    } catch (error) {
+      setRequestError(getApiErrorMessage(error, "Failed to load comments"));
     } finally {
       setLoading(false);
     }
   }, [datasetId, orgId]);
 
   useEffect(() => {
+    if (!datasetId) return;
     load();
     pollRef.current = setInterval(load, 30000); // poll every 30s
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [load]);
+  }, [datasetId, load]);
 
   const handlePost = async () => {
     if (!datasetId || !newContent.trim()) return;
     setPosting(true);
+    setRequestError(null);
     try {
       const comment = await createComment(
         datasetId,
@@ -344,9 +375,11 @@ export function CommentsSection({
         },
         orgId,
       );
-      setThreads((prev) => [...prev, comment]);
+      setThreads((prev) => [...prev, normalizeThread(comment)]);
       setNewContent("");
       setNewCol("");
+    } catch (error) {
+      setRequestError(getApiErrorMessage(error, "Failed to post comment"));
     } finally {
       setPosting(false);
     }
@@ -355,6 +388,7 @@ export function CommentsSection({
   const handleReply = async (parentId: string) => {
     if (!datasetId || !replyContent.trim()) return;
     setPosting(true);
+    setRequestError(null);
     try {
       await createComment(
         datasetId,
@@ -368,6 +402,8 @@ export function CommentsSection({
       setReplyTo(null);
       setReplyContent("");
       await load();
+    } catch (error) {
+      setRequestError(getApiErrorMessage(error, "Failed to post reply"));
     } finally {
       setPosting(false);
     }
@@ -483,6 +519,23 @@ export function CommentsSection({
         </button>
       </div>
 
+      {requestError && (
+        <div
+          style={{
+            marginTop: 12,
+            marginBottom: 4,
+            borderRadius: 10,
+            border: "1px solid rgba(220,38,38,0.18)",
+            background: "rgba(254,242,242,0.95)",
+            color: "#b91c1c",
+            fontSize: 12.5,
+            padding: "10px 12px",
+          }}
+        >
+          {requestError}
+        </div>
+      )}
+
       {/* Thread list */}
       <div
         style={{
@@ -510,6 +563,7 @@ export function CommentsSection({
           <div
             key={thread.comment_id}
             style={{
+              position: "relative",
               background: "rgba(255,255,255,0.72)",
               border: "1px solid rgba(0,0,0,0.06)",
               borderRadius: 14,
@@ -550,7 +604,7 @@ export function CommentsSection({
               />
 
               {/* Replies */}
-              {thread.replies.map((reply) => (
+              {(thread.replies ?? []).map((reply) => (
                 <div key={reply.comment_id} style={{ marginTop: 10 }}>
                   <CommentCard
                     comment={reply}

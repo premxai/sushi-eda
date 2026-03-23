@@ -18,6 +18,7 @@ from typing import Any
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import Dataset, DatasetComment, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(tags=["comments"])
 
 DEV_ORG = "default"
+
+
+def _parse_uuid(value: str, field_name: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid {field_name}") from exc
+
+
+def _effective_org_uuid(org_id: str) -> uuid.UUID:
+    return _parse_uuid(resolve_org_id(org_id), "org_id")
 
 
 def _comment_dict(c: DatasetComment) -> dict[str, Any]:
@@ -44,10 +56,11 @@ def _comment_dict(c: DatasetComment) -> dict[str, Any]:
 async def _get_dataset_or_404(
     dataset_id: str, org_id: str, db: AsyncSession
 ) -> Dataset:
+    effective_org_id = _effective_org_uuid(org_id)
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.org_id == uuid.UUID(org_id),
+            Dataset.id == _parse_uuid(dataset_id, "dataset_id"),
+            Dataset.org_id == effective_org_id,
         )
     )
     ds = result.scalar_one_or_none()
@@ -59,10 +72,11 @@ async def _get_dataset_or_404(
 async def _get_comment_or_404(
     comment_id: str, org_id: str, db: AsyncSession
 ) -> DatasetComment:
+    effective_org_id = _effective_org_uuid(org_id)
     result = await db.execute(
         select(DatasetComment).where(
-            DatasetComment.id == uuid.UUID(comment_id),
-            DatasetComment.org_id == uuid.UUID(org_id),
+            DatasetComment.id == _parse_uuid(comment_id, "comment_id"),
+            DatasetComment.org_id == effective_org_id,
         )
     )
     comment = result.scalar_one_or_none()
@@ -90,35 +104,33 @@ async def create_comment(
     content = (body.get("content") or "").strip()
     if not content:
         raise HTTPException(status_code=422, detail="content is required")
-
-    # Resolve org UUID for "default" dev bypass
-    if org_id == DEV_ORG:
-        # Use dataset's actual org_id
-        result = await db.execute(
-            select(Dataset).where(Dataset.id == uuid.UUID(dataset_id))
-        )
-        ds = result.scalar_one_or_none()
-        if not ds:
-            raise HTTPException(status_code=404, detail="Dataset not found")
-        resolved_org_id = ds.org_id
-    else:
-        await _get_dataset_or_404(dataset_id, org_id, db)
-        resolved_org_id = uuid.UUID(org_id)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    parent_id = body.get("parent_id")
+    if parent_id:
+        parent = await _get_comment_or_404(parent_id, org_id, db)
+        if parent.dataset_id != dataset.id:
+            raise HTTPException(
+                status_code=400, detail="Reply must belong to the same dataset"
+            )
+    author_name = (body.get("author_name") or "").strip()
+    if not author_name and current_user and current_user.name:
+        author_name = current_user.name
 
     comment = DatasetComment(
-        dataset_id=uuid.UUID(dataset_id),
-        org_id=resolved_org_id,
+        dataset_id=dataset.id,
+        org_id=dataset.org_id,
         user_id=current_user.id if current_user else None,
-        parent_id=uuid.UUID(body["parent_id"]) if body.get("parent_id") else None,
+        parent_id=_parse_uuid(parent_id, "parent_id") if parent_id else None,
         column_name=body.get("column_name") or None,
-        author_name=body.get("author_name")
-        or (current_user.name if current_user else "Anonymous"),
+        author_name=author_name or "Anonymous",
         content=content,
     )
     db.add(comment)
     await db.commit()
     await db.refresh(comment)
-    return _comment_dict(comment)
+    payload = _comment_dict(comment)
+    payload["replies"] = []
+    return payload
 
 
 # ─── List ─────────────────────────────────────────────────────────────────────
@@ -136,12 +148,13 @@ async def list_comments(
         await validate_org_access(
             org_id, current_user, db, allowed_roles=("viewer", "editor", "admin")
         )
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
 
-    # Single query: all comments for this dataset
     all_result = await db.execute(
         select(DatasetComment)
         .where(
-            DatasetComment.dataset_id == uuid.UUID(dataset_id),
+            DatasetComment.dataset_id == dataset.id,
+            DatasetComment.org_id == dataset.org_id,
         )
         .order_by(DatasetComment.created_at)
     )
@@ -181,22 +194,17 @@ async def edit_comment(
         await validate_org_access(
             org_id, current_user, db, allowed_roles=("viewer", "editor", "admin")
         )
-
-    # Dev bypass: look up by comment_id only
-    if org_id == DEV_ORG:
-        result = await db.execute(
-            select(DatasetComment).where(DatasetComment.id == uuid.UUID(comment_id))
-        )
-        comment = result.scalar_one_or_none()
-        if not comment:
-            raise HTTPException(status_code=404, detail="Comment not found")
-    else:
-        comment = await _get_comment_or_404(comment_id, org_id, db)
-        # Only the author or editor+ can edit
-        if current_user and comment.user_id != current_user.id:
-            await validate_org_access(
-                org_id, current_user, db, allowed_roles=("editor", "admin")
+    comment = await _get_comment_or_404(comment_id, org_id, db)
+    is_author = current_user is not None and comment.user_id == current_user.id
+    if not is_author:
+        if org_id == DEV_ORG:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the original author can edit this comment",
             )
+        await validate_org_access(
+            org_id, current_user, db, allowed_roles=("editor", "admin")
+        )
 
     content = (body.get("content") or "").strip()
     if not content:
@@ -219,22 +227,21 @@ async def delete_comment(
     current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    if org_id == DEV_ORG:
-        result = await db.execute(
-            select(DatasetComment).where(DatasetComment.id == uuid.UUID(comment_id))
-        )
-        comment = result.scalar_one_or_none()
-        if not comment:
-            raise HTTPException(status_code=404, detail="Comment not found")
-    else:
+    if org_id != DEV_ORG:
         await validate_org_access(
             org_id, current_user, db, allowed_roles=("viewer", "editor", "admin")
         )
-        comment = await _get_comment_or_404(comment_id, org_id, db)
-        if current_user and comment.user_id != current_user.id:
-            await validate_org_access(
-                org_id, current_user, db, allowed_roles=("editor", "admin")
+    comment = await _get_comment_or_404(comment_id, org_id, db)
+    is_author = current_user is not None and comment.user_id == current_user.id
+    if not is_author:
+        if org_id == DEV_ORG:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the original author can delete this comment",
             )
+        await validate_org_access(
+            org_id, current_user, db, allowed_roles=("editor", "admin")
+        )
 
     await db.delete(comment)
     await db.commit()

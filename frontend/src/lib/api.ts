@@ -35,6 +35,10 @@ async function getClerkToken(): Promise<string | null> {
   }
 }
 
+export async function getBrowserClerkToken(): Promise<string | null> {
+  return getClerkToken();
+}
+
 client.interceptors.request.use(async (config) => {
   const token = await getClerkToken();
   if (!token) return config;
@@ -42,6 +46,34 @@ client.interceptors.request.use(async (config) => {
   (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
   return config;
 });
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : typeof item?.msg === "string"
+              ? item.msg
+              : JSON.stringify(item),
+        )
+        .join(", ");
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export async function uploadFile(file: File): Promise<EDAReport> {
   const formData = new FormData();
   formData.append("file", file);
@@ -309,6 +341,42 @@ export async function fetchDatasetAnalysis(
 }> {
   const { data } = await client.get(
     `/datasets/${datasetId}/analysis?org_id=${orgId}`,
+  );
+  return data;
+}
+
+export interface CompareDatasetSummary {
+  name: string;
+  report: EDAReport;
+}
+
+export interface DatasetComparisonResult {
+  file1: CompareDatasetSummary;
+  file2: CompareDatasetSummary;
+  comparison: {
+    schema_diff: {
+      file1_only: string[];
+      file2_only: string[];
+      common: string[];
+    };
+    row_count_diff: number;
+    column_count_diff: number;
+  };
+}
+
+export async function compareDatasets(
+  file1: File,
+  file2: File,
+): Promise<DatasetComparisonResult> {
+  const formData = new FormData();
+  formData.append("file1", file1);
+  formData.append("file2", file2);
+  const { data } = await client.post<DatasetComparisonResult>(
+    "/compare",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
   );
   return data;
 }
@@ -999,6 +1067,52 @@ export async function deleteComment(
 }
 
 // ── Admin / Enterprise (Task 35) ──────────────────────────────────────────────
+
+export interface SharedReport {
+  token: string;
+  dataset_name: string;
+  expires_at: string;
+  analysis: {
+    analysis_id: string;
+    version: number;
+    ai_narrative: string | null;
+    duration_seconds: number | null;
+    created_at: string;
+    report: EDAReport;
+  };
+}
+
+export interface ShareLinkResult {
+  token: string;
+  share_url: string;
+  expires_at: string;
+  ttl_hours: number;
+}
+
+export async function createDatasetShare(
+  datasetId: string,
+  ttlHours: number = 168,
+  orgId: string = "default",
+): Promise<ShareLinkResult> {
+  const { data } = await client.post<ShareLinkResult>(
+    `/datasets/${datasetId}/share?org_id=${orgId}`,
+    { ttl_hours: ttlHours },
+  );
+  return data;
+}
+
+export async function revokeDatasetShare(
+  datasetId: string,
+  token: string,
+  orgId: string = "default",
+): Promise<void> {
+  await client.delete(`/datasets/${datasetId}/share/${token}?org_id=${orgId}`);
+}
+
+export async function getSharedReport(token: string): Promise<SharedReport> {
+  const { data } = await client.get<SharedReport>(`/share/${token}`);
+  return data;
+}
 
 export interface AuditLogEntry {
   log_id: string;

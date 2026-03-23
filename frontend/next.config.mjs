@@ -48,20 +48,20 @@ const nextConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       'plotly.js$': resolvePlotlyBundle(),
+      'plotly.js/dist/plotly$': resolvePlotlyBundle(),
+      buffer: resolvedBufferShim,
       'buffer/': resolvedBufferShim,
     };
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...(config.resolve.fallback || {}),
-        buffer: resolvedBufferShim,
-      }
-      if (bufferPolyfill) {
-        config.plugins.push(
-          new webpack.ProvidePlugin({
-            Buffer: ['buffer', 'Buffer'],
-          })
-        );
-      }
+    config.resolve.fallback = {
+      ...(config.resolve.fallback || {}),
+      buffer: resolvedBufferShim,
+    };
+    if (!isServer && bufferPolyfill) {
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+        })
+      );
     }
     return config;
   },

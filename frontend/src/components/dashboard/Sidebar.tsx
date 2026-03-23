@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   BarChart3,
-  Bell,
   Columns3,
   GitCompareArrows,
   AlertTriangle,
@@ -17,19 +16,13 @@ import {
   Sigma,
   Archive,
   Database,
-  Unplug,
   TerminalSquare,
-  Workflow,
   FileText,
   BookOpen,
-  MessageCircle,
-  Shield,
-  Zap,
   Home,
 } from "lucide-react";
 import Link from "next/link";
 import CreditsUsageBar from "@/components/CreditsUsageBar";
-import MonitorCreateModal from "@/components/MonitorCreateModal";
 
 export type NavSection =
   | "overview"
@@ -66,12 +59,15 @@ const navItems: NavItem[] = [
   { id: "cleaning",       label: "Data Cleaning",  icon: Sparkles,            group: "Engineering" },
   { id: "transforms",     label: "Transforms",     icon: FlaskConical,        group: "Engineering" },
   { id: "sql",            label: "SQL Editor",     icon: TerminalSquare,      group: "Engineering" },
-  { id: "monitors",       label: "Monitors",       icon: Bell,                group: "Engineering" },
-  { id: "comments",       label: "Comments",       icon: MessageCircle,       group: "Engineering" },
   { id: "data",           label: "Data Table",     icon: Table2,              group: "Data" },
 ];
 
 const GROUPS = ["Analysis", "Engineering", "Data"];
+
+const launchFooterLinks = [
+  { href: "/datasets", label: "My Datasets", icon: Database },
+  { href: "/docs", label: "Docs", icon: BookOpen },
+] as const;
 
 interface SidebarProps {
   fileName: string;
@@ -95,8 +91,6 @@ export function Sidebar({
   orgId = "default",
   onArchive,
 }: SidebarProps) {
-  const [monitorOpen, setMonitorOpen] = useState(false);
-
   return (
     <aside style={{
       width: 230,
@@ -249,96 +243,21 @@ export function Sidebar({
       <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: 12 }}>
         <CreditsUsageBar orgId={orgId} className="mb-2" />
 
-        <Link
-          href="/datasets"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <Database style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          My Datasets
-        </Link>
-
-        <Link
-          href="/connectors"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <Unplug style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Connections
-        </Link>
-
-        <Link
-          href="/catalog"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <BookOpen style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Data Catalog
-        </Link>
-
-        <Link
-          href="/integrations"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <Zap style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Integrations
-        </Link>
-
-        <Link
-          href="/settings"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <Shield style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Settings
-        </Link>
-
-        <Link
-          href="/docs"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <BookOpen style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Docs
-        </Link>
-
-        <Link
-          href="/pipelines"
-          style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-            fontSize: 13.5, color: "#6b6860", textDecoration: "none",
-            fontWeight: 400,
-          }}
-        >
-          <Workflow style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-          Pipelines
-        </Link>
+        {launchFooterLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "9px 10px", borderRadius: 8, marginBottom: 1,
+              fontSize: 13.5, color: "#6b6860", textDecoration: "none",
+              fontWeight: 400,
+            }}
+          >
+            <item.icon style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+            {item.label}
+          </Link>
+        ))}
 
         {datasetId && onArchive && (
           <button
@@ -356,32 +275,7 @@ export function Sidebar({
           </button>
         )}
 
-        {datasetId && (
-          <button
-            onClick={() => setMonitorOpen(true)}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "9px 10px", borderRadius: 8, marginBottom: 1,
-              fontSize: 13.5, color: "#6b6860",
-              background: "transparent", border: "none", cursor: "pointer",
-              width: "100%", textAlign: "left", fontWeight: 400,
-            }}
-          >
-            <Bell style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
-            Create monitor
-          </button>
-        )}
-
       </div>
-
-      {datasetId && (
-        <MonitorCreateModal
-          open={monitorOpen}
-          onClose={() => setMonitorOpen(false)}
-          datasetId={datasetId}
-          orgId={orgId}
-        />
-      )}
     </aside>
   );
 }

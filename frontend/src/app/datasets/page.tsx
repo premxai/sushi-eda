@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   ArrowUpDown,
   ArchiveRestore,
+  BookOpen,
   FileSpreadsheet,
   Loader2,
   Plus,
   Star,
   Trash2,
-  Unplug,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,6 +18,7 @@ import {
   DatasetSummary,
   archiveDataset,
   fetchDatasetAnalysis,
+  getApiErrorMessage,
   listDatasets,
   restoreDataset,
   starDataset,
@@ -25,6 +26,10 @@ import {
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
 type Tab = "all" | "starred" | "archived";
+
+const REPORT_KEY = "eda_report";
+const FILE_KEY = "eda_filename";
+const DATASET_KEY = "eda_dataset_id";
 
 const FORMAT_BG: Record<string, string> = {
   csv:     "rgba(16,185,129,0.12)",
@@ -68,6 +73,15 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function restoreDatasetSession(
+  dataset: DatasetSummary,
+  report: unknown,
+) {
+  sessionStorage.setItem(REPORT_KEY, JSON.stringify(report));
+  sessionStorage.setItem(FILE_KEY, dataset.original_filename || dataset.name);
+  sessionStorage.setItem(DATASET_KEY, dataset.id);
+}
+
 export default function DatasetsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
@@ -75,6 +89,7 @@ export default function DatasetsPage() {
   const [loading, setLoading] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async (t: Tab) => {
     setLoading(true);
@@ -85,45 +100,63 @@ export default function DatasetsPage() {
         starred: t === "starred",
       });
       setDatasets(data);
-    } catch {
-      setError("Failed to load datasets. Is the backend running?");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to load datasets."));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(tab); }, [tab, load]);
+  useEffect(() => { router.prefetch("/"); }, [router]);
 
   const handleStar = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await starDataset(id);
-    setDatasets((prev) =>
-      prev.map((d) => d.id === id ? { ...d, is_starred: !d.is_starred } : d)
-    );
+    setActionError(null);
+    try {
+      await starDataset(id);
+      setDatasets((prev) =>
+        prev.map((d) => d.id === id ? { ...d, is_starred: !d.is_starred } : d)
+      );
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, "Failed to update star status"));
+    }
   };
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await archiveDataset(id);
-    setDatasets((prev) => prev.filter((d) => d.id !== id));
+    setActionError(null);
+    try {
+      await archiveDataset(id);
+      setDatasets((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, "Failed to archive dataset"));
+    }
   };
 
   const handleRestore = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await restoreDataset(id);
-    setDatasets((prev) => prev.filter((d) => d.id !== id));
+    setActionError(null);
+    try {
+      await restoreDataset(id);
+      setDatasets((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, "Failed to restore dataset"));
+    }
   };
 
   const handleOpen = async (dataset: DatasetSummary) => {
     if (dataset.status !== "ready") return;
     setOpeningId(dataset.id);
+    setActionError(null);
     try {
       const analysis = await fetchDatasetAnalysis(dataset.id);
-      sessionStorage.setItem("eda_report", JSON.stringify(analysis.report));
-      sessionStorage.setItem("eda_filename", dataset.original_filename);
-      sessionStorage.setItem("eda_dataset_id", dataset.id);
+      restoreDatasetSession(dataset, analysis.report);
       router.push("/");
-    } catch {
+    } catch (err) {
+      setActionError(
+        getApiErrorMessage(err, "Failed to reopen dataset analysis"),
+      );
       setOpeningId(null);
     }
   };
@@ -157,11 +190,11 @@ export default function DatasetsPage() {
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/connectors" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
-            Connections
+          <Link href="/compare" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+            Compare
           </Link>
-          <Link href="/pipelines" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
-            Pipelines
+          <Link href="/docs" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+            Docs
           </Link>
           <Link href="/" style={{
             display: "flex", alignItems: "center", gap: 6,
@@ -193,6 +226,22 @@ export default function DatasetsPage() {
           </p>
         </div>
 
+        {actionError && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(220,38,38,0.16)",
+              background: "rgba(254,242,242,0.92)",
+              color: "#b91c1c",
+              fontSize: 13,
+            }}
+          >
+            {actionError}
+          </div>
+        )}
+
         {/* Toolbar: pill tabs + upload CTA */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           {/* Pill tabs */}
@@ -221,18 +270,7 @@ export default function DatasetsPage() {
 
           {/* CTAs */}
           <div style={{ display: "flex", gap: 8 }}>
-            <Link href="/connectors" style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 16px", borderRadius: 10,
-              fontSize: 13.5, fontWeight: 500,
-              background: "rgba(255,255,255,0.72)",
-              border: "1px solid rgba(0,0,0,0.1)",
-              color: "#6b6860", textDecoration: "none",
-            }}>
-              <Unplug size={13} />
-              Connect source
-            </Link>
-            <Link href="/pipelines" style={{
+            <Link href="/compare" style={{
               display: "flex", alignItems: "center", gap: 7,
               padding: "8px 16px", borderRadius: 10,
               fontSize: 13.5, fontWeight: 500,
@@ -241,7 +279,18 @@ export default function DatasetsPage() {
               color: "#6b6860", textDecoration: "none",
             }}>
               <ArrowUpDown size={13} />
-              Build pipeline
+              Compare datasets
+            </Link>
+            <Link href="/docs" style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 10,
+              fontSize: 13.5, fontWeight: 500,
+              background: "rgba(255,255,255,0.72)",
+              border: "1px solid rgba(0,0,0,0.1)",
+              color: "#6b6860", textDecoration: "none",
+            }}>
+              <BookOpen size={13} />
+              Sharing guide
             </Link>
             <Link href="/" style={{
               display: "flex", alignItems: "center", gap: 7,

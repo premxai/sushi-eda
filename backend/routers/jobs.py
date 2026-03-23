@@ -22,12 +22,16 @@ import json
 import time
 from typing import AsyncGenerator
 
-from auth import _decode_clerk_token, get_current_user
+from auth import _decode_clerk_token, get_current_user, validate_org_access
 from cache import cache
-from db.models import User
+from db import get_db
+from db.models import Dataset, User
+from defaults import resolve_org_id
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -38,6 +42,52 @@ JOB_TIMEOUT = 360  # 6 minutes max stream duration
 def _sse(data: dict) -> str:
     """Format a dict as an SSE data line."""
     return f"data: {json.dumps(data)}\n\n"
+
+
+async def _resolve_stream_user(
+    token: str | None,
+    db: AsyncSession,
+) -> User | None:
+    if not token:
+        return None
+
+    payload = _decode_clerk_token(token)
+    clerk_id = payload.get("sub")
+    if not clerk_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await db.execute(select(User).where(User.clerk_id == clerk_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unknown user")
+    return user
+
+
+async def _authorize_job_access(
+    dataset_id: str,
+    org_id: str,
+    current_user: User | None,
+    db: AsyncSession,
+) -> Dataset:
+    result = await db.execute(select(Dataset).where(Dataset.id == dataset_id))
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    dataset_org_id = str(dataset.org_id)
+    requested_org_id = (
+        dataset_org_id if org_id == "default" else str(resolve_org_id(org_id))
+    )
+    if dataset_org_id != requested_org_id:
+        raise HTTPException(status_code=403, detail="Dataset not in requested org")
+
+    if current_user is None:
+        if org_id != "default":
+            raise HTTPException(status_code=401, detail="Authentication required")
+        return dataset
+
+    await validate_org_access(dataset_org_id, current_user, db)
+    return dataset
 
 
 async def _job_event_stream(dataset_id: str, org_id: str) -> AsyncGenerator[str, None]:
@@ -116,6 +166,7 @@ async def stream_job(
     request: Request,
     org_id: str = "default",
     token: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     SSE stream for a specific analysis job.
@@ -124,19 +175,8 @@ async def stream_job(
     Since EventSource cannot send Authorization headers, an optional
     ``token`` query parameter is accepted for Clerk JWT authentication.
     """
-    if token:
-        try:
-            payload = _decode_clerk_token(token)
-            logger.info(
-                f"SSE stream authenticated: dataset={dataset_id} sub={payload.get('sub')}"
-            )
-        except Exception:
-            logger.warning(f"SSE stream token invalid: dataset={dataset_id}")
-    else:
-        logger.warning(
-            f"SSE stream opened without auth token: dataset={dataset_id} "
-            "(unauthenticated access)"
-        )
+    current_user = await _resolve_stream_user(token, db)
+    await _authorize_job_access(dataset_id, org_id, current_user, db)
 
     logger.info(f"SSE stream opened: dataset={dataset_id} org={org_id}")
 
@@ -162,9 +202,12 @@ async def stream_job(
 @router.get("/{dataset_id}")
 async def get_job_status(
     dataset_id: str,
+    org_id: str = Query(default="default"),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Poll-based job status (alternative to SSE for simpler clients)."""
+    await _authorize_job_access(dataset_id, org_id, current_user, db)
     status_data = cache.get_job_status(dataset_id)
     if status_data is None:
         raise HTTPException(status_code=404, detail="Job not found or expired")

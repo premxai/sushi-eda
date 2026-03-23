@@ -161,15 +161,6 @@ export function CommandPalette({
                 </Command.Item>
                 <Command.Item
                   onSelect={() =>
-                    handleSelect(() => onSectionChange?.("monitors"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Monitors</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
                     handleSelect(() => onSectionChange?.("report"))
                   }
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
@@ -185,15 +176,6 @@ export function CommandPalette({
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span>Visualizations</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("comments"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Comments</span>
                 </Command.Item>
               </Command.Group>
             )}
