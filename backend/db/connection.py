@@ -12,7 +12,9 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DEFAULT_SQLITE_URL = "sqlite+aiosqlite:///./backend/.local/sushi.db"
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Supabase provides a connection pooler URL (port 6543) and a direct URL (port 5432).
 # For async/migration work use the direct URL with asyncpg driver.
@@ -21,15 +23,26 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 elif DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif not DATABASE_URL:
+    DATABASE_URL = DEFAULT_SQLITE_URL
+
+if DATABASE_URL.startswith("sqlite+aiosqlite:///./"):
+    sqlite_path = DATABASE_URL.replace("sqlite+aiosqlite:///./", "", 1)
+    sqlite_dir = os.path.dirname(sqlite_path)
+    if sqlite_dir:
+        os.makedirs(sqlite_dir, exist_ok=True)
 
 # NullPool is recommended for serverless / short-lived processes.
-# Guard against missing DATABASE_URL so the app starts in dev without a DB.
 if DATABASE_URL:
+    engine_kwargs = {
+        "echo": False,
+        "future": True,
+    }
+    if not DATABASE_URL.startswith("sqlite+"):
+        engine_kwargs["poolclass"] = NullPool
     engine = create_async_engine(
         DATABASE_URL,
-        echo=False,
-        future=True,
-        poolclass=NullPool,
+        **engine_kwargs,
     )
     AsyncSessionLocal = async_sessionmaker(
         bind=engine,
@@ -47,7 +60,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency that yields a DB session and closes it after the request."""
     if AsyncSessionLocal is None:
         from fastapi import HTTPException
-        raise HTTPException(status_code=503, detail="Database not configured (DATABASE_URL missing)")
+        raise HTTPException(status_code=503, detail="Database not configured")
     async with AsyncSessionLocal() as session:
         try:
             yield session
