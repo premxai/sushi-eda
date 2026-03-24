@@ -49,6 +49,8 @@ type TestType =
   | "cohort"
   | "ab_test";
 
+type AnalysisMode = "guided" | "advanced";
+
 function pLabel(p?: number): string {
   if (p === undefined || Number.isNaN(p)) return "N/A";
   if (p < 0.001) return "< 0.001";
@@ -201,6 +203,202 @@ function ResultCard({ result }: { result: Record<string, any> }) {
   );
 }
 
+function numericValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function confidenceSignal(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result: Record<string, any>,
+): string {
+  const pValue = numericValue(result.p_value);
+  const rSquared = numericValue(result.r_squared);
+  const auc = numericValue(result.roc_auc);
+
+  if (pValue !== null) {
+    if (pValue < 0.01) return "High confidence";
+    if (pValue < 0.05) return "Moderate confidence";
+    return "Low confidence";
+  }
+
+  if (rSquared !== null) {
+    if (rSquared >= 0.7) return "Strong fit";
+    if (rSquared >= 0.4) return "Moderate fit";
+    return "Weak fit";
+  }
+
+  if (auc !== null) {
+    if (auc >= 0.85) return "Strong signal";
+    if (auc >= 0.7) return "Moderate signal";
+    return "Early signal";
+  }
+
+  return "Interpret with context";
+}
+
+function plainEnglishSummary(
+  testType: TestType,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result: Record<string, any>,
+): {
+  headline: string;
+  confidence: string;
+  detail: string;
+  nextStep: string;
+} | null {
+  if (!result || result.error) return null;
+
+  const significant =
+    typeof result.significant === "boolean"
+      ? result.significant
+      : typeof result.p_value === "number"
+        ? result.p_value < 0.05
+        : null;
+  const pValue = numericValue(result.p_value);
+  const coefficient = numericValue(result.coefficient);
+  const rSquared = numericValue(result.r_squared);
+  const lift = numericValue(result.lift_relative_percent);
+  const winner = typeof result.winner === "string" ? result.winner : null;
+  const confidence = confidenceSignal(result);
+
+  if (testType === "correlation" && coefficient !== null) {
+    const strength =
+      Math.abs(coefficient) >= 0.7
+        ? "strong"
+        : Math.abs(coefficient) >= 0.4
+          ? "moderate"
+          : "light";
+    const direction = coefficient >= 0 ? "move together" : "move in opposite directions";
+
+    return {
+      headline: `These fields show a ${strength} relationship.`,
+      confidence,
+      detail: `The selected columns tend to ${direction}${pValue !== null ? ` (p = ${pLabel(pValue)}).` : "."}`,
+      nextStep: "Use this as a lead, then compare another segment or add it to a report.",
+    };
+  }
+
+  if (
+    testType === "ttest" ||
+    testType === "mann_whitney" ||
+    testType === "anova" ||
+    testType === "chi_square"
+  ) {
+    return {
+      headline:
+        significant === true
+          ? "The difference looks meaningful."
+          : "This comparison does not show a clear difference.",
+      confidence,
+      detail:
+        pValue !== null
+          ? `The result came back with p = ${pLabel(pValue)}, which ${significant ? "supports a meaningful difference." : "does not clear the usual significance threshold."}`
+          : "The comparison ran successfully, but it did not include a significance score.",
+      nextStep: "Compare another segment or switch to a report to capture the takeaway.",
+    };
+  }
+
+  if (
+    testType === "linear_regression" ||
+    testType === "polynomial_regression" ||
+    testType === "logistic_regression"
+  ) {
+    return {
+      headline:
+        rSquared !== null && rSquared >= 0.5
+          ? "This input looks meaningfully tied to the outcome."
+          : "This input has some relationship with the outcome, but it is not the full story.",
+      confidence,
+      detail:
+        rSquared !== null
+          ? `The model explains about ${(rSquared * 100).toFixed(0)}% of the variation in the selected outcome.`
+          : "The model finished successfully and is ready for a deeper review in advanced details.",
+      nextStep: "Try another driver or compare this result with a second field before acting on it.",
+    };
+  }
+
+  if (testType === "ab_test") {
+    return {
+      headline: winner ? `${winner} is currently ahead.` : "The experiment result is ready.",
+      confidence,
+      detail:
+        lift !== null
+          ? `The observed lift is ${lift.toFixed(2)}%${pValue !== null ? ` with p = ${pLabel(pValue)}.` : "."}`
+          : "You can review the lift and confidence details below.",
+      nextStep: "Use this to decide whether to keep testing or roll the winner into a report.",
+    };
+  }
+
+  if (testType === "decomposition" || testType === "arima") {
+    return {
+      headline: "The time-based pattern is ready to review.",
+      confidence,
+      detail: "You can use this result to separate trend from seasonality or preview what likely happens next.",
+      nextStep: "Check the chart, then export the report if this pattern is decision-ready.",
+    };
+  }
+
+  if (testType === "cohort") {
+    return {
+      headline: "The cohort view is ready.",
+      confidence,
+      detail: "You now have a retention-style view that shows how groups behave after their first appearance.",
+      nextStep: "Compare early drop-off points and add the strongest pattern to a report.",
+    };
+  }
+
+  return {
+    headline: "Your result is ready.",
+    confidence,
+    detail: "Start with the summary, then open advanced details if you want to inspect the underlying method.",
+    nextStep: "Use this result in a report or compare it with another segment.",
+  };
+}
+
+const GUIDED_INTENTS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  test: TestType;
+}> = [
+  {
+    id: "groups",
+    label: "Are these two groups different?",
+    description: "Compare two selected numeric fields and see if the gap looks meaningful.",
+    test: "ttest",
+  },
+  {
+    id: "changes",
+    label: "What changed across groups?",
+    description: "Check whether one metric shifts across categories or segments.",
+    test: "anova",
+  },
+  {
+    id: "drivers",
+    label: "What is driving this number?",
+    description: "Estimate how strongly one field helps explain another.",
+    test: "linear_regression",
+  },
+  {
+    id: "moves",
+    label: "What moves together?",
+    description: "Find whether two fields rise and fall together.",
+    test: "correlation",
+  },
+  {
+    id: "meaningful",
+    label: "Is this change meaningful?",
+    description: "Validate a lift or experiment before you act on it.",
+    test: "ab_test",
+  },
+  {
+    id: "time",
+    label: "What changed over time?",
+    description: "Separate trend from seasonality or explore the next likely period.",
+    test: "decomposition",
+  },
+];
+
 const TEST_DEFS: Array<{ type: TestType; label: string; icon: React.ElementType; desc: string }> = [
   { type: "ttest", label: "T-Test", icon: FlaskConical, desc: "Compare means across two numeric samples" },
   { type: "mann_whitney", label: "Mann-Whitney", icon: Sigma, desc: "Non-parametric test for two numeric samples" },
@@ -235,6 +433,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   }, [allCols, report.preview]);
 
   const [activeTest, setActiveTest] = useState<TestType>("ttest");
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("guided");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [autoStats, setAutoStats] = useState<Record<string, any> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -273,6 +472,13 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   const [controlTotal, setControlTotal] = useState(1000);
   const [variantConversions, setVariantConversions] = useState(120);
   const [variantTotal, setVariantTotal] = useState(1000);
+
+  const activeIntent = GUIDED_INTENTS.find((intent) => intent.test === activeTest) ?? GUIDED_INTENTS[0];
+  const currentTestDef = TEST_DEFS.find((t) => t.type === activeTest);
+  const resultSummary = useMemo(
+    () => (result ? plainEnglishSummary(activeTest, result) : null),
+    [activeTest, result],
+  );
 
   const logisticClasses = useMemo(() => {
     if (!logisticTarget) return [];
@@ -373,7 +579,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   const availableCategoryLikeCols = [...nonNumericCols, ...numericCols];
 
   const runBlocker = useMemo(() => {
-    if (noDataset) return "Upload a dataset to run statistical tests.";
+    if (noDataset) return "Upload a dataset to run this analysis.";
 
     if (
       activeTest === "ttest" ||
@@ -383,10 +589,10 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
       activeTest === "polynomial_regression"
     ) {
       if (numericCols.length < 2) {
-        return "This test needs at least two numeric columns.";
+        return "This question needs at least two numeric fields.";
       }
       if (!col1 || !col2) {
-        return "Select two numeric columns.";
+        return "Select two numeric fields.";
       }
       if (col1 === col2) {
         return "Choose two different numeric columns.";
@@ -396,10 +602,10 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
 
     if (activeTest === "chi_square") {
       if (availableCategoryLikeCols.length < 2) {
-        return "This test needs two columns with categorical-like values.";
+        return "This question needs two fields with category-like values.";
       }
       if (!catCol1 || !catCol2) {
-        return "Select two columns to compare.";
+        return "Select two fields to compare.";
       }
       if (catCol1 === catCol2) {
         return "Choose two different columns.";
@@ -409,52 +615,52 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
 
     if (activeTest === "anova") {
       if (numericCols.length < 1 || allCols.length < 2) {
-        return "ANOVA needs one numeric column and one grouping column.";
+        return "Choose one numeric field and one grouping field.";
       }
       if (!col1 || !groupCol) {
-        return "Select a numeric column and a grouping column.";
+        return "Select a numeric field and a grouping field.";
       }
       if (col1 === groupCol) {
-        return "Grouping column must be different from the numeric column.";
+        return "Grouping field must be different from the numeric field.";
       }
       return null;
     }
 
     if (activeTest === "logistic_regression") {
       if (numericCols.length < 1) {
-        return "Logistic regression needs a numeric predictor column.";
+        return "Choose a numeric field to use as the input.";
       }
       if (!logisticTarget) {
-        return "Select a binary target column.";
+        return "Select a yes/no style outcome field.";
       }
       if (logisticClasses.length !== 2) {
-        return "Target column must have exactly two classes in the loaded dataset.";
+        return "The selected outcome field must have exactly two values in this dataset.";
       }
       return null;
     }
 
     if (activeTest === "decomposition" || activeTest === "arima") {
       if (numericCols.length < 1 || allCols.length < 2) {
-        return "Time-series analysis needs one date-like column and one numeric column.";
+        return "Choose one date field and one numeric field.";
       }
       if (!tsDateCol || !tsValueCol) {
-        return "Select a date column and a numeric value column.";
+        return "Select a date field and a numeric value field.";
       }
       if (tsDateCol === tsValueCol) {
-        return "Date and value columns must be different.";
+        return "Date and value fields must be different.";
       }
       return null;
     }
 
     if (activeTest === "cohort") {
       if (allCols.length < 2) {
-        return "Cohort analysis needs an entity column and a date column.";
+        return "Choose one person or entity field and one date field.";
       }
       if (!cohortEntityCol || !cohortDateCol) {
-        return "Select an entity column and a date column.";
+        return "Select an entity field and a date field.";
       }
       if (cohortEntityCol === cohortDateCol) {
-        return "Entity and date columns must be different.";
+        return "Entity and date fields must be different.";
       }
       return null;
     }
@@ -498,40 +704,40 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
     <div className="space-y-4">
       {noDataset && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          ⚠️ Upload a dataset to run statistical tests.
+          Upload a dataset to ask a question and validate the answer with statistics.
         </div>
       )}
       {isLocal && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          ℹ️ Tests run against your in-session upload. Results will be lost on page refresh. Use async upload (backend configured) for persistent datasets.
+          Results are running against your in-session upload. Save via the async upload flow if you want this analysis to stay available in My Datasets.
         </div>
       )}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-600">Auto Analysis</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-600">Quick checks</p>
         {autoLoading ? (
           <div className="flex items-center gap-2 text-sm text-zinc-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Running normality and correlation tests...
+            Scanning for useful patterns...
           </div>
         ) : !autoStats ? (
           <p className="text-sm text-zinc-500">
-            {isLocal ? "Auto stats unavailable — select a test below and click Run." : "Could not load auto stats."}
+            {isLocal ? "Quick checks are unavailable in preview mode. Choose a guided question below to continue." : "Could not load quick checks."}
           </p>
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-              <p className="text-xs uppercase tracking-wider text-zinc-600">Normality tests</p>
+              <p className="text-xs uppercase tracking-wider text-zinc-600">Fields reviewed</p>
               <p className="mt-1 text-sm text-zinc-800">
-                {Array.isArray(autoStats.normality_tests) ? autoStats.normality_tests.length : 0} columns tested
+                {Array.isArray(autoStats.normality_tests) ? autoStats.normality_tests.length : 0} fields checked for reliable comparisons
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-              <p className="text-xs uppercase tracking-wider text-zinc-600">Correlation significance</p>
+              <p className="text-xs uppercase tracking-wider text-zinc-600">Relationships reviewed</p>
               <p className="mt-1 text-sm text-zinc-800">
                 {Array.isArray(autoStats.correlations_with_significance)
                   ? autoStats.correlations_with_significance.length
                   : 0}{" "}
-                pairs tested
+                field pairs checked
               </p>
             </div>
           </div>
@@ -539,33 +745,98 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-600">Statistical Analysis Suite</p>
-
-        <div className="mb-3 flex flex-wrap gap-2">
-          {TEST_DEFS.map(({ type, label, icon: Icon }) => {
-            const active = activeTest === type;
-            return (
-              <button
-                key={type}
-                onClick={() => {
-                  setActiveTest(type);
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-600">Ask a question</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Start with a business question. Open advanced mode only if you want full control over the method.
+            </p>
+          </div>
+          <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setAnalysisMode("guided");
+                if (!GUIDED_INTENTS.some((intent) => intent.test === activeTest)) {
+                  setActiveTest("ttest");
                   setResult(null);
-                }}
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${
-                  active
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
-                }`}
-                type="button"
-              >
-                <Icon className="h-3 w-3" />
-                {label}
-              </button>
-            );
-          })}
+                }
+              }}
+              className={`rounded-md px-3 py-1.5 ${analysisMode === "guided" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"}`}
+            >
+              Guided
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnalysisMode("advanced")}
+              className={`rounded-md px-3 py-1.5 ${analysisMode === "advanced" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"}`}
+            >
+              Advanced
+            </button>
+          </div>
         </div>
 
-        <p className="mb-3 text-sm text-zinc-500">{TEST_DEFS.find((t) => t.type === activeTest)?.desc}</p>
+        {analysisMode === "guided" ? (
+          <>
+            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {GUIDED_INTENTS.map((intent) => {
+                const active = activeIntent.id === intent.id;
+                return (
+                  <button
+                    key={intent.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTest(intent.test);
+                      setResult(null);
+                    }}
+                    className={`rounded-xl border p-4 text-left transition ${
+                      active
+                        ? "border-indigo-300 bg-indigo-50"
+                        : "border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-white"
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${active ? "text-indigo-700" : "text-zinc-900"}`}>
+                      {intent.label}
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500">{intent.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-700">Selected path</p>
+              <p className="mt-2 text-sm font-medium text-zinc-900">{activeIntent.label}</p>
+              <p className="mt-1 text-sm text-zinc-600">{activeIntent.description}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {TEST_DEFS.map(({ type, label, icon: Icon }) => {
+                const active = activeTest === type;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setActiveTest(type);
+                      setResult(null);
+                    }}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${
+                      active
+                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                    }`}
+                    type="button"
+                  >
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mb-3 text-sm text-zinc-500">{currentTestDef?.desc}</p>
+          </>
+        )}
 
         <div className="mb-3 flex flex-wrap items-end gap-2">
           {(activeTest === "ttest" || activeTest === "mann_whitney" || activeTest === "correlation" || activeTest === "linear_regression" || activeTest === "polynomial_regression" || activeTest === "logistic_regression") && (
@@ -596,7 +867,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </div>
           )}
 
-          {activeTest === "mann_whitney" && (
+          {analysisMode === "advanced" && activeTest === "mann_whitney" && (
             <div>
               <label className="mb-1 block text-xs text-zinc-500">Alternative</label>
               <select className={selectClass} value={mwAlternative} onChange={(e) => setMwAlternative(e.target.value as "two-sided" | "less" | "greater")}>
@@ -607,7 +878,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </div>
           )}
 
-          {activeTest === "correlation" && (
+          {analysisMode === "advanced" && activeTest === "correlation" && (
             <div>
               <label className="mb-1 block text-xs text-zinc-500">Method</label>
               <select className={selectClass} value={corrMethod} onChange={(e) => setCorrMethod(e.target.value as "pearson" | "spearman" | "kendall")}>
@@ -694,7 +965,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </>
           )}
 
-          {activeTest === "polynomial_regression" && (
+          {analysisMode === "advanced" && activeTest === "polynomial_regression" && (
             <div>
               <label className="mb-1 block text-xs text-zinc-500">Degree</label>
               <input
@@ -733,7 +1004,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </>
           )}
 
-          {activeTest === "decomposition" && (
+          {analysisMode === "advanced" && activeTest === "decomposition" && (
             <>
               <div>
                 <label className="mb-1 block text-xs text-zinc-500">Period (optional)</label>
@@ -749,7 +1020,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </>
           )}
 
-          {activeTest === "arima" && (
+          {analysisMode === "advanced" && activeTest === "arima" && (
             <>
               <div>
                 <label className="mb-1 block text-xs text-zinc-500">Periods</label>
@@ -782,7 +1053,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </>
           )}
 
-          {activeTest === "cohort" && (
+          {analysisMode === "advanced" && activeTest === "cohort" && (
             <>
               <div>
                 <label className="mb-1 block text-xs text-zinc-500">Entity/User column</label>
@@ -843,7 +1114,8 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             disabled={!canRun}
             className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />} Run
+            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+            {analysisMode === "guided" ? "Get answer" : "Run"}
           </button>
         </div>
 
@@ -853,7 +1125,34 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
           </p>
         )}
 
-        {result && <ResultCard result={result} />}
+        {resultSummary && (
+          <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">Plain-English summary</p>
+                <p className="mt-2 text-lg font-semibold text-zinc-900">{resultSummary.headline}</p>
+              </div>
+              <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-medium text-emerald-700">
+                {resultSummary.confidence}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-zinc-700">{resultSummary.detail}</p>
+            <p className="mt-2 text-sm text-zinc-600">
+              <span className="font-medium text-zinc-800">Recommended next step:</span> {resultSummary.nextStep}
+            </p>
+          </div>
+        )}
+
+        {result && (
+          <details className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4" open={analysisMode === "advanced"}>
+            <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+              Why this result? Open advanced details
+            </summary>
+            <div className="mt-4">
+              <ResultCard result={result} />
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );

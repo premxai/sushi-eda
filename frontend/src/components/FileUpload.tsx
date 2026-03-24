@@ -28,7 +28,7 @@ function formatBytes(bytes: number): string {
 const FILE_BADGES = [
   { label: "CSV", bg: "linear-gradient(135deg, #22d3ee, #06b6d4)", shadow: "0 4px 16px rgba(34,211,238,0.4)", delay: "0s" },
   { label: "XLS", bg: "linear-gradient(135deg, #4ade80, #22c55e)", shadow: "0 4px 16px rgba(74,222,128,0.4)", delay: "0.4s" },
-  { label: "SQL", bg: "linear-gradient(135deg, #a78bfa, #8b5cf6)", shadow: "0 4px 16px rgba(167,139,250,0.4)", delay: "0.8s" },
+  { label: "SAVE", bg: "linear-gradient(135deg, #a78bfa, #8b5cf6)", shadow: "0 4px 16px rgba(167,139,250,0.4)", delay: "0.8s" },
   { label: "JSON", bg: "linear-gradient(135deg, #fb923c, #f97316)", shadow: "0 4px 16px rgba(251,146,60,0.4)", delay: "1.2s" },
 ];
 
@@ -182,11 +182,11 @@ export function FileUpload({
                 <Progress value={uploadProgress} className="h-2 bg-white/10" />
                 <p className="text-xs" style={{ color: "#888" }}>
                   {uploadProgress === 0
-                    ? "Connecting to server…"
+                    ? "Creating your saved workspace…"
                     : uploadProgress < 50
                       ? `Uploading… ${uploadProgress}%`
                       : uploadProgress < 90
-                        ? "Analyzing your data…"
+                        ? "Saving and analyzing your data…"
                         : "Almost done…"}
                 </p>
               </div>
@@ -223,9 +223,9 @@ export function FileUpload({
               /* Anonymous: show lock + CTA */
               <div className="flex flex-col items-center gap-2">
                 <Lock className="h-7 w-7 mb-1" style={{ color: "#9060f8" }} />
-                <p className="text-sm font-semibold text-white">Sign in to upload your data</p>
+                <p className="text-sm font-semibold text-white">Sign in to save and reopen your data</p>
                 <p className="text-[11px]" style={{ color: "#777", fontFamily: "'Geist Mono', monospace" }}>
-                  Click to create a free account
+                  Create a free account to keep datasets in one place
                 </p>
                 <div
                   style={{
@@ -251,11 +251,11 @@ export function FileUpload({
                   className="text-[13px] text-white"
                   style={{ letterSpacing: "0.1em", fontFamily: "'Geist Mono', monospace" }}
                 >
-                  DROP FILES OR{" "}
+                  DROP A DATASET OR{" "}
                   <span style={{ color: "#7dd3fc", fontWeight: 700 }}>BROWSE</span>
                 </p>
                 <p className="text-[11px]" style={{ color: "#4a4f5c", fontFamily: "'Geist Mono', monospace" }}>
-                  up to 100 MB · CSV · TSV · XLS · JSON · Parquet
+                  saved by default · up to 100 MB · CSV · TSV · XLS · JSON · Parquet
                 </p>
               </div>
             )}
@@ -281,7 +281,7 @@ export function FileUpload({
           className="mt-4 text-[13px] transition-colors bg-transparent border-none cursor-pointer"
           style={{ color: "#7a7570" }}
         >
-          ✎ Try with our sample{" "}
+          Try with our sample{" "}
           <span style={{ color: "#111010", fontWeight: 500 }}>&quot;Sales Data&quot;</span> dataset.
         </button>
       )}
@@ -289,7 +289,7 @@ export function FileUpload({
       {/* Signed-out hint */}
       {!isSignedIn && !isUploading && !selectedFile && (
         <p className="mt-2 text-[11px]" style={{ color: "#a09898", fontFamily: "'Geist Mono', monospace" }}>
-          ✦ Sample data available without an account
+          Sample data available without an account
         </p>
       )}
 

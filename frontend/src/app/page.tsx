@@ -63,7 +63,7 @@ function LockedPreview({ feature }: { feature: string }) {
           {feature} requires an account
         </p>
         <p style={{ fontSize: 13, color: "#6b6860", maxWidth: 320 }}>
-          Sign up for free to unlock {feature}, AI chat, SQL query, and more.
+          Sign up for free to save datasets, reopen your work later, and unlock {feature}.
         </p>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
@@ -154,8 +154,8 @@ function NewFileModal({
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111010", margin: 0 }}>New File</h3>
-            <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>Upload a file or open an existing dataset</p>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111010", margin: 0 }}>New Workspace</h3>
+            <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>Upload a dataset or reopen a saved workspace</p>
           </div>
           <button onClick={onClose} style={{ background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#6b6860", flexShrink: 0 }}>×</button>
         </div>
@@ -172,7 +172,7 @@ function NewFileModal({
               color: tab === t ? "#111010" : "#9a9690",
               cursor: "pointer", position: "relative", top: "1px",
             }}>
-              {t === "upload" ? "Upload File" : "My Datasets"}
+              {t === "upload" ? "Upload Dataset" : "My Datasets"}
             </button>
           ))}
         </div>
@@ -194,8 +194,8 @@ function NewFileModal({
                   <span key={l} style={{ padding: "4px 9px", borderRadius: 6, fontSize: 10, fontWeight: 700, color: "#fff", background: c }}>{l}</span>
                 ))}
               </div>
-              <p style={{ fontSize: 14, color: "#111010" }}>Drop files or <span style={{ color: "#9060f8", fontWeight: 600 }}>browse</span></p>
-              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>CSV, JSON, Excel, Parquet, SQLite — up to 100 MB</p>
+              <p style={{ fontSize: 14, color: "#111010" }}>Drop a dataset or <span style={{ color: "#9060f8", fontWeight: 600 }}>browse</span></p>
+              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>Saved automatically to My Datasets. CSV, JSON, Excel, Parquet, SQLite up to 100 MB.</p>
             </div>
           )}
 
@@ -208,7 +208,7 @@ function NewFileModal({
               ) : datasets.length === 0 ? (
                 <div style={{ padding: "48px 24px", textAlign: "center" }}>
                   <FileSpreadsheet style={{ width: 28, height: 28, color: "#c8c4be", margin: "0 auto 10px" }} />
-                  <p style={{ fontSize: 13, color: "#9a9690" }}>No datasets yet — upload your first file</p>
+                  <p style={{ fontSize: 13, color: "#9a9690" }}>No saved datasets yet. Upload your first file to start a workspace.</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -483,10 +483,10 @@ export default function Home() {
     const { basic_info } = report;
     const isPreviewMode = !isSignedIn;
     const sectionTitles: Record<NavSection, string> = {
-      overview: "Overview", columns: "Column Analysis", statistics: "Statistical Analysis",
-      correlations: "Correlations", outliers: "Outlier Detection", insights: "Insights",
-      visualizations: "Visualizations", cleaning: "Data Cleaning", transforms: "Feature Engineering",
-      sql: "SQL Editor", monitors: "Monitors", comments: "Comments", report: "Report", data: "Data Table",
+      overview: "Data Summary", columns: "Field Health", statistics: "Compare & Validate",
+      correlations: "What Moves Together", outliers: "Unusual Values", insights: "AI Notes",
+      visualizations: "Charts & Trends", cleaning: "Clean & Improve", transforms: "Derived Fields",
+      sql: "Advanced Queries", monitors: "Data Watchlist", comments: "Comments", report: "Reports", data: "Raw Table",
     };
 
     return (
@@ -539,7 +539,7 @@ export default function Home() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Lock style={{ width: 13, height: 13, color: "#9060f8" }} />
                 <span style={{ fontSize: 12.5, color: "#6b6860" }}>
-                  <strong style={{ color: "#111010" }}>Preview mode</strong> — Statistics, SQL, Cleaning &amp; Monitoring require an account.
+                  <strong style={{ color: "#111010" }}>Preview mode</strong> — save datasets, compare groups, and unlock advanced tools by creating an account.
                 </span>
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -572,26 +572,26 @@ export default function Home() {
               {activeSection === "outliers" && <OutliersSection outliers={report.outliers} preview={report.preview} />}
               {activeSection === "insights" && <InsightsSection report={report} />}
               {activeSection === "statistics" && (
-                isPreviewMode ? <LockedPreview feature="Statistical Analysis" />
+                isPreviewMode ? <LockedPreview feature="Compare & Validate" />
                   : <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "cleaning" && (
-                isPreviewMode ? <LockedPreview feature="Data Cleaning" />
+                isPreviewMode ? <LockedPreview feature="Clean & Improve" />
                   : <CleaningSection report={report} onReportUpdate={handleReportUpdate} />
               )}
               {activeSection === "transforms" && (
-                isPreviewMode ? <LockedPreview feature="Feature Engineering" />
+                isPreviewMode ? <LockedPreview feature="Derived Fields" />
                   : <TransformSection report={report} onReportUpdate={handleReportUpdate} />
               )}
               {activeSection === "visualizations" && (
                 <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} />
               )}
               {activeSection === "sql" && (
-                isPreviewMode ? <LockedPreview feature="SQL Editor" />
+                isPreviewMode ? <LockedPreview feature="Advanced Queries" />
                   : <SQLQuerySection datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "monitors" && (
-                isPreviewMode ? <LockedPreview feature="Monitors" />
+                isPreviewMode ? <LockedPreview feature="Data Watchlist" />
                   : <MonitoringSection datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "comments" && (
@@ -607,7 +607,7 @@ export default function Home() {
           <KeyboardShortcuts />
           <CommandPalette
             onSectionChange={(s) => handleSectionChange(s as NavSection)}
-            sections={["overview", "columns", "statistics", "correlations", "outliers", "insights", "visualizations", "report", "cleaning", "transforms", "sql", "data"]}
+            sections={["overview", "columns", "statistics", "correlations", "outliers", "report", "visualizations", "insights", "cleaning", "transforms", "sql", "data"]}
           />
         </div>
       </div>
