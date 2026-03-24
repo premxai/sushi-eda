@@ -20,7 +20,7 @@ import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
 import { ExportButton } from "@/components/ExportButton";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFile, uploadFileAsync, loadSampleData, fetchVisualizations, fetchDatasetVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary } from "@/lib/api";
+import { uploadFileAsync, loadSampleData, fetchVisualizations, fetchDatasetVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary, getApiErrorMessage } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
 import { GitCompare, Lock, Star, ArrowRight, FileSpreadsheet } from "lucide-react";
 import { useDropzone } from "react-dropzone";
@@ -276,8 +276,7 @@ export default function Home() {
       const storedFileName = sessionStorage.getItem(FILE_KEY);
       const storedDatasetId = sessionStorage.getItem(DATASET_KEY);
       if (storedFileName) setFileName(storedFileName);
-      // Fall back to "local" so API sections show a helpful message instead of "No dataset loaded"
-      setOpenDatasetId(storedDatasetId || "local");
+      setOpenDatasetId(storedDatasetId || null);
     } catch {
       sessionStorage.removeItem(REPORT_KEY);
       sessionStorage.removeItem(FILE_KEY);
@@ -345,51 +344,26 @@ export default function Home() {
     sessionStorage.removeItem(DATASET_KEY);
 
     try {
-      // Try async (Celery-backed) upload first; fall back to legacy sync
-      const asyncResult = await uploadFileAsync(file, "default", setUploadProgress).catch(() => null);
-      if (asyncResult?.dataset_id) {
-        // Async path: SSE hook drives progress from here
-        setDatasetId(asyncResult.dataset_id);
-        setOpenDatasetId(asyncResult.dataset_id);
-        sessionStorage.setItem(DATASET_KEY, asyncResult.dataset_id);
-        sessionStorage.setItem(FILE_KEY, file.name);
-        setUploadProgress(10);
-        return;
+      const asyncResult = await uploadFileAsync(file, "default", setUploadProgress);
+      if (!asyncResult?.dataset_id) {
+        throw new Error("Upload failed before a saved dataset could be created.");
       }
 
-      // Legacy sync path (dev / no-Celery env)
-      const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) { clearInterval(interval); return 90; }
-          return prev + Math.random() * 15;
-        });
-      }, 300);
-
-      try {
-        const data = await uploadFile(file);
-        clearInterval(interval);
-        setUploadProgress(100);
-        await new Promise((r) => setTimeout(r, 200));
-        setReport(data);
-        setOpenDatasetId("local");
-        sessionStorage.setItem(REPORT_KEY, JSON.stringify(data));
-        sessionStorage.setItem(FILE_KEY, file.name);
-        sessionStorage.setItem(DATASET_KEY, "local");
-      } catch (err: unknown) {
-          clearInterval(interval);
-          setUploadProgress(0);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const detail = (err as any)?.response?.data?.detail;
-          const message = detail || (err instanceof Error ? err.message : "Failed to analyze file. Check that the backend is running.");
-          setError(message);
-        } finally {
-          setIsUploading(false);
-        }
+      // Saved-dataset path only. The job stream now owns the analysis lifecycle.
+      setDatasetId(asyncResult.dataset_id);
+      setOpenDatasetId(asyncResult.dataset_id);
+      sessionStorage.setItem(DATASET_KEY, asyncResult.dataset_id);
+      sessionStorage.setItem(FILE_KEY, file.name);
+      setUploadProgress((progress) => Math.max(progress, 10));
+      return;
     } catch (err: unknown) {
       setUploadProgress(0);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const detail = (err as any)?.response?.data?.detail;
-      setError(detail || (err instanceof Error ? err.message : "Upload failed"));
+      setError(
+        getApiErrorMessage(
+          err,
+          "We couldn't create a saved dataset right now. Please try again.",
+        ),
+      );
       setIsUploading(false);
     }
   }, []);
@@ -416,8 +390,9 @@ export default function Home() {
     if (section === "visualizations" && !visualizations && !vizLoading) {
       setVizLoading(true);
       try {
-        // Use dataset-specific endpoint for stored datasets; fall back to in-memory
-        const data = openDatasetId && openDatasetId !== "local"
+        // Use the dataset-scoped endpoint for saved workspaces; older in-memory
+        // sessions can still fall back to the legacy endpoint if needed.
+        const data = openDatasetId
           ? await fetchDatasetVisualizations(openDatasetId, "default")
           : await fetchVisualizations();
         setVisualizations(data);
@@ -470,7 +445,7 @@ export default function Home() {
   };
 
   const handleArchive = async () => {
-    if (!openDatasetId || openDatasetId === "local") return;
+    if (!openDatasetId) return;
     await archiveDataset(openDatasetId);
     sessionStorage.removeItem(REPORT_KEY);
     sessionStorage.removeItem(FILE_KEY);
