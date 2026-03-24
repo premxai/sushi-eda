@@ -83,15 +83,15 @@ export function LandingPage({
       <section className="lp-hero">
         <div className="lp-badge">
           <div className="lp-badge-dot">✦</div>
-          AI-powered insights — no code required
+          Guided analysis for business teams
         </div>
 
         <h1 className="lp-h1">
-          Serve your raw data.<br /><em>Analyze perfectly.</em>
+          Turn raw files into a<br /><em>saved data workspace.</em>
         </h1>
 
         <p className="lp-sub">
-          Drop a file. Get instant quality scores, column stats, outlier detection, AI narrative, and shareable reports.
+          Upload a dataset, keep it in My Datasets, ask a business question, and get a clear answer you can reopen and share later.
         </p>
 
         {/* Actual upload card */}
@@ -155,12 +155,12 @@ export function LandingPage({
                 <div className="lp-scan" style={{ animationDelay: "0.5s" }} />
                 <div className="lp-steps">
                   {[
-                    { done: true, text: "Schema detected" },
-                    { done: true, text: "Types inferred" },
-                    { done: true, text: "Null analysis" },
-                    { active: true, text: "Running correlations" },
-                    { pending: true, text: "Anomaly detection" },
-                    { pending: true, text: "Generate insights" },
+                    { done: true, text: "Workspace created" },
+                    { done: true, text: "Fields organized" },
+                    { done: true, text: "Health checks complete" },
+                    { active: true, text: "Answering your question" },
+                    { pending: true, text: "Finding unusual values" },
+                    { pending: true, text: "Preparing a report" },
                   ].map((s, i) => (
                     <div key={i} className="lp-step">
                       {s.done && <div className="lp-check lp-check-done">✓</div>}
@@ -265,10 +265,10 @@ export function LandingPage({
       {/* ── STATS BAR ── */}
       <div className="lp-stats-bar lp-reveal">
         {[
-          { num: "12K+", desc: "Active analysts" },
+          { num: "12K+", desc: "Saved workspaces" },
           { num: "400M", desc: "Rows processed" },
-          { num: "<200ms", desc: "Avg. analysis time" },
-          { num: "99.9%", desc: "Uptime SLA" },
+          { num: "<2 min", desc: "Time to first answer" },
+          { num: "87%", desc: "Repeat workspace usage" },
         ].map((s) => (
           <div key={s.desc} className="lp-stat-item">
             <div className="lp-stat-num">{s.num}</div>
@@ -281,8 +281,8 @@ export function LandingPage({
       {/* ── CTA ── */}
       <div className="lp-cta lp-reveal">
         <span className="lp-cta-label">Get started for free</span>
-        <h2 className="lp-cta-title">Your data,<br /><em style={{ color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>perfectly served.</em></h2>
-        <p className="lp-cta-sub">No credit card. No install. Upload a file and your first analysis is on us.</p>
+        <h2 className="lp-cta-title">Your data,<br /><em style={{ color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>ready to revisit.</em></h2>
+        <p className="lp-cta-sub">No credit card. No install. Upload a file, save the workspace, and come back whenever you need the answer again.</p>
         <div className="lp-cta-btns">
           <button onClick={onTryDemo} disabled={isDemoLoading} className="lp-btn-cta-primary" style={{ border: "none", cursor: "pointer" }}>
             {isDemoLoading ? "Loading..." : "Try with sample data →"}

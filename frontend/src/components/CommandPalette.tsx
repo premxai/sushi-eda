@@ -5,14 +5,15 @@ import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import {
   BarChart3,
+  Download,
   FileText,
   GitCompare,
   Home,
   Layers,
   Search,
-  TrendingUp,
+  Sparkles,
   Table,
-  Download,
+  TrendingUp,
 } from "lucide-react";
 
 interface CommandPaletteProps {
@@ -22,6 +23,21 @@ interface CommandPaletteProps {
 
 const isMac =
   typeof navigator !== "undefined" && navigator.platform.includes("Mac");
+
+const NAV_ITEMS = [
+  { id: "overview", label: "Data Summary", icon: Home, advanced: false },
+  { id: "columns", label: "Field Health", icon: Layers, advanced: false },
+  { id: "statistics", label: "Compare & Validate", icon: BarChart3, advanced: false },
+  { id: "correlations", label: "What Moves Together", icon: TrendingUp, advanced: false },
+  { id: "outliers", label: "Unusual Values", icon: TrendingUp, advanced: false },
+  { id: "report", label: "Reports", icon: FileText, advanced: false },
+  { id: "visualizations", label: "Charts & Trends", icon: BarChart3, advanced: true },
+  { id: "insights", label: "AI Notes", icon: Sparkles, advanced: true },
+  { id: "cleaning", label: "Clean & Improve", icon: FileText, advanced: true },
+  { id: "transforms", label: "Derived Fields", icon: GitCompare, advanced: true },
+  { id: "sql", label: "Advanced Queries", icon: Table, advanced: true },
+  { id: "data", label: "Raw Table", icon: Table, advanced: true },
+];
 
 export function CommandPalette({
   onSectionChange,
@@ -34,7 +50,7 @@ export function CommandPalette({
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((current) => !current);
       }
     };
 
@@ -49,6 +65,10 @@ export function CommandPalette({
 
   if (!open) return null;
 
+  const availableItems = NAV_ITEMS.filter((item) => sections.includes(item.id));
+  const guidedItems = availableItems.filter((item) => !item.advanced);
+  const advancedItems = availableItems.filter((item) => item.advanced);
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
@@ -62,7 +82,7 @@ export function CommandPalette({
           <div className="flex items-center border-b border-slate-200 px-4">
             <Search className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
             <Command.Input
-              placeholder="Type a command or search..."
+              placeholder="Search sections or actions..."
               className="flex h-12 w-full bg-transparent py-3 text-sm outline-none placeholder:text-slate-400"
             />
           </div>
@@ -71,112 +91,33 @@ export function CommandPalette({
               No results found.
             </Command.Empty>
 
-            {sections.length > 0 && (
-              <Command.Group heading="Navigate" className="mb-2">
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("overview"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <Home className="h-4 w-4" />
-                  <span>Overview</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("columns"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <Layers className="h-4 w-4" />
-                  <span>Column Analysis</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("correlations"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Correlations</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("outliers"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Outliers</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("insights"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Insights</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("data"))}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <Table className="h-4 w-4" />
-                  <span>Data Table</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("statistics"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Statistics</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() => handleSelect(() => onSectionChange?.("sql"))}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <Table className="h-4 w-4" />
-                  <span>SQL</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("cleaning"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Cleaning</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("transforms"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <GitCompare className="h-4 w-4" />
-                  <span>Transforms</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("report"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Report</span>
-                </Command.Item>
-                <Command.Item
-                  onSelect={() =>
-                    handleSelect(() => onSectionChange?.("visualizations"))
-                  }
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Visualizations</span>
-                </Command.Item>
+            {guidedItems.length > 0 && (
+              <Command.Group heading="Guided Sections" className="mb-2">
+                {guidedItems.map((item) => (
+                  <Command.Item
+                    key={item.id}
+                    onSelect={() => handleSelect(() => onSectionChange?.(item.id))}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            )}
+
+            {advancedItems.length > 0 && (
+              <Command.Group heading="Advanced" className="mb-2">
+                {advancedItems.map((item) => (
+                  <Command.Item
+                    key={item.id}
+                    onSelect={() => handleSelect(() => onSectionChange?.(item.id))}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Command.Item>
+                ))}
               </Command.Group>
             )}
 

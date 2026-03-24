@@ -8,6 +8,7 @@ import {
   BookOpen,
   FileSpreadsheet,
   Loader2,
+  Pencil,
   Plus,
   Star,
   Trash2,
@@ -20,6 +21,7 @@ import {
   fetchDatasetAnalysis,
   getApiErrorMessage,
   listDatasets,
+  renameDataset,
   restoreDataset,
   starDataset,
 } from "@/lib/api";
@@ -145,6 +147,27 @@ export default function DatasetsPage() {
     }
   };
 
+  const handleRename = async (
+    e: React.MouseEvent,
+    dataset: DatasetSummary,
+  ) => {
+    e.stopPropagation();
+    const nextName = window.prompt("Rename dataset", dataset.name);
+    if (nextName == null) return;
+    const cleanedName = nextName.trim();
+    if (!cleanedName || cleanedName === dataset.name) return;
+
+    setActionError(null);
+    try {
+      const updated = await renameDataset(dataset.id, cleanedName);
+      setDatasets((prev) =>
+        prev.map((current) => (current.id === dataset.id ? updated : current)),
+      );
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, "Failed to rename dataset"));
+    }
+  };
+
   const handleOpen = async (dataset: DatasetSummary) => {
     if (dataset.status !== "ready") return;
     setOpeningId(dataset.id);
@@ -221,8 +244,8 @@ export default function DatasetsPage() {
           </h1>
           <p style={{ fontSize: 14, color: "#6b6860" }}>
             {datasets.length > 0
-              ? `${datasets.length} dataset${datasets.length !== 1 ? "s" : ""}`
-              : "Your uploaded files will appear here."}
+              ? `${datasets.length} saved workspace${datasets.length !== 1 ? "s" : ""}`
+              : "Every uploaded dataset is saved here automatically."}
           </p>
         </div>
 
@@ -329,10 +352,10 @@ export default function DatasetsPage() {
             <p style={{ fontSize: 15, fontWeight: 500, color: "#111010", marginBottom: 8 }}>
               {tab === "starred" ? "No starred datasets yet" :
                tab === "archived" ? "Archive is empty" :
-               "No datasets yet"}
+               "No saved datasets yet"}
             </p>
             <p style={{ fontSize: 13, color: "#6b6860", marginBottom: 20 }}>
-              {tab === "all" ? "Upload a file to get started with AI-powered analysis." : ""}
+              {tab === "all" ? "Upload a file to create a saved workspace you can reopen anytime." : ""}
             </p>
             {tab === "all" && (
               <Link href="/" style={{
@@ -436,6 +459,14 @@ export default function DatasetsPage() {
 
                 {/* Hover actions */}
                 <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => handleRename(e, d)}
+                    title="Rename dataset"
+                    style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
+                  >
+                    <Pencil style={{ width: 15, height: 15 }} />
+                  </button>
+
                   <button
                     onClick={(e) => handleStar(e, d.id)}
                     title={d.is_starred ? "Unstar" : "Star"}

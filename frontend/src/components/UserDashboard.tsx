@@ -389,7 +389,7 @@ function UploadPanel({
             {t === "upload" ? (
               <>
                 <Upload size={12} />
-                Upload File
+                Upload Dataset
               </>
             ) : (
               <>
@@ -457,12 +457,12 @@ function UploadPanel({
                   }}
                 >
                   {uploadProgress === 0
-                    ? "Connecting…"
+                    ? "Creating workspace..."
                     : uploadProgress < 50
-                      ? `Uploading… ${Math.round(uploadProgress)}%`
+                      ? `Saving... ${Math.round(uploadProgress)}%`
                       : uploadProgress < 90
-                        ? "Analyzing…"
-                        : "Almost done…"}
+                        ? "Analyzing workspace..."
+                        : "Almost done..."}
                 </p>
               </div>
             ) : error ? (
@@ -529,7 +529,7 @@ function UploadPanel({
                   </span>
                 </p>
                 <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>
-                  CSV, JSON, Excel, Parquet, SQLite — up to 100 MB
+                  Saved automatically to My Datasets. CSV, JSON, Excel, Parquet, SQLite up to 100 MB.
                 </p>
               </>
             )}
@@ -601,7 +601,7 @@ function UploadPanel({
                 style={{ color: "#c8c4be", margin: "0 auto 10px" }}
               />
               <p style={{ fontSize: 13, color: "#9a9690" }}>
-                No datasets yet — upload your first file
+                No saved datasets yet. Upload your first file to start a workspace.
               </p>
             </div>
           ) : (
@@ -715,12 +715,12 @@ function UploadPanel({
 const GETTING_STARTED_STEPS = [
   { label: "Create account", done: true },
   { label: "Upload first dataset", done: true },
-  { label: "Explore Overview", done: true },
-  { label: "Run Statistics", done: false },
-  { label: "Try SQL Editor", done: false },
+  { label: "Review Data Summary", done: true },
+  { label: "Ask a business question", done: false },
+  { label: "Compare two groups", done: false },
   { label: "Share a Report", done: false },
-  { label: "Set up a Monitor", done: false },
-  { label: "Connect a Database", done: false },
+  { label: "Reopen a saved dataset", done: false },
+  { label: "Clean a field", done: false },
 ];
 
 function GettingStarted({
@@ -1149,8 +1149,8 @@ export function UserDashboard(props: UserDashboardProps) {
               <em style={{ fontStyle: "italic" }}>{firstName}.</em>
             </h1>
             <p style={{ fontSize: 15, color: "#888580", lineHeight: 1.5 }}>
-              Upload a dataset to get instant AI-powered insights, or pick up
-              where you left off.
+              Build a saved workspace from any dataset, get a clear answer fast,
+              and come back to the same work whenever you need it.
             </p>
           </div>
 
@@ -1179,7 +1179,7 @@ export function UserDashboard(props: UserDashboardProps) {
                 }}
               >
                 <Zap size={12} style={{ color: "#9060f8" }} />
-                UPLOAD NEW
+                START A WORKSPACE
               </div>
               <UploadPanel
                 onFileAccepted={onFileAccepted}
@@ -1204,15 +1204,15 @@ export function UserDashboard(props: UserDashboardProps) {
                   {
                     href: "/compare",
                     icon: <Database size={16} style={{ color: "#9060f8" }} />,
-                    label: "Compare Files",
-                    sub: "Side-by-side dataset review",
+                    label: "Compare Datasets",
+                    sub: "Check what changed between two saved files",
                     bg: "rgba(144,96,248,0.1)",
                   },
                   {
                     href: "/datasets",
                     icon: <TrendingUp size={16} style={{ color: "#00d4e8" }} />,
-                    label: "Reopen Work",
-                    sub: "Jump back into saved datasets",
+                    label: "Reopen Saved Work",
+                    sub: "Jump back into any saved dataset",
                     bg: "rgba(0,212,232,0.1)",
                   },
                 ].map((a) => (
@@ -1292,7 +1292,7 @@ export function UserDashboard(props: UserDashboardProps) {
                   }}
                 >
                   <Clock size={12} />
-                  RECENT
+                  RECENT WORKSPACES
                   {datasets.length > 0 && (
                     <span
                       style={{
@@ -1363,10 +1363,10 @@ export function UserDashboard(props: UserDashboardProps) {
                   <p
                     style={{ fontSize: 14, color: "#6b6860", fontWeight: 500 }}
                   >
-                    No datasets yet
+                    No saved datasets yet
                   </p>
                   <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>
-                    Upload your first file to get started
+                    Upload your first file to create a reusable workspace
                   </p>
                 </div>
               ) : (

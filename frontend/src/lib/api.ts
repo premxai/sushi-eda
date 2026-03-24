@@ -313,6 +313,18 @@ export async function restoreDataset(
   await client.patch(`/datasets/${datasetId}/restore?org_id=${orgId}`);
 }
 
+export async function renameDataset(
+  datasetId: string,
+  name: string,
+  orgId: string = "default",
+): Promise<DatasetSummary> {
+  const { data } = await client.patch<DatasetSummary>(
+    `/datasets/${datasetId}/rename?org_id=${orgId}`,
+    { name },
+  );
+  return data;
+}
+
 export interface AnalysisVersion {
   analysis_id: string;
   version: number;

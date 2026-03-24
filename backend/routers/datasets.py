@@ -43,12 +43,17 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import Response
 from loguru import logger
 from polars_loader import parse_to_polars
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from storage import storage
 from visualizer import Visualizer
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
+
+
+class RenameDatasetBody(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -219,6 +224,37 @@ async def restore_dataset(
     dataset.archived_at = None
     await db.commit()
     return {"id": dataset_id, "archived_at": None}
+
+
+@router.patch("/{dataset_id}/rename")
+async def rename_dataset(
+    dataset_id: str,
+    payload: RenameDatasetBody,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename a saved dataset (editor+)."""
+    await validate_org_access(
+        org_id, current_user, db, allowed_roles=("admin", "editor")
+    )
+    result = await db.execute(
+        select(Dataset).where(
+            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+        )
+    )
+    dataset = result.scalar_one_or_none()
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    cleaned_name = payload.name.strip()
+    if not cleaned_name:
+        raise HTTPException(status_code=422, detail="Dataset name cannot be empty")
+
+    dataset.name = cleaned_name
+    await db.commit()
+    await db.refresh(dataset)
+    return _dataset_dict(dataset)
 
 
 @router.get("/{dataset_id}")
