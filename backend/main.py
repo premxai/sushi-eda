@@ -15,12 +15,16 @@ from auth import get_optional_user
 from cache import cache
 from cleaner import DataCleaner, DataTransformer
 from db import get_db
+from db.models import Analysis as _AnalysisModel
+from db.models import Base as _DBBase
+from db.models import Dataset as _DatasetModel
 from db.models import User as _UserModel
 from duckdb_query import run_query as _duckdb_run_query
 from export_utils import DataExporter
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from polars_loader import parse_to_polars
 from routers import jobs as jobs_router
 from routers import webhooks
 from routers.admin import router as admin_router
@@ -84,6 +88,11 @@ def _sanitize(obj: Any) -> Any:
     return obj
 
 
+def _use_inline_dataset_processing() -> bool:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    return not database_url or database_url.startswith("sqlite")
+
+
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
@@ -133,12 +142,16 @@ async def _ensure_default_org() -> None:
     applied automatically — raw psycopg2 would miss these and hit NOT NULL
     violations.
     """
-    from db.connection import AsyncSessionLocal
+    from db.connection import AsyncSessionLocal, engine as db_engine
 
     if AsyncSessionLocal is None:
         logger.info("DATABASE_URL not set — skipping default org creation")
         return
     try:
+        if db_engine is not None:
+            async with db_engine.begin() as conn:
+                await conn.run_sync(_DBBase.metadata.create_all)
+
         from db.models import Organization
         from db.models import User as _User
         from sqlalchemy import select as sa_select
@@ -1064,34 +1077,79 @@ async def upload_dataset_async(
         logger.error(f"R2 upload failed: {e}")
         raise HTTPException(status_code=500, detail="File storage failed")
 
-    # Persist Dataset row to Postgres via SQLAlchemy ORM so that
-    # column defaults (is_starred=False, etc.) are applied automatically.
-    database_url = os.getenv("DATABASE_URL", "")
-    if effective_org_id and effective_created_by:
+    # Persist Dataset row using the configured DB backend.
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not effective_org_id or not effective_created_by:
+        raise HTTPException(status_code=500, detail="Default organization is unavailable")
+
+    try:
+        dataset_row = _DatasetModel(
+            id=uuid.UUID(dataset_id),
+            org_id=uuid.UUID(effective_org_id),
+            created_by=uuid.UUID(effective_created_by),
+            name=filename,
+            original_filename=filename,
+            file_key=file_key,
+            file_size_bytes=len(contents),
+            file_format=ext,
+            status="processing" if _use_inline_dataset_processing() else "pending",
+        )
+        db.add(dataset_row)
+        await db.flush()
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Dataset row insert failed: {e}")
+        raise HTTPException(status_code=500, detail="Dataset persistence failed")
+
+    if _use_inline_dataset_processing():
+        cache.set_job_status(dataset_id, "processing", {"progress": 35, "stage": "Analyzing dataset"})
         try:
-            import uuid as _uuid_mod
-
-            from db.models import Dataset as _Dataset
-
-            ds = _Dataset(
-                id=_uuid_mod.UUID(dataset_id),
-                org_id=_uuid_mod.UUID(effective_org_id),
-                created_by=_uuid_mod.UUID(effective_created_by),
-                name=filename,
-                original_filename=filename,
-                file_key=file_key,
-                file_size_bytes=len(contents),
-                file_format=ext,
-                status="pending",
+            pl_df = parse_to_polars(contents, ext)
+            df = pl_df.to_pandas()
+            analyzer = EDAAnalyzer(df)
+            report = analyzer.generate_full_report()
+            report["preview"] = df.head(50).fillna("").to_dict(orient="records")  # type: ignore[attr-defined]
+            analysis_row = _AnalysisModel(
+                dataset_id=dataset_row.id,
+                org_id=dataset_row.org_id,
+                version=1,
+                report=_sanitize(report),
+                duration_seconds=0.0,
             )
-            db.add(ds)
+            db.add(analysis_row)
+            await db.flush()
+
+            dataset_row.status = "ready"
+            dataset_row.row_count = int(df.shape[0])
+            dataset_row.column_count = int(df.shape[1])
+            dataset_row.error_message = None
+
             await db.commit()
-            logger.info(f"Dataset row inserted: id={dataset_id} org={effective_org_id}")
+            cache.set_job_status(
+                dataset_id,
+                "done",
+                {
+                    "analysis_id": str(analysis_row.id),
+                    "duration_seconds": 0.0,
+                    "progress": 100,
+                    "stage": "complete",
+                },
+            )
+            logger.info(f"Completed inline analysis for dataset={dataset_id}")
+            return {
+                "dataset_id": dataset_id,
+                "status": "done",
+                "message": "Analysis complete.",
+            }
         except Exception as e:
             await db.rollback()
-            logger.warning(f"Dataset row insert failed (non-fatal): {e}")
+            logger.exception(f"Inline dataset analysis failed for {dataset_id}: {e}")
+            cache.set_job_status(dataset_id, "failed", {"error": str(e)})
+            raise HTTPException(status_code=500, detail="Dataset analysis failed")
 
-    # Enqueue Celery job
+    await db.commit()
+
+    # Enqueue Celery job for non-local environments.
     cache.set_job_status(dataset_id, "pending")
     analyze_dataset.delay(
         dataset_id=dataset_id,

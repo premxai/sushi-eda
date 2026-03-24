@@ -27,12 +27,17 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Text,
+    Uuid,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
+UUID = Uuid
+JSONB = JSON().with_variant(PG_JSONB, "postgresql")
 
 
 def _uuid() -> uuid.UUID:

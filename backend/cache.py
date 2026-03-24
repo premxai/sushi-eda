@@ -38,6 +38,8 @@ class RedisCache:
 
     def __init__(self) -> None:
         self._client: Optional[redis.Redis] = None
+        self._analysis_memory: dict[str, dict] = {}
+        self._job_memory: dict[str, dict] = {}
 
     @property
     def client(self) -> redis.Redis:
@@ -73,7 +75,7 @@ class RedisCache:
                 return json.loads(raw)
         except Exception as e:
             logger.warning(f"Redis get_analysis error: {e}")
-        return None
+        return self._analysis_memory.get(file_hash)
 
     def set_analysis(self, file_hash: str, report: dict) -> None:
         """Cache an EDAReport. Overwrites any existing entry."""
@@ -86,12 +88,14 @@ class RedisCache:
             logger.debug(f"Cached analysis:{file_hash[:8]} (TTL={ANALYSIS_CACHE_TTL}s)")
         except Exception as e:
             logger.warning(f"Redis set_analysis error: {e}")
+            self._analysis_memory[file_hash] = report
 
     def delete_analysis(self, file_hash: str) -> None:
         try:
             self.client.delete(self._analysis_key(file_hash))
         except Exception as e:
             logger.warning(f"Redis delete_analysis error: {e}")
+        self._analysis_memory.pop(file_hash, None)
 
     # ── Job Status ─────────────────────────────────────────────────────────────
 
@@ -113,6 +117,7 @@ class RedisCache:
             )
         except Exception as e:
             logger.warning(f"Redis set_job_status error: {e}")
+        self._job_memory[dataset_id] = payload
 
     def get_job_status(self, dataset_id: str) -> Optional[dict]:
         try:
@@ -120,7 +125,7 @@ class RedisCache:
             return json.loads(raw) if raw else None
         except Exception as e:
             logger.warning(f"Redis get_job_status error: {e}")
-            return None
+            return self._job_memory.get(dataset_id)
 
     # ── Pub/Sub (job completion notifications) ─────────────────────────────────
 
@@ -155,9 +160,21 @@ class RedisCache:
 
     def subscribe_org_jobs(self, org_id: str) -> "redis.client.PubSub":
         """Return a PubSub object subscribed to the org's job channel."""
-        ps = self.client.pubsub(ignore_subscribe_messages=True)
-        ps.subscribe(f"{JOB_CHANNEL_PREFIX}:{org_id}")
-        return ps
+        try:
+            ps = self.client.pubsub(ignore_subscribe_messages=True)
+            ps.subscribe(f"{JOB_CHANNEL_PREFIX}:{org_id}")
+            return ps
+        except Exception as e:
+            logger.warning(f"Redis subscribe error: {e}")
+
+            class DummyPubSub:
+                def get_message(self, timeout=0.1):
+                    return None
+
+                def close(self):
+                    return None
+
+            return DummyPubSub()
 
     # ── Rate Limiting ──────────────────────────────────────────────────────────
 
@@ -210,7 +227,7 @@ class RedisCache:
         try:
             return len(self.client.keys("analysis:*"))
         except Exception:
-            return -1
+            return len(self._analysis_memory)
 
 
 # ── Singleton ─────────────────────────────────────────────────────────────────

@@ -51,18 +51,31 @@ export function getApiErrorMessage(
   error: unknown,
   fallback: string,
 ): string {
+  const sanitizeDetail = (detail: string): string => {
+    const normalized = detail.toLowerCase();
+
+    if (
+      normalized.includes("database_url missing") ||
+      normalized.includes("database not configured")
+    ) {
+      return "Saved datasets are unavailable in this environment right now.";
+    }
+
+    return detail;
+  };
+
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail;
     if (typeof detail === "string" && detail.trim()) {
-      return detail;
+      return sanitizeDetail(detail);
     }
     if (Array.isArray(detail) && detail.length > 0) {
       return detail
         .map((item) =>
           typeof item === "string"
-            ? item
+            ? sanitizeDetail(item)
             : typeof item?.msg === "string"
-              ? item.msg
+              ? sanitizeDetail(item.msg)
               : JSON.stringify(item),
         )
         .join(", ");
