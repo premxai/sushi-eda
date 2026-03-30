@@ -36,7 +36,7 @@ from advanced_stats import AdvancedStatistics
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import Analysis, Dataset, User
-from defaults import resolve_org_id
+from defaults import resolve_org_id, resolve_dataset_id
 from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -80,7 +80,8 @@ async def _get_dataset_or_404(
 ) -> Dataset:
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id),
+            Dataset.org_id == resolve_org_id(org_id),
         )
     )
     dataset = result.scalar_one_or_none()
@@ -97,7 +98,7 @@ async def _get_dataset_or_404(
 async def _get_latest_analysis(dataset_id: str, db: AsyncSession) -> Analysis:
     result = await db.execute(
         select(Analysis)
-        .where(Analysis.dataset_id == dataset_id)
+        .where(Analysis.dataset_id == resolve_dataset_id(dataset_id))
         .order_by(Analysis.version.desc())
         .limit(1)
     )
@@ -167,7 +168,7 @@ async def toggle_star(
     )
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == resolve_org_id(org_id)
         )
     )
     dataset = result.scalar_one_or_none()
@@ -191,7 +192,7 @@ async def archive_dataset(
     )
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == resolve_org_id(org_id)
         )
     )
     dataset = result.scalar_one_or_none()
@@ -215,7 +216,7 @@ async def restore_dataset(
     )
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == resolve_org_id(org_id)
         )
     )
     dataset = result.scalar_one_or_none()
@@ -240,7 +241,7 @@ async def rename_dataset(
     )
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == resolve_org_id(org_id)
         )
     )
     dataset = result.scalar_one_or_none()
@@ -268,7 +269,7 @@ async def get_dataset(
     await validate_org_access(org_id, current_user, db)
     result = await db.execute(
         select(Dataset).where(
-            Dataset.id == dataset_id, Dataset.org_id == resolve_org_id(org_id)
+            Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == resolve_org_id(org_id)
         )
     )
     dataset = result.scalar_one_or_none()
@@ -294,7 +295,7 @@ async def delete_dataset(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
     result = await db.execute(
-        select(Dataset).where(Dataset.id == dataset_id, Dataset.org_id == effective_org)
+        select(Dataset).where(Dataset.id == resolve_dataset_id(dataset_id), Dataset.org_id == effective_org)
     )
     dataset = result.scalar_one_or_none()
     if dataset is None:
@@ -388,7 +389,7 @@ async def list_dataset_analyses(
     await _get_dataset_or_404(dataset_id, org_id, db)
     result = await db.execute(
         select(Analysis)
-        .where(Analysis.dataset_id == dataset_id)
+        .where(Analysis.dataset_id == resolve_dataset_id(dataset_id))
         .order_by(Analysis.version.desc())
     )
     analyses = result.scalars().all()
