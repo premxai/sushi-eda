@@ -30,7 +30,8 @@ DEV_ORG = os.getenv("DEV_ORG", "") if os.getenv("ENVIRONMENT") == "development" 
 
 
 def _org_uuid(org_id: str) -> uuid.UUID:
-    return uuid.UUID(resolve_org_id(org_id))
+    result = resolve_org_id(org_id)
+    return result if isinstance(result, uuid.UUID) else uuid.UUID(result)
 
 
 def _audit_dict(a: AuditLog) -> dict[str, Any]:

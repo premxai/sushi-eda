@@ -36,7 +36,8 @@ def _parse_uuid(value: str, field_name: str) -> uuid.UUID:
 
 
 def _effective_org_uuid(org_id: str) -> uuid.UUID:
-    return _parse_uuid(resolve_org_id(org_id), "org_id")
+    result = resolve_org_id(org_id)
+    return result if isinstance(result, uuid.UUID) else _parse_uuid(result, "org_id")
 
 
 def _comment_dict(c: DatasetComment) -> dict[str, Any]:

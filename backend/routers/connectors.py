@@ -44,8 +44,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 SUPPORTED_CONNECTOR_TYPES = ("postgres", "s3", "google_sheets", "rest")
 
 
-def _resolved_org_id(org_id: str) -> str:
-    return resolve_org_id(org_id)
+def _resolved_org_id(org_id: str) -> uuid.UUID:
+    result = resolve_org_id(org_id)
+    return result if isinstance(result, uuid.UUID) else uuid.UUID(result)
 
 
 async def _get_connector_or_404(
@@ -54,7 +55,7 @@ async def _get_connector_or_404(
     resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
         select(DataConnector).where(
-            DataConnector.id == connector_id,
+            DataConnector.id == uuid.UUID(connector_id),
             DataConnector.org_id == resolved_org_id,
         )
     )

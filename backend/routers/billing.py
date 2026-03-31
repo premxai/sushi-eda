@@ -86,8 +86,9 @@ PLANS = {
 _PLAN_CREDIT_LIMITS = {"free": 100, "pro": 2000, "team": -1}
 
 
-def _resolved_org_id(org_id: str) -> str:
-    return resolve_org_id(org_id)
+def _resolved_org_id(org_id: str) -> uuid.UUID:
+    result = resolve_org_id(org_id)
+    return result if isinstance(result, uuid.UUID) else uuid.UUID(result)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ async def create_checkout_session(
         if org:
             await db.execute(
                 update(Organization)
-                .where(Organization.id == uuid.UUID(resolved_org_id))
+                .where(Organization.id == resolved_org_id)
                 .values(stripe_customer_id=customer_id)
             )
             await db.commit()
@@ -266,7 +267,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 async def _get_org(org_id: str, db: AsyncSession) -> Organization | None:
     result = await db.execute(
-        select(Organization).where(Organization.id == uuid.UUID(_resolved_org_id(org_id)))
+        select(Organization).where(Organization.id == _resolved_org_id(org_id))
     )
     return result.scalar_one_or_none()
 
@@ -280,7 +281,7 @@ async def _activate_plan(
     # Fetch current org to check if plan is actually changing
     resolved_org_id = _resolved_org_id(org_id)
     result = await db.execute(
-        select(Organization).where(Organization.id == uuid.UUID(resolved_org_id))
+        select(Organization).where(Organization.id == resolved_org_id)
     )
     org = result.scalar_one_or_none()
 
@@ -297,7 +298,7 @@ async def _activate_plan(
 
     await db.execute(
         update(Organization)
-        .where(Organization.id == uuid.UUID(resolved_org_id))
+        .where(Organization.id == resolved_org_id)
         .values(**values)
     )
     await db.commit()
