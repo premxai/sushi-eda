@@ -7,12 +7,16 @@ Usage in FastAPI:
         ...
 """
 import os
+import tempfile
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-DEFAULT_SQLITE_URL = "sqlite+aiosqlite:///./backend/.local/sushi.db"
+# Render and most serverless platforms have a read-only filesystem outside /tmp,
+# so the dev-fallback SQLite file must live in the system temp dir.
+_DEFAULT_SQLITE_PATH = os.path.join(tempfile.gettempdir(), "sushi", "sushi.db")
+DEFAULT_SQLITE_URL = f"sqlite+aiosqlite:///{_DEFAULT_SQLITE_PATH}"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
@@ -26,11 +30,16 @@ elif DATABASE_URL.startswith("postgresql://"):
 elif not DATABASE_URL:
     DATABASE_URL = DEFAULT_SQLITE_URL
 
-if DATABASE_URL.startswith("sqlite+aiosqlite:///./"):
-    sqlite_path = DATABASE_URL.replace("sqlite+aiosqlite:///./", "", 1)
+if DATABASE_URL.startswith("sqlite+aiosqlite:///"):
+    sqlite_path = DATABASE_URL[len("sqlite+aiosqlite:///"):]
+    if sqlite_path.startswith("./"):
+        sqlite_path = sqlite_path[2:]
     sqlite_dir = os.path.dirname(sqlite_path)
     if sqlite_dir:
-        os.makedirs(sqlite_dir, exist_ok=True)
+        try:
+            os.makedirs(sqlite_dir, exist_ok=True)
+        except OSError:
+            pass
 
 # NullPool is recommended for serverless / short-lived processes.
 if DATABASE_URL:
