@@ -11,7 +11,7 @@ import pandas as pd
 import sentry_sdk
 from advanced_stats import AdvancedStatistics
 from analyzer import EDAAnalyzer
-from auth import get_optional_user
+from auth import get_optional_user, validate_org_access
 from cache import cache
 from cleaner import DataCleaner, DataTransformer
 from db import get_db
@@ -98,12 +98,20 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="Sushi EDA API", version="1.0.0")
 
-# CORS configuration - allow all origins for development and preview deployments
-# In production, consider restricting to specific domains
+_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if not _ALLOWED_ORIGINS and os.getenv("ENVIRONMENT", "development") != "production":
+    _ALLOWED_ORIGINS = ["*"]
+
+# CORS configuration. Development stays permissive; production must opt in
+# with ALLOWED_ORIGINS=https://app.example.com,https://preview.example.com.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins including Vercel preview URLs
-    allow_credentials=False,  # Must be False when allow_origins=["*"]
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials="*" not in _ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],  # Allow frontend to read all response headers
@@ -1051,6 +1059,19 @@ async def upload_dataset_async(
     contents = file.file.read()
     filename = file.filename or "upload"
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+
+    if is_production and current_user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if is_production and org_id == "default":
+        raise HTTPException(status_code=400, detail="Organization is required")
+    if current_user is not None and org_id != "default":
+        await validate_org_access(
+            org_id,
+            current_user,
+            db,
+            allowed_roles=("admin", "editor"),
+        )
 
     # Validate size
     if len(contents) > 100 * 1024 * 1024:
@@ -1149,15 +1170,27 @@ async def upload_dataset_async(
 
     await db.commit()
 
-    # Enqueue Celery job for non-local environments.
-    cache.set_job_status(dataset_id, "pending")
-    analyze_dataset.delay(
-        dataset_id=dataset_id,
-        org_id=effective_org_id,
-        file_key=file_key,
-        file_format=ext,
-        database_url=database_url,
-    )
+    # Enqueue Celery job for non-local environments. If Redis/Celery is down,
+    # leave the persisted dataset in a failed state instead of pending forever.
+    try:
+        cache.set_job_status(dataset_id, "pending")
+        analyze_dataset.delay(
+            dataset_id=dataset_id,
+            org_id=effective_org_id,
+            file_key=file_key,
+            file_format=ext,
+            database_url=database_url,
+        )
+    except Exception as e:
+        logger.error(f"Failed to enqueue analysis job for dataset={dataset_id}: {e}")
+        dataset_row.status = "failed"
+        dataset_row.error_message = "Analysis queue unavailable"
+        await db.commit()
+        cache.set_job_status(dataset_id, "failed", {"error": dataset_row.error_message})
+        raise HTTPException(
+            status_code=503,
+            detail="Analysis queue unavailable. Please try again shortly.",
+        )
 
     logger.info(f"Enqueued analysis job for dataset={dataset_id}")
     return {

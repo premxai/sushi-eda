@@ -284,9 +284,15 @@ export function LandingPage({
         <h2 className="lp-cta-title">Your data,<br /><em style={{ color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>ready to revisit.</em></h2>
         <p className="lp-cta-sub">No credit card. No install. Upload a file, save the workspace, and come back whenever you need the answer again.</p>
         <div className="lp-cta-btns">
-          <button onClick={onTryDemo} disabled={isDemoLoading} className="lp-btn-cta-primary" style={{ border: "none", cursor: "pointer" }}>
-            {isDemoLoading ? "Loading..." : "Try with sample data →"}
-          </button>
+          {isSignedIn ? (
+            <button onClick={onTryDemo} disabled={isDemoLoading} className="lp-btn-cta-primary" style={{ border: "none", cursor: "pointer" }}>
+              {isDemoLoading ? "Loading..." : "Try with sample data →"}
+            </button>
+          ) : (
+            <Link href="/sign-up" className="lp-btn-cta-primary">
+              Create account to try sample data →
+            </Link>
+          )}
           <a href="https://github.com/premxai/sushi-eda" target="_blank" rel="noopener noreferrer" className="lp-btn-cta-ghost">
             View on GitHub
           </a>
@@ -300,10 +306,10 @@ export function LandingPage({
           Sushi
         </div>
         <div className="lp-footer-links">
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <Link href="/docs">Privacy</Link>
+          <Link href="/docs">Terms</Link>
           <a href="https://github.com/premxai/sushi-eda" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="#">Docs</a>
+          <Link href="/docs">Docs</Link>
         </div>
       </footer>
     </div>

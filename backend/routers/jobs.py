@@ -22,7 +22,7 @@ import json
 import time
 from typing import AsyncGenerator
 
-from auth import _decode_clerk_token, get_current_user, validate_org_access
+from auth import _decode_clerk_token, get_optional_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Dataset, User
@@ -84,6 +84,9 @@ async def _authorize_job_access(
     if current_user is None:
         if org_id != "default":
             raise HTTPException(status_code=401, detail="Authentication required")
+        return dataset
+
+    if org_id == "default":
         return dataset
 
     await validate_org_access(dataset_org_id, current_user, db)
@@ -203,7 +206,7 @@ async def stream_job(
 async def get_job_status(
     dataset_id: str,
     org_id: str = Query(default="default"),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Poll-based job status (alternative to SSE for simpler clients)."""

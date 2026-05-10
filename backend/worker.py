@@ -13,6 +13,7 @@ Each task:
 """
 
 import hashlib
+import math
 import os
 import time
 from datetime import datetime, timezone
@@ -60,6 +61,21 @@ celery_app.conf.update(
 
 
 # ── Tasks ──────────────────────────────────────────────────────────────────────
+
+def _sanitize_json(obj: Any) -> Any:
+    """Return JSON-safe data for Postgres JSONB, Redis, and API responses."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_json(v) for v in obj]
+    if hasattr(obj, "item"):
+        try:
+            return _sanitize_json(obj.item())
+        except Exception:
+            return str(obj)
+    return obj
 
 
 @celery_app.task(
@@ -111,12 +127,16 @@ def analyze_dataset(
             logger.info(
                 f"[Task] Cache hit for dataset={dataset_id}, hash={file_hash[:8]}"
             )
-            _save_analysis_to_db(
+            analysis_id = _save_analysis_to_db(
                 database_url, dataset_id, org_id, cached, file_hash, 0.0
             )
-            cache.set_job_status(dataset_id, "done")
-            cache.publish_job_done(org_id, dataset_id, "cached")
-            return {"analysis_id": "cached", "duration_seconds": 0.0}
+            cache.set_job_status(
+                dataset_id,
+                "done",
+                {"analysis_id": str(analysis_id), "duration_seconds": 0.0},
+            )
+            cache.publish_job_done(org_id, dataset_id, str(analysis_id))
+            return {"analysis_id": str(analysis_id), "duration_seconds": 0.0}
 
         # ── 3. Parse into Polars DataFrame (no row cap) ───────────────────────
         df = _parse_bytes(file_bytes, file_format)
@@ -133,6 +153,7 @@ def analyze_dataset(
         # Preview: convert only first 50 rows to pandas for JSON serialisation
         preview = df.head(50).to_pandas().fillna("").to_dict(orient="records")
         report["preview"] = preview
+        report = _sanitize_json(report)
 
         cache.set_job_status(
             dataset_id, "processing", {"progress": 70, "stage": "generating_narrative"}

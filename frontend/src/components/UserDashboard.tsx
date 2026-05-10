@@ -18,7 +18,7 @@ import {
   X,
   Clock,
 } from "lucide-react";
-import { DatasetSummary, listDatasets } from "@/lib/api";
+import { DatasetSummary, getApiErrorMessage, listDatasets } from "@/lib/api";
 import { useDropzone } from "react-dropzone";
 import { Progress } from "@/components/ui/progress";
 
@@ -615,10 +615,14 @@ function UploadPanel({
             >
               {datasets.map((ds) => {
                 const fmt = getFormatStyle(ds.original_filename);
+                const isReady = ds.status === "ready";
                 return (
                   <button
                     key={ds.id}
-                    onClick={() => onDatasetPick(ds.id, ds.original_filename)}
+                    disabled={!isReady}
+                    onClick={() => {
+                      if (isReady) onDatasetPick(ds.id, ds.original_filename);
+                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -628,17 +632,20 @@ function UploadPanel({
                       background: "transparent",
                       border: "1px solid transparent",
                       textAlign: "left",
-                      cursor: "pointer",
+                      cursor: isReady ? "pointer" : "default",
                       transition: "all 0.13s",
                       width: "100%",
+                      opacity: isReady ? 1 : 0.58,
                     }}
                     onMouseEnter={(e) => {
+                      if (!isReady) return;
                       e.currentTarget.style.background =
                         "rgba(144,96,248,0.06)";
                       e.currentTarget.style.borderColor =
                         "rgba(144,96,248,0.2)";
                     }}
                     onMouseLeave={(e) => {
+                      if (!isReady) return;
                       e.currentTarget.style.background = "transparent";
                       e.currentTarget.style.borderColor = "transparent";
                     }}
@@ -695,6 +702,11 @@ function UploadPanel({
                           flexShrink: 0,
                         }}
                       />
+                    )}
+                    {!isReady && (
+                      <span style={{ fontSize: 10, color: "#9a9690", textTransform: "capitalize" }}>
+                        {ds.status}
+                      </span>
                     )}
                     <ArrowRight
                       size={13}
@@ -948,6 +960,7 @@ export function UserDashboard(props: UserDashboardProps) {
   const router = useRouter();
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [datasetError, setDatasetError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -959,11 +972,13 @@ export function UserDashboard(props: UserDashboardProps) {
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
+    setDatasetError(null);
     try {
       const all = await listDatasets("default", { archived: false });
       setDatasets(all);
-    } catch {
-      // silently fail
+    } catch (err) {
+      setDatasetError(getApiErrorMessage(err, "Failed to load saved datasets."));
+      setDatasets([]);
     } finally {
       setLoading(false);
     }
@@ -1345,6 +1360,42 @@ export function UserDashboard(props: UserDashboardProps) {
                       margin: "0 auto",
                     }}
                   />
+                </div>
+              ) : datasetError ? (
+                <div
+                  style={{
+                    background: "rgba(254,242,242,0.92)",
+                    border: "1px solid rgba(220,38,38,0.16)",
+                    borderRadius: 12,
+                    padding: "36px 24px",
+                    textAlign: "center",
+                  }}
+                >
+                  <AlertCircle
+                    size={24}
+                    style={{ color: "#dc2626", margin: "0 auto 10px" }}
+                  />
+                  <p style={{ fontSize: 14, color: "#991b1b", fontWeight: 500 }}>
+                    Saved datasets could not load
+                  </p>
+                  <p style={{ fontSize: 12, color: "#b91c1c", marginTop: 5 }}>
+                    {datasetError}
+                  </p>
+                  <button
+                    onClick={loadDatasets}
+                    style={{
+                      marginTop: 14,
+                      padding: "7px 14px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(220,38,38,0.18)",
+                      background: "#fff",
+                      color: "#991b1b",
+                      fontSize: 12.5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : datasets.length === 0 ? (
                 <div

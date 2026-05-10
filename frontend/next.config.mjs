@@ -28,12 +28,14 @@ function resolveOptional(specifier) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   experimental: {
     optimizePackageImports: ['lucide-react', 'react-plotly.js'],
   },
   async rewrites() {
-    // Proxy /api/* to the backend in local development
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // Proxy /api/* to a server-reachable backend. Browser code should keep
+    // using NEXT_PUBLIC_API_URL=/api when the backend is not public.
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     return [
       {
         source: '/api/:path*',
@@ -73,9 +75,9 @@ const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
 
-  // Disable Sentry build-time features when DSN is not configured
-  disableServerWebpackPlugin: !process.env.SENTRY_DSN,
-  disableClientWebpackPlugin: !process.env.SENTRY_DSN,
+  // Disable source-map upload when the upload token is not configured.
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
 
   // Automatically tree-shake Sentry debug code in production
   hideSourceMaps: true,

@@ -277,11 +277,11 @@ export function FileUpload({
       {/* Sample data button */}
       {!isUploading && !selectedFile && onLoadSample && (
         <button
-          onClick={onLoadSample}
+          onClick={isSignedIn ? onLoadSample : () => router.push("/sign-up")}
           className="mt-4 text-[13px] transition-colors bg-transparent border-none cursor-pointer"
           style={{ color: "#7a7570" }}
         >
-          Try with our sample{" "}
+          {isSignedIn ? "Try with our sample" : "Create an account to try the sample"}{" "}
           <span style={{ color: "#111010", fontWeight: 500 }}>&quot;Sales Data&quot;</span> dataset.
         </button>
       )}
@@ -289,7 +289,7 @@ export function FileUpload({
       {/* Signed-out hint */}
       {!isSignedIn && !isUploading && !selectedFile && (
         <p className="mt-2 text-[11px]" style={{ color: "#a09898", fontFamily: "'Geist Mono', monospace" }}>
-          Sample data available without an account
+          Uploads and sample workspaces require a free account
         </p>
       )}
 

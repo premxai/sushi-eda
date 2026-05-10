@@ -419,8 +419,8 @@ export default function Home() {
       sessionStorage.setItem(REPORT_KEY, JSON.stringify(result.report));
       sessionStorage.setItem(FILE_KEY, filename);
       sessionStorage.setItem(DATASET_KEY, id);
-    } catch {
-      setError("Failed to load dataset");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to load dataset"));
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -446,11 +446,15 @@ export default function Home() {
 
   const handleArchive = async () => {
     if (!openDatasetId) return;
-    await archiveDataset(openDatasetId);
-    sessionStorage.removeItem(REPORT_KEY);
-    sessionStorage.removeItem(FILE_KEY);
-    sessionStorage.removeItem(DATASET_KEY);
-    handleNewFile();
+    try {
+      await archiveDataset(openDatasetId);
+      sessionStorage.removeItem(REPORT_KEY);
+      sessionStorage.removeItem(FILE_KEY);
+      sessionStorage.removeItem(DATASET_KEY);
+      handleNewFile();
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to archive dataset"));
+    }
   };
 
   // ─── Dashboard View — sidebar navigation ─────────────────────────
