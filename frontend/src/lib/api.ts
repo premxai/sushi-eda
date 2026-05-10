@@ -8,7 +8,7 @@ export const API_BASE =
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 300_000, // 5 min - accounts for Render cold start + large file processing
+  timeout: 60_000, // async endpoints should return quickly; surface API wiring issues fast
 });
 
 type ClerkSessionLike = {

@@ -1063,8 +1063,6 @@ async def upload_dataset_async(
 
     if is_production and current_user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
-    if is_production and org_id == "default":
-        raise HTTPException(status_code=400, detail="Organization is required")
     if current_user is not None and org_id != "default":
         await validate_org_access(
             org_id,

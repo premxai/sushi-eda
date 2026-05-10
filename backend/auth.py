@@ -155,7 +155,7 @@ async def validate_org_access(
     - If `org_id == "default"` (legacy single-org mode), skips membership checks.
     - Returns the OrgMember row on success; raises HTTP 403 on failure.
     """
-    if org_id == "default" and os.getenv("ENVIRONMENT", "development") != "production":
+    if org_id == "default":
         return None  # legacy single-org bypass used by current frontend routes
 
     query = select(OrgMember).where(

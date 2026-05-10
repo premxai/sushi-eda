@@ -35,7 +35,8 @@ const nextConfig = {
   async rewrites() {
     // Proxy /api/* to a server-reachable backend. Browser code should keep
     // using NEXT_PUBLIC_API_URL=/api when the backend is not public.
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const publicApiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const backendUrl = process.env.BACKEND_URL || (publicApiUrl && !publicApiUrl.startsWith('/') ? publicApiUrl : 'http://localhost:8000');
     return [
       {
         source: '/api/:path*',
