@@ -85,7 +85,7 @@ class AdvancedStatistics:
             "column2": col2,
             "statistic": float(statistic),
             "p_value": float(p_value),
-            "significant": p_value < 0.05,
+            "significant": bool(p_value < 0.05),
             "equal_variance_assumed": equal_var,
             "mean1": float(data1.mean()),
             "mean2": float(data2.mean()),
@@ -115,7 +115,7 @@ class AdvancedStatistics:
             "alternative": alternative,
             "u_statistic": float(statistic),
             "p_value": float(p_value),
-            "significant": p_value < 0.05,
+            "significant": bool(p_value < 0.05),
             "median1": float(data1.median()),
             "median2": float(data2.median()),
             "n1": int(len(data1)),
@@ -140,7 +140,7 @@ class AdvancedStatistics:
             "chi2_statistic": float(chi2),
             "p_value": float(p_value),
             "degrees_of_freedom": int(dof),
-            "significant": p_value < 0.05,
+            "significant": bool(p_value < 0.05),
             "contingency_table": contingency.to_dict(),
             "expected_frequencies": pd.DataFrame(
                 expected, index=contingency.index, columns=contingency.columns
@@ -187,7 +187,7 @@ class AdvancedStatistics:
             "coefficient_table": coefficient_table,
             "correlation": float(corr),
             "p_value": float(p_value),
-            "significant": p_value < 0.05,
+            "significant": bool(p_value < 0.05),
             "n_samples": int(len(data)),
             "equation": f"y = {slope:.4f}x + {intercept:.4f}",
         }
@@ -596,7 +596,7 @@ class AdvancedStatistics:
         ci_low = lift_abs - z_critical * se_unpooled
         ci_high = lift_abs + z_critical * se_unpooled
 
-        significant = p_value < alpha
+        significant = bool(p_value < alpha)
         if not significant:
             winner = "inconclusive"
         elif lift_abs > 0:

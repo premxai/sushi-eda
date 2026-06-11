@@ -28,6 +28,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import defaults
 from db import get_db
 from db.models import OrgMember, User
 
@@ -182,8 +183,13 @@ async def validate_org_access(
     - If `org_id == "default"` (legacy single-org mode), skips membership checks.
     - Returns the OrgMember row on success; raises HTTP 403 on failure.
     """
-    if org_id == "default":
-        return None  # legacy single-org bypass used by current frontend routes
+    if org_id == "default" or (
+        defaults.DEFAULT_ORG_ID and org_id == defaults.DEFAULT_ORG_ID
+    ):
+        # Legacy single-org bypass — matches both the literal "default" used
+        # by frontend routes and the resolved default-org UUID that some
+        # endpoints pass (e.g. GET /analyses/{id} after an upload).
+        return None
 
     query = select(OrgMember).where(
         OrgMember.org_id == org_id,
