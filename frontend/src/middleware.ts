@@ -11,7 +11,10 @@ const isPublicRoute = createRouteMatcher([
   "/", // landing page
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/webhooks(.*)", // Clerk webhooks bypass auth
+  // /api/* is rewritten to the backend, which enforces its own JWT auth and
+  // serves public endpoints (health, shared reports). Blocking it here would
+  // 404 those before the rewrite runs.
+  "/api(.*)",
   "/share/(.*)", // public shareable report links
   "/pricing",
   "/docs(.*)",
