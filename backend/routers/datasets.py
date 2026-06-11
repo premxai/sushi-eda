@@ -36,6 +36,7 @@ from advanced_stats import AdvancedStatistics
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import Analysis, Dataset, User
+import defaults
 from defaults import resolve_org_id
 from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
@@ -75,8 +76,23 @@ def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
     }
 
 
+def _ensure_dataset_visible(dataset: "Dataset", current_user: User) -> None:
+    """In the shared default org, datasets are private to their creator.
+
+    Real (non-default) orgs share datasets among members via OrgMember
+    checks. Raises 404 rather than 403 so dataset ids are not confirmed
+    to non-owners.
+    """
+    if (
+        defaults.DEFAULT_ORG_ID
+        and str(dataset.org_id) == defaults.DEFAULT_ORG_ID
+        and dataset.created_by != current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+
 async def _get_dataset_or_404(
-    dataset_id: str, org_id: str, db: AsyncSession
+    dataset_id: str, org_id: str, db: AsyncSession, current_user: User
 ) -> Dataset:
     result = await db.execute(
         select(Dataset).where(
@@ -86,6 +102,7 @@ async def _get_dataset_or_404(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
     if dataset.status != "ready":
         raise HTTPException(
             status_code=409,
@@ -142,7 +159,11 @@ async def list_datasets(
 ):
     """List datasets for an org. Excludes archived by default. Use ?archived=true for trash."""
     await validate_org_access(org_id, current_user, db)
-    query = select(Dataset).where(Dataset.org_id == resolve_org_id(org_id))
+    effective_org = resolve_org_id(org_id)
+    query = select(Dataset).where(Dataset.org_id == effective_org)
+    if defaults.DEFAULT_ORG_ID and effective_org == defaults.DEFAULT_ORG_ID:
+        # Shared default org: each user only sees their own datasets.
+        query = query.where(Dataset.created_by == current_user.id)
     if archived:
         query = query.where(Dataset.archived_at.isnot(None))
     else:
@@ -173,6 +194,7 @@ async def toggle_star(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
     dataset.is_starred = not dataset.is_starred
     await db.commit()
     return {"id": dataset_id, "is_starred": dataset.is_starred}
@@ -197,6 +219,7 @@ async def archive_dataset(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
     dataset.archived_at = datetime.now(timezone.utc)
     await db.commit()
     return {"id": dataset_id, "archived_at": dataset.archived_at.isoformat()}
@@ -221,6 +244,7 @@ async def restore_dataset(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
     dataset.archived_at = None
     await db.commit()
     return {"id": dataset_id, "archived_at": None}
@@ -246,6 +270,7 @@ async def rename_dataset(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
 
     cleaned_name = payload.name.strip()
     if not cleaned_name:
@@ -274,6 +299,7 @@ async def get_dataset(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
     return {
         **_dataset_dict(dataset),
         "error_message": dataset.error_message,
@@ -299,6 +325,7 @@ async def delete_dataset(
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    _ensure_dataset_visible(dataset, current_user)
 
     try:
         storage.delete_prefix(f"uploads/{effective_org}/{dataset_id}/")
@@ -322,7 +349,7 @@ async def get_dataset_analysis(
 ):
     """Return the latest analysis report (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    await _get_dataset_or_404(dataset_id, org_id, db)
+    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
     return {
         "analysis_id": str(analysis.id),
@@ -349,7 +376,7 @@ async def regenerate_narrative(
     await validate_org_access(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
-    await _get_dataset_or_404(dataset_id, org_id, db)
+    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
 
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
@@ -385,7 +412,7 @@ async def list_dataset_analyses(
 ):
     """List all analysis versions for a dataset (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    await _get_dataset_or_404(dataset_id, org_id, db)
+    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     result = await db.execute(
         select(Analysis)
         .where(Analysis.dataset_id == dataset_id)
@@ -421,6 +448,12 @@ async def get_analysis(
         raise HTTPException(status_code=404, detail="Analysis not found")
     # Org membership check: the analysis's org_id must be accessible by current_user
     await validate_org_access(str(analysis.org_id), current_user, db)
+    ds_result = await db.execute(
+        select(Dataset).where(Dataset.id == analysis.dataset_id)
+    )
+    dataset = ds_result.scalar_one_or_none()
+    if dataset is not None:
+        _ensure_dataset_visible(dataset, current_user)
     return {
         "analysis_id": str(analysis.id),
         "dataset_id": str(analysis.dataset_id),
@@ -462,7 +495,7 @@ async def ai_chat(
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
 
     await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
 
     from ai_chat import ask_dataset
@@ -495,7 +528,7 @@ async def ai_chat_stream(
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
 
     await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     # Consume credits upfront for streaming (can't check mid-stream)
     await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
@@ -527,7 +560,7 @@ async def ai_cleaning_suggestions(
     Falls back to rule-based suggestions if ANTHROPIC_API_KEY is not set.
     """
     await validate_org_access(org_id, current_user, db)
-    await _get_dataset_or_404(dataset_id, org_id, db)
+    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
 
     from ai_credits import CREDIT_COSTS, check_credits, consume_credits
@@ -574,7 +607,7 @@ async def visualize_column(
 ):
     """On-demand chart for a single column (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
 
     if column_name not in df.columns:
@@ -606,7 +639,7 @@ async def visualize_all(
 ):
     """All charts for a dataset (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return Visualizer(df).generate_all_visualizations()
 
@@ -623,7 +656,7 @@ async def advanced_stats(
 ):
     """Advanced statistical tests (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).generate_all_tests()
 
@@ -639,7 +672,7 @@ async def regression(
 ):
     """Linear regression between two columns (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).linear_regression(x_col, y_col)
 
@@ -656,7 +689,7 @@ async def logistic_regression(
 ):
     """Logistic regression for a binary target column (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).logistic_regression(
         x_col, y_col, positive_class=positive_class
@@ -675,7 +708,7 @@ async def polynomial_regression(
 ):
     """Polynomial regression for numeric predictor/target pairs (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
 
@@ -691,7 +724,7 @@ async def ttest(
 ):
     """Independent t-test between two columns (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).t_test_independent(col1, col2)
 
@@ -708,7 +741,7 @@ async def mann_whitney(
 ):
     """Mann-Whitney U test between two numeric columns (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
 
@@ -724,7 +757,7 @@ async def chi_square(
 ):
     """Chi-square test of independence between two categorical columns (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).chi_square_test(col1, col2)
 
@@ -740,7 +773,7 @@ async def anova(
 ):
     """One-way ANOVA: numeric_col grouped by group_col (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).anova_one_way(numeric_col, group_col)
 
@@ -766,7 +799,7 @@ async def correlation_test(
             status_code=400, detail="method must be pearson | spearman | kendall"
         )
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     if col1 not in df.columns or col2 not in df.columns:
         raise HTTPException(status_code=400, detail="Column not found")
@@ -806,7 +839,7 @@ async def time_series_decompose(
 ):
     """Time-series decomposition into trend/seasonality/residual (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).time_series_decomposition(
         date_col=date_col,
@@ -832,7 +865,7 @@ async def time_series_arima(
 ):
     """ARIMA forecast endpoint for a date/value series (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).arima_forecast(
         date_col=date_col,
@@ -857,7 +890,7 @@ async def cohort_analysis(
 ):
     """Cohort retention analysis by entity and activity date (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return AdvancedStatistics(df).cohort_analysis(
         entity_col=entity_col, date_col=date_col, freq=freq
@@ -878,7 +911,7 @@ async def ab_test_significance(
 ):
     """A/B test significance calculator using two-proportion z-test (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    await _get_dataset_or_404(dataset_id, org_id, db)
+    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     return AdvancedStatistics(pd.DataFrame()).ab_test_significance(
         control_conversions=control_conversions,
         control_total=control_total,
@@ -897,7 +930,7 @@ async def query_schema(
 ):
     """Column schema for the DuckDB query interface (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     return {"schema": get_schema(pl_df)}
 
@@ -919,7 +952,7 @@ async def query_dataset(
         SELECT region, AVG(sales) FROM df GROUP BY region ORDER BY 2 DESC
     """
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
         return run_query(pl_df, sql, limit=limit, offset=offset)
@@ -939,7 +972,7 @@ async def explain_dataset_query(
 ):
     """Return DuckDB EXPLAIN plan for a SELECT query (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
         return explain_query(pl_df, sql)
@@ -961,7 +994,7 @@ async def export_excel(
 ):
     """Export dataset + analysis to Excel (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     excel_data = DataExporter(df, analysis.report).to_excel()
@@ -981,7 +1014,7 @@ async def export_markdown(
 ):
     """Export analysis as Markdown (viewer+)."""
     await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     md = DataExporter(df, analysis.report).generate_markdown_report()

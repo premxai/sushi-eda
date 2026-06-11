@@ -24,6 +24,7 @@ from auth import get_current_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Analysis, Dataset, User
+import defaults
 from defaults import resolve_org_id
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from loguru import logger
@@ -84,6 +85,13 @@ async def create_share(
     )
     dataset = ds_result.scalar_one_or_none()
     if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    # Shared default org: only the dataset's creator may share it.
+    if (
+        defaults.DEFAULT_ORG_ID
+        and str(dataset.org_id) == defaults.DEFAULT_ORG_ID
+        and dataset.created_by != current_user.id
+    ):
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     an_result = await db.execute(
@@ -192,6 +200,13 @@ async def revoke_share(
         raise HTTPException(
             status_code=403, detail="Token does not belong to this dataset"
         )
+    # Shared default org: only the share's creator may revoke it.
+    if (
+        defaults.DEFAULT_ORG_ID
+        and str(effective_org_id) == defaults.DEFAULT_ORG_ID
+        and payload.get("created_by") != str(current_user.id)
+    ):
+        raise HTTPException(status_code=404, detail="Share token not found")
 
     _delete_share(token)
     logger.info(f"Revoked share token {token[:8]}... for dataset {dataset_id}")

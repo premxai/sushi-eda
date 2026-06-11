@@ -27,6 +27,7 @@ from auth import _decode_clerk_token, get_optional_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Dataset, User
+import defaults
 from defaults import resolve_org_id
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -87,6 +88,15 @@ async def _authorize_job_access(
     )
     if dataset_org_id != requested_org_id:
         raise HTTPException(status_code=403, detail="Dataset not in requested org")
+
+    # Shared default org: datasets are private to their creator.
+    if (
+        current_user is not None
+        and defaults.DEFAULT_ORG_ID
+        and dataset_org_id == defaults.DEFAULT_ORG_ID
+        and dataset.created_by != current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="Dataset not found")
 
     if current_user is None:
         if org_id != "default":
