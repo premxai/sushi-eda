@@ -11,3 +11,18 @@ services:
         value: 3.11.0
       - key: PYTHONUNBUFFERED
         value: 1
+      # With no other env vars the API runs in open demo mode:
+      # SQLite in /tmp, local file storage, no auth, AI features off.
+      # For a real production deployment set these in the Render dashboard:
+      - key: ENVIRONMENT
+        sync: false # set to "production"
+      - key: ALLOWED_ORIGINS
+        sync: false # REQUIRED in production, e.g. https://your-frontend.vercel.app
+      - key: CLERK_SECRET_KEY
+        sync: false # enables authentication (strongly recommended for public deploys)
+      - key: DATABASE_URL
+        sync: false # Postgres; omit to use the SQLite fallback
+      - key: REDIS_URL
+        sync: false # enables job cache/queue; omit for in-memory fallbacks
+      - key: ANTHROPIC_API_KEY
+        sync: false # enables AI narrative/chat features

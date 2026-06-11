@@ -25,7 +25,7 @@ import {
   restoreDataset,
   starDataset,
 } from "@/lib/api";
-import { SignedIn, UserButton } from "@clerk/nextjs";
+import { SignedIn, UserButton } from "@/lib/auth";
 
 type Tab = "all" | "starred" | "archived";
 

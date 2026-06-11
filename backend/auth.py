@@ -36,7 +36,29 @@ from db.models import OrgMember, User
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
 CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
 
+# When no Clerk secret is configured the API runs in open demo mode: every
+# request is treated as the shared "system" demo user instead of requiring a
+# Clerk JWT. Set CLERK_SECRET_KEY to enable real authentication.
+AUTH_ENABLED = bool(CLERK_SECRET_KEY)
+if not AUTH_ENABLED:
+    logger.warning(
+        "CLERK_SECRET_KEY not set — running in OPEN demo mode; "
+        "all requests act as a shared demo user. Do not expose this publicly."
+    )
+
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+async def _get_demo_user(db: AsyncSession) -> User:
+    """Return the shared 'system' user used when auth is disabled."""
+    result = await db.execute(select(User).where(User.clerk_id == "system"))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(clerk_id="system", email="system@localhost")
+        db.add(user)
+        await db.flush()
+        logger.info("JIT provisioned demo user (clerk_id=system)")
+    return user
 
 
 # ── JWKS key fetching ─────────────────────────────────────────────────────────
@@ -100,6 +122,9 @@ async def get_current_user(
     FastAPI dependency — verifies Clerk JWT, returns the User ORM object.
     Auto-creates the User row on first login (just-in-time provisioning).
     """
+    if not AUTH_ENABLED:
+        return await _get_demo_user(db)
+
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,6 +159,8 @@ async def get_optional_user(
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
     """Like get_current_user but returns None instead of 401 (for public endpoints)."""
+    if not AUTH_ENABLED:
+        return await _get_demo_user(db)
     if credentials is None:
         return None
     try:

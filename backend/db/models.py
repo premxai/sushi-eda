@@ -29,14 +29,33 @@ from sqlalchemy import (
     Integer,
     JSON,
     Text,
+    TypeDecorator,
     Uuid,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, relationship
 from sqlalchemy.sql import func
 
-UUID = Uuid
+
+class _CoercingUuid(TypeDecorator):
+    """Uuid that also accepts string values in queries.
+
+    Postgres/asyncpg coerces UUID strings natively, but SQLite's Uuid bind
+    processor requires uuid.UUID objects — and the routers pass string ids
+    throughout. Coercing here keeps both backends working.
+    """
+
+    impl = Uuid
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, str):
+            return uuid.UUID(value)
+        return value
+
+
+UUID = _CoercingUuid
 JSONB = JSON().with_variant(PG_JSONB, "postgresql")
 
 
@@ -667,7 +686,9 @@ class DatasetComment(Base):
     replies: Mapped[list["DatasetComment"]] = relationship(
         "DatasetComment",
         foreign_keys=[parent_id],
-        backref="parent",
+        # remote_side marks the parent end of this self-referential FK so the
+        # backref maps as many-to-one (without it, mapper configuration fails).
+        backref=backref("parent", remote_side=[id]),
         cascade="all, delete-orphan",
     )
 

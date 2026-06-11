@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Test all features of DevWhisperer
+# Test all features of Sushi
 # Usage: ./scripts/test-all.sh
 
-echo "🧪 Testing DevWhisperer EDA Platform..."
+echo "🧪 Testing Sushi EDA Platform..."
 echo ""
 
 # Check if backend is running
@@ -43,4 +43,4 @@ fi
 
 echo ""
 echo "✅ All tests passed!"
-echo "🎉 DevWhisperer is ready to use!"
+echo "🎉 Sushi is ready to use!"

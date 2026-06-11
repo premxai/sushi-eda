@@ -1,6 +1,11 @@
 import { SignUp } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function SignUpPage() {
+  // Demo mode (no Clerk keys): there is no sign-up — everyone is the demo user.
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    redirect("/");
+  }
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50">
       <SignUp

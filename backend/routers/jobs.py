@@ -20,6 +20,7 @@ GET /jobs/{dataset_id}
 import asyncio
 import json
 import time
+import uuid
 from typing import AsyncGenerator
 
 from auth import _decode_clerk_token, get_optional_user, validate_org_access
@@ -69,7 +70,13 @@ async def _authorize_job_access(
     current_user: User | None,
     db: AsyncSession,
 ) -> Dataset:
-    result = await db.execute(select(Dataset).where(Dataset.id == dataset_id))
+    # Parse to uuid.UUID — SQLite's UUID type rejects raw strings (Postgres coerces).
+    try:
+        dataset_uuid = uuid.UUID(dataset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid dataset_id") from exc
+
+    result = await db.execute(select(Dataset).where(Dataset.id == dataset_uuid))
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise HTTPException(status_code=404, detail="Dataset not found")

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { SignedIn, UserButton } from "@clerk/nextjs";
+import { SignedIn, UserButton } from "@/lib/auth";
 import {
   listConnectors,
   deleteConnector,

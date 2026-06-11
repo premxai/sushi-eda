@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/lib/auth";
 import { useJobStream } from "@/hooks/useJobStream";
 import { Button } from "@/components/ui/button";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";

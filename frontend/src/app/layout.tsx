@@ -52,18 +52,21 @@ export const metadata: Metadata = {
   alternates: { canonical: SITE_URL },
 };
 
+// Without a Clerk publishable key the app runs in open demo mode and
+// ClerkProvider must not mount (it throws / blocks rendering without keys).
+const CLERK_ENABLED = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+  const tree = (
+    <html lang="en">
+      <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
+        {children}
+      </body>
+    </html>
   );
+  return CLERK_ENABLED ? <ClerkProvider>{tree}</ClerkProvider> : tree;
 }

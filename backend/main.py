@@ -151,6 +151,13 @@ async def _ensure_default_org() -> None:
     violations.
     """
     from db.connection import AsyncSessionLocal, engine as db_engine
+    from auth import AUTH_ENABLED
+
+    if os.getenv("ENVIRONMENT", "development") == "production" and not AUTH_ENABLED:
+        logger.error(
+            "ENVIRONMENT=production but CLERK_SECRET_KEY is not set — "
+            "the API is running in OPEN demo mode with no authentication."
+        )
 
     if AsyncSessionLocal is None:
         logger.info("DATABASE_URL not set — skipping default org creation")
@@ -1196,18 +1203,3 @@ async def upload_dataset_async(
         "status": "pending",
         "message": "Analysis queued. Poll /jobs/{dataset_id} for progress.",
     }
-
-
-@app.get("/jobs/{dataset_id}")
-async def get_job_status(dataset_id: str):
-    """
-    Return the current status of an analysis job.
-
-    Status values: pending | processing | done | failed
-    When done, the response includes analysis_id which can be used to
-    fetch the full report from GET /analyses/{analysis_id}.
-    """
-    status_data = cache.get_job_status(dataset_id)
-    if status_data is None:
-        raise HTTPException(status_code=404, detail="Job not found or expired")
-    return {"dataset_id": dataset_id, **status_data}

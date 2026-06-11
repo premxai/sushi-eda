@@ -27,21 +27,21 @@ builder = "nixpacks"
 #   - Redis (Railway plugin)          → injects REDIS_URL automatically
 #   - PostgreSQL (Railway plugin)     → injects DATABASE_URL automatically
 #
-# Required env vars (set in each service's Variables tab):
+# Env vars (set in each service's Variables tab).
+# Everything is optional — with nothing set the API runs in open demo mode
+# (SQLite in /tmp, local file storage, no auth, AI off). For production:
+#   ENVIRONMENT           production (then ALLOWED_ORIGINS becomes required)
+#   ALLOWED_ORIGINS       comma-separated frontend origins
+#   CLERK_SECRET_KEY      your Clerk backend key (strongly recommended publicly)
 #   DATABASE_URL          injected by Railway Postgres plugin
 #   REDIS_URL             injected by Railway Redis plugin
-#   CELERY_BROKER_URL     = $REDIS_URL
+#   CELERY_BROKER_URL     = $REDIS_URL (needed by worker/beat services)
 #   CELERY_RESULT_BACKEND = $REDIS_URL/1
-#   CLERK_SECRET_KEY      your Clerk backend key
-#   ANTHROPIC_API_KEY     your Anthropic API key
-#   R2_ACCOUNT_ID         Cloudflare R2 account
-#   R2_ACCESS_KEY_ID      R2 credentials
-#   R2_SECRET_ACCESS_KEY  R2 credentials
-#   R2_BUCKET_NAME        R2 bucket
-#   STRIPE_SECRET_KEY     Stripe live/test key
-#   STRIPE_WEBHOOK_SECRET Stripe webhook signing secret
+# Optional integrations:
+#   ANTHROPIC_API_KEY     enables AI narrative/chat features
+#   R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME
+#                         Cloudflare R2 storage (falls back to local files)
+#   STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET   billing
 #   CONNECTOR_SECRET_KEY  Fernet key for connector credentials
-#   SLACK_SIGNING_SECRET  Slack app signing secret (optional)
-#   SLACK_BOT_TOKEN       Slack bot OAuth token (optional)
-#   SENTRY_DSN            Sentry project DSN (optional)
-#   ENVIRONMENT           production
+#   SLACK_SIGNING_SECRET / SLACK_BOT_TOKEN      Slack app
+#   SENTRY_DSN            Sentry project DSN

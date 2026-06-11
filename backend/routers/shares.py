@@ -15,7 +15,6 @@ in an iframe or shared via a link.
 
 from __future__ import annotations
 
-import json
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -206,24 +205,26 @@ def _share_key(token: str) -> str:
 
 
 def _set_share(token: str, payload: dict[str, Any], ttl: int) -> None:
-    try:
-        cache.client.setex(_share_key(token), ttl, json.dumps(payload))
-    except Exception as e:
-        logger.error(f"Failed to store share token: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create share link")
+    # cache.set falls back to in-process memory when Redis is unavailable;
+    # the memory fallback has no TTL, so expiry is enforced in _get_share
+    # via the expires_at stored in the payload.
+    cache.set(_share_key(token), payload, ttl)
 
 
 def _get_share(token: str) -> dict[str, Any] | None:
-    try:
-        data = cache.client.get(_share_key(token))
-        return json.loads(data) if data else None
-    except Exception as e:
-        logger.error(f"Failed to retrieve share token: {e}")
+    payload = cache.get(_share_key(token))
+    if payload is None:
         return None
+    expires_at = payload.get("expires_at")
+    if expires_at:
+        try:
+            if datetime.fromisoformat(expires_at) <= datetime.now(timezone.utc):
+                _delete_share(token)
+                return None
+        except ValueError:
+            logger.warning(f"Share token {token[:8]}... has malformed expires_at")
+    return payload
 
 
 def _delete_share(token: str) -> None:
-    try:
-        cache.client.delete(_share_key(token))
-    except Exception as e:
-        logger.warning(f"Failed to delete share token: {e}")
+    cache.delete(_share_key(token))

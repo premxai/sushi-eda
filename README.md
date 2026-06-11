@@ -49,16 +49,6 @@
 - **Error Boundaries** — Graceful error handling prevents crashes
 - **Responsive Design** — Mobile-friendly interface with adaptive layouts
 
-## 📸 Preview
-
-> **Note:** Add screenshots here after deployment
-
-- Dashboard Overview with Quality Score
-- Column Analysis with Type Suggestions
-- Interactive Correlation Heatmap
-- Dataset Comparison View
-- PDF Export Preview
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -66,12 +56,17 @@
 - Node.js 18+
 - npm or yarn
 
-### Local Development
+### Quickstart — zero config
+
+No environment variables, database, Redis, or auth keys are needed to run Sushi
+locally. With nothing configured the app runs in **open demo mode**: SQLite
+database in `/tmp/sushi`, local file storage, no sign-in (everyone is a shared
+demo user), and AI features disabled.
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/yourusername/devwhisperer.git
-cd devwhisperer
+git clone https://github.com/premxai/sushi-eda.git
+cd sushi-eda
 ```
 
 **2. Start Backend**
@@ -80,11 +75,11 @@ cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
+> Run with a single worker locally — demo mode keeps job state in process memory.
 
 **3. Start Frontend**
 ```bash
 cd frontend
-cp .env.example .env.local
 npm install
 npm run dev
 ```
@@ -190,40 +185,43 @@ Export analysis report as markdown file.
 
 ## 🌍 Environment Variables
 
-### Backend
-No environment variables required for basic operation. Logging is configured in `main.py`.
+All environment variables are **optional** — see `backend/.env.example` and
+`frontend/.env.example` for the full annotated list with fallback behavior.
 
-### Frontend
+### Backend (all optional)
 
-Create `.env.local` from `.env.example`:
+| Variable | When unset |
+|---|---|
+| `DATABASE_URL` | SQLite fallback at `/tmp/sushi/sushi.db` |
+| `CLERK_SECRET_KEY` | Open demo mode — no authentication |
+| `REDIS_URL` | In-memory job/share state; analysis runs inline (single process) |
+| `R2_*` | Uploads stored on the local filesystem |
+| `ANTHROPIC_API_KEY` | AI narrative/chat features disabled |
+| `ALLOWED_ORIGINS` | Wildcard CORS in development; **required** when `ENVIRONMENT=production` |
+
+### Frontend (all optional)
 
 ```bash
-# Backend API
+# Backend API (defaults to http://localhost:8000)
 NEXT_PUBLIC_API_URL=http://localhost:8000
+BACKEND_URL=http://localhost:8000
 
-# Clerk Authentication (Get from https://dashboard.clerk.com)
+# Clerk auth — leave unset for open demo mode
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
-
-# Optional Clerk redirects (defaults provided)
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
-
-# Optional
-NODE_ENV=development
 ```
 
-For production:
-```bash
-NEXT_PUBLIC_API_URL=https://your-api.railway.app
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
-CLERK_SECRET_KEY=sk_live_...
-NODE_ENV=production
-```
+### Enabling auth (Clerk)
 
-**⚠️ Important:** You must create a free Clerk account at https://clerk.com to get authentication keys. The app requires authentication to function.
+Demo mode is open — anyone who can reach the app shares one demo workspace.
+For any public deployment, enable real authentication:
+
+1. Create a free app at https://dashboard.clerk.com and copy the API keys.
+2. Frontend: set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
+3. Backend: set the same `CLERK_SECRET_KEY`.
+
+With the keys present, the sign-in/sign-up pages, route protection, and
+per-user JWT verification all activate automatically.
 
 ## 🚢 Deployment
 
@@ -262,8 +260,8 @@ vercel --prod
 
 #### Alternative: Docker
 ```bash
-docker build -t devwhisperer-frontend ./frontend
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://api.example.com devwhisperer-frontend
+docker build -t sushi-frontend ./frontend
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://api.example.com sushi-frontend
 ```
 
 ### Full Stack with Docker Compose
@@ -307,7 +305,7 @@ curl -X POST http://localhost:8000/compare \
 ## 📁 Project Structure
 
 ```
-DevWhisperer/
+sushi-eda/
 ├── backend/
 │   ├── main.py              # FastAPI app with rate limiting & logging
 │   ├── analyzer.py          # EDA analysis engine
@@ -374,11 +372,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Support
 
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Email: support@devwhisperer.dev
-- Documentation: [https://docs.devwhisperer.dev](https://docs.devwhisperer.dev)
+For issues, questions, or suggestions, open an issue on
+[GitHub](https://github.com/premxai/sushi-eda/issues).
 
 ---
 
-**Made with ❤️ by the DevWhisperer Team**
+**Made with ❤️ by the Sushi team**

@@ -40,6 +40,7 @@ class RedisCache:
         self._client: Optional[redis.Redis] = None
         self._analysis_memory: dict[str, dict] = {}
         self._job_memory: dict[str, dict] = {}
+        self._kv_memory: dict[str, Any] = {}
 
     @property
     def client(self) -> redis.Redis:
@@ -204,7 +205,7 @@ class RedisCache:
             raw = self.client.get(key)
             return json.loads(raw) if raw else None
         except Exception:
-            return None
+            return self._kv_memory.get(key)
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         try:
@@ -215,12 +216,16 @@ class RedisCache:
                 self.client.set(key, serialized)
         except Exception as e:
             logger.warning(f"Redis set error for {key}: {e}")
+            # In-memory fallback has no TTL; callers that care about expiry
+            # must check expiry timestamps stored inside the value.
+            self._kv_memory[key] = value
 
     def delete(self, key: str) -> None:
         try:
             self.client.delete(key)
         except Exception as e:
             logger.warning(f"Redis delete error for {key}: {e}")
+        self._kv_memory.pop(key, None)
 
     def cache_size(self) -> int:
         """Rough count of analysis cache keys (for /health endpoint)."""

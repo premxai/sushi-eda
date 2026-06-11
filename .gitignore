@@ -65,3 +65,6 @@ backend/.last_upload/
 
 # Claude temp files
 tmpclaude-*
+
+# Claude Code local settings
+.claude/settings.local.json

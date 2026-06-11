@@ -1,19 +1,31 @@
+import json
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 from typing import Any
 import plotly.graph_objects as go
+from plotly.utils import PlotlyJSONEncoder
 
 
 PLOTLY_THEME = dict(
     font=dict(family="Inter, sans-serif", size=12, color="#334155"),
-    paper_bgcolor="transparent",
-    plot_bgcolor="transparent",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
     margin=dict(t=30, r=20, b=40, l=60),
     hovermode="closest",
 )
 
 PLOTLY_CONFIG = dict(displayModeBar=False, responsive=True)
+
+
+def _themed_layout(**overrides) -> dict:
+    """PLOTLY_THEME merged with per-chart overrides (overrides win).
+
+    Passing **PLOTLY_THEME alongside an explicit margin= would raise
+    "got multiple values for keyword argument".
+    """
+    return {**PLOTLY_THEME, **overrides}
 
 
 class Visualizer:
@@ -25,8 +37,12 @@ class Visualizer:
     # ── helpers ───────────────────────────────────────────────────────
 
     def _to_json(self, fig: go.Figure) -> dict[str, Any]:
-        """Convert a Plotly figure to a JSON-serialisable dict."""
-        return fig.to_plotly_json()
+        """Convert a Plotly figure to a JSON-serialisable dict.
+
+        Round-trip through PlotlyJSONEncoder so numpy arrays/scalars become
+        plain lists/numbers FastAPI's encoder can handle.
+        """
+        return json.loads(json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder))
 
     # ── 1. Distribution plot ─────────────────────────────────────────
 
@@ -90,7 +106,7 @@ class Visualizer:
             **PLOTLY_THEME,
             height=280,
             showlegend=True,
-            legend=dict(x=1, xanchor="right", y=1, font=dict(size=10, color="#64748b"), bgcolor="transparent"),
+            legend=dict(x=1, xanchor="right", y=1, font=dict(size=10, color="#64748b"), bgcolor="rgba(0,0,0,0)"),
             xaxis=dict(title=dict(text=column, font=dict(size=11, color="#94a3b8")),
                        gridcolor="#f1f5f9", zerolinecolor="#e2e8f0"),
             yaxis=dict(title=dict(text="Count", font=dict(size=11, color="#94a3b8")),
@@ -151,14 +167,13 @@ class Visualizer:
                           tickfont=dict(size=10, color="#64748b")),
         ))
 
-        fig.update_layout(
-            **PLOTLY_THEME,
+        fig.update_layout(**_themed_layout(
             height=max(400, n * 40),
             margin=dict(l=110, r=30, t=10, b=110),
             xaxis=dict(tickangle=-45, side="bottom"),
             yaxis=dict(autorange="reversed"),
             annotations=annotations,
-        )
+        ))
 
         return self._to_json(fig)
 
@@ -249,15 +264,14 @@ class Visualizer:
             cliponaxis=False,
         ))
 
-        fig.update_layout(
-            **PLOTLY_THEME,
+        fig.update_layout(**_themed_layout(
             height=max(200, len(labels) * 28 + 60),
             margin=dict(t=10, r=60, b=30, l=max(60, max((len(l) for l in labels), default=5) * 7)),
             xaxis=dict(title=dict(text="Count", font=dict(size=11, color="#94a3b8")),
                        gridcolor="#f1f5f9", zerolinecolor="#e2e8f0"),
             yaxis=dict(automargin=True, tickfont=dict(size=11)),
             bargap=0.15,
-        )
+        ))
 
         return self._to_json(fig)
 
@@ -299,14 +313,13 @@ class Visualizer:
             hovertemplate="Row %{y}<br>Column: %{x}<br>%{z:d}<extra></extra>",
         ))
 
-        fig.update_layout(
-            **PLOTLY_THEME,
+        fig.update_layout(**_themed_layout(
             height=max(300, min(600, len(row_labels) * 3 + 80)),
             margin=dict(l=60, r=20, t=10, b=80),
             xaxis=dict(tickangle=-45, side="bottom"),
             yaxis=dict(title=dict(text="Row Index", font=dict(size=11, color="#94a3b8")),
                        autorange="reversed"),
-        )
+        ))
 
         return self._to_json(fig)
 

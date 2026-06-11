@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@/lib/auth";
 import { Database, Github } from "lucide-react";
 import UploadCard from "@/components/UploadCard";
 
