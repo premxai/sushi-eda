@@ -14,6 +14,7 @@ interface ColumnCardProps {
   column: ColumnAnalysis;
   preview: Record<string, unknown>[];
   totalRows: number;
+  datasetId?: string | null;
 }
 
 function dtypeBadgeColor(dtype: string): string {
@@ -52,7 +53,7 @@ function BackendChart({ spec }: { spec: any }) {
   );
 }
 
-export function ColumnCard({ column, totalRows }: ColumnCardProps) {
+export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [chartSpec, setChartSpec] = useState<Record<string, any> | null>(null);
@@ -63,15 +64,15 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
   const handleToggle = useCallback(async () => {
     const opening = !isOpen;
     setIsOpen(opening);
-    if (opening && !chartSpec && !chartLoading) {
+    if (opening && !chartSpec && !chartLoading && datasetId) {
       setChartLoading(true);
       try {
         // Primary chart: distribution for numeric, categorical_bar for text
-        const primary = await fetchColumnVisualization(column.name, "auto");
+        const primary = await fetchColumnVisualization(datasetId, column.name, "auto");
         setChartSpec(primary);
         // For numeric columns, also fetch box plot
         if (column.is_numeric) {
-          const box = await fetchColumnVisualization(column.name, "box_plot");
+          const box = await fetchColumnVisualization(datasetId, column.name, "box_plot");
           setBoxSpec(box);
         }
       } catch {
@@ -80,7 +81,7 @@ export function ColumnCard({ column, totalRows }: ColumnCardProps) {
         setChartLoading(false);
       }
     }
-  }, [isOpen, chartSpec, chartLoading, column.name, column.is_numeric]);
+  }, [isOpen, chartSpec, chartLoading, column.name, column.is_numeric, datasetId]);
 
   return (
     <div className="rounded-2xl bg-white transition-shadow hover:shadow-md" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>

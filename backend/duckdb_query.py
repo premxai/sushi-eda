@@ -16,8 +16,17 @@ from typing import Any
 import duckdb
 import polars as pl
 
-# One DuckDB connection per process — thread-safe for reads
-_conn = duckdb.connect()
+
+def _connect_with_df(df: pl.DataFrame) -> duckdb.DuckDBPyConnection:
+    """Fresh connection with the DataFrame registered as table `df`.
+
+    A per-call connection avoids cross-request races on a shared register
+    slot. Registration goes through Arrow, which every DuckDB version
+    supports (registering a Polars frame directly is version-dependent).
+    """
+    conn = duckdb.connect()
+    conn.register("df", df.to_arrow())
+    return conn
 
 
 def run_query(
@@ -57,11 +66,14 @@ def run_query(
         f"LIMIT {max(1, int(limit)) + 1} OFFSET {max(0, int(offset))}"
     )
 
+    conn = _connect_with_df(df)
     try:
-        result = _conn.execute(sql_exec, {"df": df}).fetchall()
-        columns = [desc[0] for desc in _conn.description]
+        result = conn.execute(sql_exec).fetchall()
+        columns = [desc[0] for desc in conn.description]
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
+    finally:
+        conn.close()
 
     truncated = len(result) > limit
     rows = result[:limit]
@@ -89,10 +101,13 @@ def explain_query(df: pl.DataFrame, sql: str) -> dict[str, Any]:
     """
     _validate_sql(sql)
     sql_clean = _normalize_sql(sql)
+    conn = _connect_with_df(df)
     try:
-        rows = _conn.execute(f"EXPLAIN {sql_clean}", {"df": df}).fetchall()
+        rows = conn.execute(f"EXPLAIN {sql_clean}").fetchall()
     except Exception as exc:
         raise RuntimeError(str(exc)) from exc
+    finally:
+        conn.close()
 
     plan = "\n".join(str(r[-1]) for r in rows if r)
     return {"plan": plan}
@@ -101,9 +116,11 @@ def explain_query(df: pl.DataFrame, sql: str) -> dict[str, Any]:
 def get_schema(df: pl.DataFrame) -> list[dict[str, str]]:
     """Return column names and DuckDB-reported types for a DataFrame."""
     try:
-        _conn.register("_schema_probe", df)
-        result = _conn.execute("DESCRIBE _schema_probe").fetchall()
-        _conn.unregister("_schema_probe")
+        conn = _connect_with_df(df)
+        try:
+            result = conn.execute("DESCRIBE df").fetchall()
+        finally:
+            conn.close()
         return [{"column": row[0], "type": row[1]} for row in result]
     except Exception:
         # Fallback: use Polars dtype info

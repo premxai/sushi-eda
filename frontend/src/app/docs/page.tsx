@@ -42,15 +42,20 @@ const SECTIONS = [
     emoji: "🚀",
     content: (
       <>
-        <P>Get from zero to insight in under 60 seconds:</P>
+        <P>Get from a data file to a shareable answer in under a minute:</P>
         <ol style={{ paddingLeft: 20, margin: 0 }}>
-          <Li>Open Sushi and click <strong>Drop a file</strong> or drag a CSV, Excel, Parquet, or JSON file onto the landing page.</Li>
-          <Li>Sushi uploads your file to Cloudflare R2 and queues an analysis job via Celery.</Li>
-          <Li>Watch the progress bar — analysis usually completes in 5–30 seconds depending on file size.</Li>
-          <Li>When ready, you land on the <strong>Overview</strong> tab with quality score, row/column counts, and an AI narrative.</Li>
-          <Li>Use the left sidebar to navigate: Columns, Statistics, SQL Editor, Monitors, Reports, and more.</Li>
+          <Li>Drag any CSV, Excel, Parquet, or JSON export onto the home page — or click <strong>try the sample</strong> to see a finished report instantly.</Li>
+          <Li>Analysis runs automatically, usually in 5–30 seconds.</Li>
+          <Li>You land on <strong>Data Summary</strong>: a quality score with a plain-English verdict, and an AI-written summary of what the data says.</Li>
+          <Li>Ask follow-up questions in <strong>Ask Your Data</strong> — plain English in, answers (with the SQL that produced them) out.</Li>
+          <Li>Share the report with a link, or export it as a PDF from <strong>Reports</strong>.</Li>
         </ol>
-        <P>Or try the demo dataset instantly — no account required on the free tier.</P>
+        <H3>Three common workflows</H3>
+        <ul style={{ paddingLeft: 20, margin: 0 }}>
+          <Li><strong>Survey export</strong> — upload the raw responses, check the quality verdict (how many skipped questions?), then ask &quot;How do answers differ by plan tier?&quot;</Li>
+          <Li><strong>Product usage dump</strong> — upload, open <strong>What Moves Together</strong> to see which behaviors track retention, and pin the AI summary into your next update.</Li>
+          <Li><strong>A/B test result</strong> — upload the per-user results and use <strong>Compare &amp; Validate → A/B test</strong> to check whether the difference is real or noise.</Li>
+        </ul>
       </>
     ),
   },
@@ -60,7 +65,7 @@ const SECTIONS = [
     emoji: "📂",
     content: (
       <>
-        <P>Sushi accepts the following formats (up to 100 MB per file):</P>
+        <P>Sushi accepts the following formats (up to 25 MB per file):</P>
         <ul style={{ paddingLeft: 20, margin: 0 }}>
           <Li><Code>.csv</Code> and <Code>.tsv</Code> — auto-detected delimiter and encoding</Li>
           <Li><Code>.xlsx</Code> / <Code>.xls</Code> — first sheet imported by default</Li>
@@ -68,7 +73,7 @@ const SECTIONS = [
           <Li><Code>.json</Code> — array-of-objects or newline-delimited JSON</Li>
           <Li><Code>.sqlite</Code> / <Code>.db</Code> — all tables extracted as separate datasets</Li>
         </ul>
-        <P>Files are streamed through Polars for fast I/O, then stored in Cloudflare R2. Raw data never leaves the region you deploy to.</P>
+        <P>Files are parsed with Polars for fast I/O and stored privately. Uploads are automatically deleted after 7 days — see <Link href="/privacy" style={{ color: "#9060f8" }}>Privacy</Link>.</P>
       </>
     ),
   },
@@ -103,7 +108,7 @@ const SECTIONS = [
         </ul>
         <H3>Tips</H3>
         <ul style={{ paddingLeft: 20, margin: 0 }}>
-          <Li>The table name is always <Code>data</Code>: <Code>SELECT * FROM data LIMIT 100</Code></Li>
+          <Li>The table name is always <Code>df</Code>: <Code>SELECT * FROM df LIMIT 100</Code></Li>
           <Li>DuckDB supports window functions, CTEs, regex, and JSON extraction</Li>
           <Li>Query history is saved in <Code>localStorage</Code> — use the history button to restore past queries</Li>
           <Li>Use the AI Chat tab to write queries in natural language</Li>
@@ -117,7 +122,6 @@ const SECTIONS = [
     emoji: "✨",
     content: (
       <>
-        <P>All AI features consume credits from your org&apos;s monthly allowance (10 free / month on the free tier).</P>
         <H3>AI Chat (NL → SQL)</H3>
         <P>Type a question like <em>&quot;What are the top 5 customers by revenue?&quot;</em> and Sushi writes and runs the SQL. Toggle between natural language and raw SQL with the mode button.</P>
         <H3>AI Narrative</H3>
@@ -126,43 +130,6 @@ const SECTIONS = [
         <P>Claude analyzes your column stats and suggests specific cleaning operations (fill nulls, normalize, remove duplicates, cast types).</P>
         <H3>Column Explainer</H3>
         <P>Click any column in the Columns tab to get an AI explanation of what it likely represents based on its name, values, and distribution.</P>
-      </>
-    ),
-  },
-  {
-    id: "monitors",
-    title: "Monitors & Alerts",
-    emoji: "🔔",
-    content: (
-      <>
-        <P>Monitors watch a dataset metric over time and alert when a threshold is breached.</P>
-        <H3>Supported metrics</H3>
-        <ul style={{ paddingLeft: 20, margin: 0 }}>
-          <Li><strong>row_count</strong> — alert when row count drops below or exceeds a value</Li>
-          <Li><strong>null_rate</strong> — alert when a column&apos;s null % exceeds a threshold</Li>
-          <Li><strong>quality_score</strong> — alert when overall quality drops</Li>
-          <Li><strong>column_drift</strong> — alert when a numeric column&apos;s mean shifts by more than N%</Li>
-        </ul>
-        <H3>Schedule</H3>
-        <P>Monitors run via Celery beat. Supported intervals: hourly, daily, weekly. You can also trigger a manual run from the Monitors tab.</P>
-      </>
-    ),
-  },
-  {
-    id: "connectors",
-    title: "Data Connectors",
-    emoji: "🔌",
-    content: (
-      <>
-        <P>Connect live data sources instead of uploading static files.</P>
-        <ul style={{ paddingLeft: 20, margin: 0 }}>
-          <Li><strong>PostgreSQL</strong> — connect a database and pick a table or write a query</Li>
-          <Li><strong>REST API</strong> — fetch JSON from any HTTP endpoint with optional auth headers</Li>
-          <Li><strong>S3 / R2</strong> — coming soon</Li>
-          <Li><strong>Google Sheets</strong> — coming soon</Li>
-          <Li><strong>Snowflake / BigQuery</strong> — coming soon</Li>
-        </ul>
-        <P>Credentials are Fernet-encrypted before storage. Use the <Link href="/connectors" style={{ color: "#9060f8" }}>Connectors</Link> page to add a new source.</P>
       </>
     ),
   },
@@ -188,14 +155,13 @@ const SECTIONS = [
     emoji: "🐳",
     content: (
       <>
-        <P>Sushi is fully self-hostable via Docker Compose.</P>
+        <P>Sushi is fully self-hostable via Docker Compose — no external services required.</P>
         <ol style={{ paddingLeft: 20, margin: 0 }}>
-          <Li>Copy <Code>.env.example</Code> to <Code>.env</Code> and fill in all required values.</Li>
-          <Li>Run <Code>docker compose up -d</Code> — starts Redis, Celery worker, FastAPI backend, and Next.js frontend.</Li>
-          <Li>Run database migrations: <Code>docker compose exec backend alembic upgrade head</Code></Li>
+          <Li>Copy <Code>.env.example</Code> to <Code>.env</Code> — every value is optional.</Li>
+          <Li>Run <Code>docker compose up -d</Code> — starts the FastAPI backend and Next.js frontend.</Li>
           <Li>Visit <Code>http://localhost:3000</Code> to access your local Sushi instance.</Li>
         </ol>
-        <P>Required services: PostgreSQL, Redis, Cloudflare R2 (or any S3-compatible storage), Clerk (auth), Anthropic API (AI features), Stripe (billing — optional).</P>
+        <P>Optional services: PostgreSQL (defaults to SQLite), Cloudflare R2 or any S3-compatible storage (defaults to local disk), Anthropic API key (enables AI features).</P>
       </>
     ),
   },
@@ -227,7 +193,6 @@ export default function DocsPage() {
         <span style={{ fontWeight: 700, fontSize: 16, color: "#111010" }}>Documentation</span>
         <nav style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
           <Link href="/changelog" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Changelog</Link>
-          <Link href="/pricing"   style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Pricing</Link>
         </nav>
       </div>
 
@@ -254,10 +219,7 @@ export default function DocsPage() {
             </a>
           ))}
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.07)" }}>
-            <Link href="/integrations" style={{ fontSize: 12.5, color: "#9060f8", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
-              Integrations <ArrowRight size={11} />
-            </Link>
-            <Link href="/changelog" style={{ fontSize: 12.5, color: "#9060f8", textDecoration: "none", display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
+            <Link href="/changelog" style={{ fontSize: 12.5, color: "#9060f8", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
               Changelog <ArrowRight size={11} />
             </Link>
           </div>

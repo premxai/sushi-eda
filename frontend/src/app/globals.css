@@ -44,9 +44,10 @@
     font-feature-settings: "cv02","cv03","cv04","cv11";
   }
 
-  /* Smooth motion */
+  /* Smooth motion — scoped to safe properties (never layout) for snappy, premium feel */
   * {
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+      box-shadow 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
   }
 
   /* Focus visible states for accessibility */
@@ -93,25 +94,78 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground antialiased;
-    background: #f0eee9;
-    font-weight: 300;
+    @apply antialiased;
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 400;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* ── Warm design tokens ───────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   SUSHI DESIGN TOKENS — warm minimal (Claude / Notion)
+   Namespaced (--paper / --ink / --brand / --line) to avoid colliding
+   with shadcn's --border / --muted / --accent HSL tokens above.
+   Every new surface references these; theming lives here alone.
+   ════════════════════════════════════════════════════════════════ */
 :root {
-  --warm-bg:      #f0eee9;
-  --warm-bg2:     #e8e5df;
-  --warm-surface: rgba(255,255,255,0.72);
-  --warm-border:  rgba(0,0,0,0.07);
+  /* Surfaces */
+  --paper:      #FAF9F5;   /* app background — warm paper */
+  --paper-2:    #F2F0EA;   /* inset / recessed areas */
+  --surface:    #FFFFFF;   /* cards */
+  --surface-2:  #FBFAF7;   /* subtle card / hover */
+
+  /* Lines */
+  --line:       rgba(26,25,23,0.08);
+  --line-2:     rgba(26,25,23,0.14);
+
+  /* Ink */
+  --ink:        #1A1917;   /* primary text — warm near-black */
+  --muted-ink:  #6E6A62;   /* secondary text */
+  --faint-ink:  #A6A199;   /* tertiary / labels */
+
+  /* Brand */
+  --brand:        #6D5AE6; /* refined violet */
+  --brand-hover:  #5C49D8;
+  --brand-weak:   rgba(109,90,230,0.10);
+  --brand-weak-2: rgba(109,90,230,0.18);
+
+  /* Status */
+  --success: #2F9E6E;
+  --warning: #C2891C;
+  --danger:  #CF5439;
+
+  /* Radii */
+  --r-sm: 10px;
+  --r:    16px;
+  --r-lg: 22px;
+
+  /* Shadows — soft & low, never harsh */
+  --shadow-sm: 0 1px 2px rgba(26,25,23,0.04), 0 1px 3px rgba(26,25,23,0.05);
+  --shadow:    0 4px 24px rgba(26,25,23,0.06), 0 1px 2px rgba(26,25,23,0.04);
+  --shadow-lg: 0 16px 50px rgba(26,25,23,0.10), 0 2px 6px rgba(26,25,23,0.05);
+
+  /* Legacy aliases — keep older inline-styled components readable */
+  --warm-bg:      var(--paper);
+  --warm-bg2:     var(--paper-2);
+  --warm-surface: var(--surface);
+  --warm-border:  var(--line);
   --warm-border2: rgba(255,255,255,0.8);
-  --warm-text:    #111010;
-  --warm-muted:   #6b6860;
-  --warm-muted2:  #9a9690;
+  --warm-text:    var(--ink);
+  --warm-muted:   var(--muted-ink);
+  --warm-muted2:  var(--faint-ink);
+}
+
+/* ── Reusable label / eyebrow ── */
+.eyebrow {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint-ink);
 }
 .font-mono-label {
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;

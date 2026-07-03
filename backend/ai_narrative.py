@@ -1,15 +1,15 @@
 """
 Claude AI narrative generator.
 
-Takes an EDA report dict and produces a concise, human-readable analysis
-narrative using the Claude API.  Designed to be called once per analysis
-(in the Celery worker) and stored in Analysis.ai_narrative.
+Takes an EDA report dict and produces a plain-English summary for a
+product-manager audience using the Claude API. Called once per analysis
+(analysis_runner.py) and stored in Analysis.ai_narrative.
 
 The prompt is tuned to produce markdown with:
-  - Executive summary (2-3 sentences)
-  - Key findings (bullet points)
-  - Data quality assessment
-  - Top recommendations
+  - What this data is (2-3 sentences, incl. trustworthiness)
+  - Key findings (decision-relevant bullet points)
+  - Watch out for (caveats that could mislead)
+  - Questions worth asking (chat-ready follow-up questions)
 """
 
 from __future__ import annotations
@@ -118,13 +118,13 @@ def _build_prompt(report: dict[str, Any], dataset_name: str) -> str:
 
 ---
 
-Write a markdown narrative with these sections:
-1. **Executive Summary** (2-3 sentences — what is this data about, overall quality)
-2. **Key Findings** (3-5 bullet points — most interesting patterns, distributions, correlations)
-3. **Data Quality Issues** (specific problems to address)
-4. **Recommendations** (actionable next steps for analysis or cleaning)
+Write a markdown narrative with exactly these sections:
+1. **What this data is** (2-3 sentences — what the dataset appears to contain and whether the numbers can be trusted, referencing the quality grade in plain terms)
+2. **Key findings** (3-5 bullet points — the most decision-relevant patterns. Lead each bullet with the takeaway, then the supporting number)
+3. **Watch out for** (specific caveats that could mislead someone reading totals or averages from this data — missing values, duplicates, extreme values. If nothing significant, say the data looks reliable)
+4. **Questions worth asking** (2-3 short natural-language questions a product manager could ask next about this data, phrased so they could be typed into a chat box verbatim)
 
-Be specific, use numbers, and write for a technical audience. Keep it under 400 words."""
+Audience: a sharp product manager with no statistics background. No jargon — never say "skewness", "correlation coefficient", "IQR", or "standard deviation"; say what the pattern means instead (e.g. "a few very large orders pull the average up"). Use concrete numbers. Keep it under 350 words."""
 
     return prompt
 

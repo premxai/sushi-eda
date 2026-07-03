@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ import {
   getApiErrorMessage,
   getSharedReport,
 } from "@/lib/api";
+import { NarrativeMarkdown } from "@/components/dashboard/AISummarySection";
 
 function formatNumber(value: number | undefined) {
   return typeof value === "number" ? value.toLocaleString() : "—";
@@ -27,13 +28,6 @@ function formatQuality(value: number | undefined) {
 
 function formatStat(value: number | undefined) {
   return typeof value === "number" ? value.toFixed(2) : "—";
-}
-
-function parseNarrative(text: string) {
-  return text
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
 }
 
 export default function SharedReportPage() {
@@ -59,11 +53,6 @@ export default function SharedReportPage() {
       })
       .finally(() => setLoading(false));
   }, [token]);
-
-  const narrativeBlocks = useMemo(
-    () => (data?.analysis.ai_narrative ? parseNarrative(data.analysis.ai_narrative) : []),
-    [data?.analysis.ai_narrative],
-  );
 
   if (loading) {
     return (
@@ -162,23 +151,13 @@ export default function SharedReportPage() {
                   Executive Summary
                 </h2>
               </div>
-              {narrativeBlocks.length > 0 ? (
-                <div className="mt-4 space-y-4 text-sm leading-6 text-neutral-700">
-                  {narrativeBlocks.map((block, index) => (
-                    <p key={`${data.token}-narrative-${index}`}>
-                      {block.split(/\*\*(.*?)\*\*/).map((part, partIndex) =>
-                        partIndex % 2 === 1 ? (
-                          <strong key={partIndex}>{part}</strong>
-                        ) : (
-                          part
-                        ),
-                      )}
-                    </p>
-                  ))}
+              {data.analysis.ai_narrative ? (
+                <div className="mt-4">
+                  <NarrativeMarkdown text={data.analysis.ai_narrative} />
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-neutral-600">
-                  No AI narrative was saved for this analysis. The summary metrics
+                  No AI summary was saved for this analysis. The summary metrics
                   and column profile below are still available.
                 </p>
               )}

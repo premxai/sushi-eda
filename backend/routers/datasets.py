@@ -33,6 +33,7 @@ from typing import Any, Optional
 
 import pandas as pd
 from advanced_stats import AdvancedStatistics
+from ai_limits import enforce_ai_limit
 from auth import get_current_user, validate_org_access
 from db import get_db
 from db.models import Analysis, Dataset, User
@@ -367,6 +368,7 @@ async def regenerate_narrative(
     org_id: str = Query(default="default"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai_limit: None = Depends(enforce_ai_limit),
 ):
     """
     Re-generate the AI narrative for the latest analysis (editor+).
@@ -376,24 +378,23 @@ async def regenerate_narrative(
     await validate_org_access(
         org_id, current_user, db, allowed_roles=("admin", "editor")
     )
-    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
 
-    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
-
-    await check_credits(org_id, cost=CREDIT_COSTS["narrative"], db=db)
+    import asyncio
 
     from ai_narrative import generate_narrative
     from sqlalchemy import update as sa_update
 
-    narrative = generate_narrative(analysis.report, dataset_name=str(dataset_id))
+    narrative = await asyncio.to_thread(
+        generate_narrative, analysis.report, dataset.name or str(dataset_id)
+    )
     if narrative is None:
         raise HTTPException(
             status_code=503,
             detail="AI narrative generation unavailable — check ANTHROPIC_API_KEY",
         )
 
-    await consume_credits(org_id, cost=CREDIT_COSTS["narrative"], db=db)
     await db.execute(
         sa_update(Analysis)
         .where(Analysis.id == analysis.id)
@@ -477,6 +478,7 @@ async def ai_chat(
     limit: int = Body(default=500, ge=1, le=5000, embed=True),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai_limit: None = Depends(enforce_ai_limit),
 ):
     """
     Ask a natural-language question about the dataset (viewer+).
@@ -492,18 +494,20 @@ async def ai_chat(
     }
     """
     await validate_org_access(org_id, current_user, db)
-    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
-
-    await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
-    pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
+
+    import asyncio
+
+    pl_df = await asyncio.to_thread(
+        _load_polars_from_r2, dataset.file_key, dataset.file_format
+    )
 
     from ai_chat import ask_dataset
 
-    result = ask_dataset(pl_df, question, chat_history=chat_history, limit=limit)
-    if result.get("error") is None:
-        await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
-    return result
+    # Claude call + DuckDB execution are blocking — keep them off the event loop
+    return await asyncio.to_thread(
+        ask_dataset, pl_df, question, chat_history=chat_history, limit=limit
+    )
 
 
 @router.post("/{dataset_id}/ai/chat/stream")
@@ -515,6 +519,7 @@ async def ai_chat_stream(
     limit: int = Body(default=500, ge=1, le=5000, embed=True),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai_limit: None = Depends(enforce_ai_limit),
 ):
     """
     Streaming SSE version of AI chat (viewer+).
@@ -525,13 +530,8 @@ async def ai_chat_stream(
     from fastapi.responses import StreamingResponse
 
     await validate_org_access(org_id, current_user, db)
-    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
-
-    await check_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
-    # Consume credits upfront for streaming (can't check mid-stream)
-    await consume_credits(org_id, cost=CREDIT_COSTS["chat"], db=db)
 
     from ai_chat import ask_dataset_stream
 
@@ -551,6 +551,7 @@ async def ai_cleaning_suggestions(
     org_id: str = Query(default="default"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _ai_limit: None = Depends(enforce_ai_limit),
 ):
     """
     AI-powered data cleaning suggestions (viewer+).
@@ -563,34 +564,10 @@ async def ai_cleaning_suggestions(
     await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
 
-    from ai_credits import CREDIT_COSTS, check_credits, consume_credits
-
-    await check_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
-
     from ai_cleaning import generate_cleaning_suggestions
 
     suggestions = generate_cleaning_suggestions(analysis.report)
-    if suggestions:
-        await consume_credits(org_id, cost=CREDIT_COSTS["cleaning_suggestions"], db=db)
     return {"dataset_id": dataset_id, "suggestions": suggestions}
-
-
-# ── AI Credits ────────────────────────────────────────────────────────────────
-
-credits_router = APIRouter(prefix="/orgs", tags=["credits"])
-
-
-@credits_router.get("/{org_id}/credits")
-async def get_org_credits(
-    org_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Return AI credit usage for an organisation (any member)."""
-    await validate_org_access(org_id, current_user, db)
-    from ai_credits import get_credit_status
-
-    return await get_credit_status(org_id, db)
 
 
 # ── Visualizations ─────────────────────────────────────────────────────────────

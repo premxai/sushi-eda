@@ -19,10 +19,26 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false # REQUIRED in production, e.g. https://your-frontend.vercel.app
       - key: CLERK_SECRET_KEY
-        sync: false # enables authentication (strongly recommended for public deploys)
+        sync: false # enables authentication (Phase 4 — leave unset until then)
       - key: DATABASE_URL
-        sync: false # Postgres; omit to use the SQLite fallback
+        sync: false # Neon/Supabase Postgres; omit to use the SQLite fallback (ephemeral on Render!)
       - key: REDIS_URL
-        sync: false # enables job cache/queue; omit for in-memory fallbacks
+        sync: false # optional; in-memory fallbacks are fine while running a single instance
       - key: ANTHROPIC_API_KEY
         sync: false # enables AI narrative/chat features
+      - key: R2_ACCOUNT_ID
+        sync: false # Cloudflare R2 file storage; omit to store on local disk (ephemeral on Render!)
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: AI_DAILY_LIMIT_PER_IP
+        sync: false # default 20 AI calls/day/IP
+      - key: AI_DAILY_BUDGET_CALLS
+        sync: false # default 500 AI calls/day globally (cost kill-switch)
+      - key: RETENTION_DAYS
+        sync: false # default 7; uploads + reports auto-delete after this many days
+      - key: SENTRY_DSN
+        sync: false # optional error tracking

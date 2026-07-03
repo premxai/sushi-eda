@@ -41,17 +41,16 @@ if DATABASE_URL.startswith("sqlite+aiosqlite:///"):
         except OSError:
             pass
 
-# NullPool is recommended for serverless / short-lived processes.
+# NullPool everywhere: async connections are event-loop-bound, and background
+# tasks / tests may run on a different loop than the request handlers. Fresh
+# connections per checkout avoid cross-loop reuse bugs; the cost is negligible
+# for SQLite and Postgres alike (Postgres deployments should use a pooler URL).
 if DATABASE_URL:
-    engine_kwargs = {
-        "echo": False,
-        "future": True,
-    }
-    if not DATABASE_URL.startswith("sqlite+"):
-        engine_kwargs["poolclass"] = NullPool
     engine = create_async_engine(
         DATABASE_URL,
-        **engine_kwargs,
+        echo=False,
+        future=True,
+        poolclass=NullPool,
     )
     AsyncSessionLocal = async_sessionmaker(
         bind=engine,

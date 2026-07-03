@@ -1,18 +1,11 @@
 from .connection import AsyncSessionLocal, engine, get_db
 from .models import (
     Analysis,
-    AuditLog,
     Base,
-    DataConnector,
     Dataset,
-    DatasetComment,
-    Monitor,
-    MonitorRun,
+    Feedback,
     Organization,
     OrgMember,
-    PipelineRecipe,
-    PipelineRecipeVersion,
-    PipelineRun,
     User,
 )
 
@@ -26,12 +19,5 @@ __all__ = [
     "OrgMember",
     "Dataset",
     "Analysis",
-    "Monitor",
-    "MonitorRun",
-    "DataConnector",
-    "DatasetComment",
-    "PipelineRecipe",
-    "PipelineRecipeVersion",
-    "PipelineRun",
-    "AuditLog",
+    "Feedback",
 ]

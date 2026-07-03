@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, KeyboardEvent } from "react";
 import { Send, Bot, User, Code2, Table, Loader2, Sparkles } from "lucide-react";
 import { askDataset, ChatMessage, ChatResult } from "@/lib/api";
-import UpgradeModal from "@/components/UpgradeModal";
+import { EDAReport } from "@/lib/types";
 
 interface AIChatPanelProps {
   datasetId: string;
   orgId?: string;
+  /** Used to build schema-aware suggested starter questions. */
+  report?: EDAReport | null;
 }
 
 interface Turn {
@@ -18,28 +20,49 @@ interface Turn {
   error?: string | null;
 }
 
-const SUGGESTED_QUESTIONS = [
+const GENERIC_QUESTIONS = [
   "What are the top 5 values by count?",
   "Show me the average and max of each numeric column",
-  "Which rows have the most missing values?",
-  "Find the correlation between numeric columns",
+  "How many rows have missing values?",
 ];
+
+/** Build starter questions from the dataset's actual columns. */
+function buildSuggestedQuestions(report?: EDAReport | null): string[] {
+  if (!report?.column_analysis?.length) return GENERIC_QUESTIONS;
+  const numeric = report.column_analysis.filter((c) => c.is_numeric);
+  const categorical = report.column_analysis.filter(
+    (c) => !c.is_numeric && c.unique_count > 1 && c.unique_count <= 50,
+  );
+  const questions: string[] = [];
+  if (categorical[0] && numeric[0]) {
+    questions.push(`Which ${categorical[0].name} has the highest average ${numeric[0].name}?`);
+    questions.push(`What is the total ${numeric[0].name} by ${categorical[0].name}?`);
+  } else if (numeric[0]) {
+    questions.push(`What are the highest and lowest values of ${numeric[0].name}?`);
+  }
+  if (categorical[1]) {
+    questions.push(`How many rows are there for each ${categorical[1].name}?`);
+  } else if (categorical[0] && questions.length < 2) {
+    questions.push(`How many rows are there for each ${categorical[0].name}?`);
+  }
+  if (numeric[1]) {
+    questions.push(`Is there a relationship between ${numeric[0].name} and ${numeric[1].name}?`);
+  }
+  return questions.length >= 2 ? questions.slice(0, 4) : GENERIC_QUESTIONS;
+}
 
 export default function AIChatPanel({
   datasetId,
   orgId = "default",
+  report,
 }: AIChatPanelProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSQL, setShowSQL] = useState<Record<number, boolean>>({});
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [creditsUsed, setCreditsUsed] = useState<number | undefined>(undefined);
-  const [creditsLimit, setCreditsLimit] = useState<number | undefined>(
-    undefined,
-  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const suggestedQuestions = useMemo(() => buildSuggestedQuestions(report), [report]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,12 +102,6 @@ export default function AIChatPanel({
       const detail = err?.response?.data?.detail;
       let message = detail?.message || detail || "Unknown error";
       if (typeof message !== "string") message = "Unknown error";
-
-      if (detail?.error === "ai_credits_exhausted") {
-        setCreditsUsed(Number(detail.credits_used));
-        setCreditsLimit(Number(detail.credits_limit));
-        setUpgradeOpen(true);
-      }
 
       setTurns((prev) => [
         ...prev,
@@ -132,7 +149,7 @@ export default function AIChatPanel({
               Ask any question about your dataset in plain English.
             </p>
             <div className="grid grid-cols-1 gap-2">
-              {SUGGESTED_QUESTIONS.map((q) => (
+              {suggestedQuestions.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
@@ -289,12 +306,6 @@ export default function AIChatPanel({
         </p>
       </div>
 
-      <UpgradeModal
-        open={upgradeOpen}
-        onClose={() => setUpgradeOpen(false)}
-        creditsUsed={creditsUsed}
-        creditsLimit={creditsLimit}
-      />
     </div>
   );
 }

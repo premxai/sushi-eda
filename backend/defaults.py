@@ -9,6 +9,9 @@ to translate the literal string "default" into the actual DB UUID.
 DEFAULT_ORG_ID: str | None = None
 DEFAULT_USER_ID: str | None = None
 
+# Pre-analyzed example dataset seeded at startup (instant "try an example")
+EXAMPLE_DATASET_ID: str | None = None
+
 
 def resolve_org_id(org_id: str) -> str:
     """Translate 'default' → actual default-org UUID; pass others through."""

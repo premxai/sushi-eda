@@ -1,32 +1,17 @@
 version: '3.8'
 
-# ── Networks ───────────────────────────────────────────────────────────────────
+# Single-process stack: FastAPI backend (analysis runs via BackgroundTasks)
+# + Next.js frontend. Postgres/R2/Redis/Clerk/Anthropic are all optional —
+# with a blank .env the stack runs in open demo mode (SQLite + local storage).
+
 networks:
   internal:
     driver: bridge
 
-# ── Volumes ────────────────────────────────────────────────────────────────────
 volumes:
-  redis_data:
-  backend_logs:
+  backend_data:
 
-# ── Services ───────────────────────────────────────────────────────────────────
 services:
-
-  # ── Redis (Celery broker + job-status cache + share tokens) ─────────────────
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
 
   # ── FastAPI backend ──────────────────────────────────────────────────────────
   backend:
@@ -38,15 +23,9 @@ services:
     env_file:
       - .env
     environment:
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
       PYTHONUNBUFFERED: "1"
     volumes:
-      - backend_logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
+      - backend_data:/tmp/sushi   # SQLite db + local file storage + logs
     networks:
       - internal
     healthcheck:
@@ -55,52 +34,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-    restart: unless-stopped
-
-  # ── Celery worker ────────────────────────────────────────────────────────────
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A worker worker --loglevel=info --concurrency=2
-    env_file:
-      - .env
-    environment:
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-      PYTHONUNBUFFERED: "1"
-    volumes:
-      - backend_logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-
-  # ── Celery beat (scheduler for monitor checks) ───────────────────────────────
-  beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A worker beat --loglevel=info --schedule=/tmp/celerybeat-schedule
-    env_file:
-      - .env
-    environment:
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-      PYTHONUNBUFFERED: "1"
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
     restart: unless-stopped
 
   # ── Next.js frontend ─────────────────────────────────────────────────────────

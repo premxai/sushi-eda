@@ -9,17 +9,16 @@ const CLERK_ENABLED = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 // Routes that are publicly accessible without auth
 const isPublicRoute = createRouteMatcher([
   "/", // landing page
-  "/sign-in(.*)",
-  "/sign-up(.*)",
   // /api/* is rewritten to the backend, which enforces its own JWT auth and
   // serves public endpoints (health, shared reports). Blocking it here would
   // 404 those before the rewrite runs.
   "/api(.*)",
   "/share/(.*)", // public shareable report links
-  "/pricing",
   "/docs(.*)",
   "/changelog(.*)",
-  "/catalog(.*)",
+  "/compare(.*)",
+  "/privacy(.*)",
+  "/examples(.*)",
 ]);
 
 export default CLERK_ENABLED

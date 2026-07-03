@@ -233,7 +233,6 @@ export default function ChangelogPage() {
         <span style={{ fontWeight: 700, fontSize: 16, color: "#111010" }}>Changelog</span>
         <nav style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
           <Link href="/docs"    style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Docs</Link>
-          <Link href="/pricing" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Pricing</Link>
         </nav>
       </div>
 

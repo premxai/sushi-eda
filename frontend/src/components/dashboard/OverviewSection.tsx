@@ -22,6 +22,22 @@ interface OverviewSectionProps {
   qualityScore?: QualityScore;
 }
 
+/** One-line plain-English verdict for the quality grade. */
+function gradeVerdict(grade: string): string {
+  switch (grade) {
+    case "A":
+      return "This data looks clean and trustworthy — you can present numbers from it with confidence.";
+    case "B":
+      return "Broadly trustworthy — skim the notes below before presenting exact totals.";
+    case "C":
+      return "Usable with care — several issues below could shift totals and averages.";
+    case "D":
+      return "Treat conclusions from this data as rough estimates until the issues below are fixed.";
+    default:
+      return "This data has serious quality problems — clean it up before trusting any numbers from it.";
+  }
+}
+
 interface StatCardData {
   label: string;
   value: string;
@@ -134,16 +150,20 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
                   Grade {qualityScore.grade}
                 </span>
               </div>
+              <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", marginTop: 10, maxWidth: 480, lineHeight: 1.5 }}>
+                {gradeVerdict(qualityScore.grade)}
+              </p>
             </div>
           </div>
 
           {/* Breakdown pills */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginTop: 20 }}>
             {Object.entries(qualityScore.breakdown).map(([key, val]) => (
-              <div key={key} style={{
+              <div key={key} title={val.details} style={{
                 borderRadius: 10, padding: "10px 12px",
                 background: "rgba(255,255,255,0.07)",
                 border: "1px solid rgba(255,255,255,0.1)",
+                cursor: "help",
               }}>
                 <p style={{ fontSize: 9, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>
                   {key.replace(/_/g, " ")}

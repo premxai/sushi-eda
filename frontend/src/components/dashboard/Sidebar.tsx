@@ -12,22 +12,22 @@ import {
   Database,
   FileSpreadsheet,
   FileText,
-  FlaskConical,
   GitCompareArrows,
   Home,
   Lightbulb,
+  MessageCircleQuestion,
   Plus,
+  ShieldCheck,
   Sigma,
-  Sparkles,
   Table2,
   TerminalSquare,
   AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
-import CreditsUsageBar from "@/components/CreditsUsageBar";
 
 export type NavSection =
   | "overview"
+  | "ask"
   | "columns"
   | "statistics"
   | "correlations"
@@ -35,11 +35,7 @@ export type NavSection =
   | "insights"
   | "visualizations"
   | "report"
-  | "cleaning"
-  | "transforms"
   | "sql"
-  | "monitors"
-  | "comments"
   | "data";
 
 interface NavItem {
@@ -51,6 +47,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "overview", label: "Data Summary", icon: BarChart3, group: "Guided" },
+  { id: "ask", label: "Ask Your Data", icon: MessageCircleQuestion, group: "Guided" },
   { id: "columns", label: "Field Health", icon: Columns3, group: "Guided" },
   { id: "statistics", label: "Compare & Validate", icon: Sigma, group: "Guided" },
   { id: "correlations", label: "What Moves Together", icon: GitCompareArrows, group: "Guided" },
@@ -58,8 +55,6 @@ const navItems: NavItem[] = [
   { id: "report", label: "Reports", icon: FileText, group: "Guided" },
   { id: "visualizations", label: "Charts & Trends", icon: ChartNoAxesCombined, group: "Advanced" },
   { id: "insights", label: "AI Notes", icon: Lightbulb, group: "Advanced" },
-  { id: "cleaning", label: "Clean & Improve", icon: Sparkles, group: "Advanced" },
-  { id: "transforms", label: "Derived Fields", icon: FlaskConical, group: "Advanced" },
   { id: "sql", label: "Advanced Queries", icon: TerminalSquare, group: "Advanced" },
   { id: "data", label: "Raw Table", icon: Table2, group: "Advanced" },
 ];
@@ -67,6 +62,7 @@ const navItems: NavItem[] = [
 const launchFooterLinks = [
   { href: "/datasets", label: "My Datasets", icon: Database },
   { href: "/docs", label: "Docs", icon: BookOpen },
+  { href: "/privacy", label: "Privacy", icon: ShieldCheck },
 ] as const;
 
 interface SidebarProps {
@@ -88,7 +84,6 @@ export function Sidebar({
   onNewFile,
   onNewFileRequest,
   datasetId,
-  orgId = "default",
   onArchive,
 }: SidebarProps) {
   const [showAdvanced, setShowAdvanced] = React.useState(false);
@@ -342,8 +337,6 @@ export function Sidebar({
       </nav>
 
       <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: 12 }}>
-        <CreditsUsageBar orgId={orgId} className="mb-2" />
-
         {launchFooterLinks.map((item) => (
           <Link
             key={item.href}

@@ -17,6 +17,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        display: ["var(--font-instrument-serif)", "Georgia", "Cambria", "Times New Roman", "serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "Cascadia Code", "Menlo", "monospace"],
       },
       fontSize: {
         xs: ['12px', { lineHeight: '1.5', fontWeight: '400' }],
@@ -71,11 +73,37 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        /* ── Sushi warm-minimal semantic tokens ── */
+        paper: "var(--paper)",
+        "paper-2": "var(--paper-2)",
+        surface: "var(--surface)",
+        "surface-2": "var(--surface-2)",
+        line: "var(--line)",
+        "line-2": "var(--line-2)",
+        ink: "var(--ink)",
+        "muted-ink": "var(--muted-ink)",
+        "faint-ink": "var(--faint-ink)",
+        brand: {
+          DEFAULT: "var(--brand)",
+          hover: "var(--brand-hover)",
+          weak: "var(--brand-weak)",
+        },
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
+      },
+      boxShadow: {
+        "soft-sm": "var(--shadow-sm)",
+        soft: "var(--shadow)",
+        "soft-lg": "var(--shadow-lg)",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--r)",
+        "card-lg": "var(--r-lg)",
+        pill: "999px",
       },
       keyframes: {
         "accordion-down": {

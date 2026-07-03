@@ -29,7 +29,9 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
   if (outliers.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-12">
-        <p className="text-sm text-slate-500">No numeric columns to analyze for outliers.</p>
+        <p className="text-sm text-slate-500">
+          This view looks for unusually large or small numbers — this dataset has no numeric fields to check.
+        </p>
       </div>
     );
   }
@@ -40,29 +42,37 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-slate-500 leading-5">
+        Unusual values are numbers far outside the typical range for their field — a $90,000
+        order among $50 orders, or an age of 200. They can be data-entry mistakes or real but
+        rare events, and either way they can quietly distort averages and totals.
+      </p>
+
       {/* Summary strip */}
       <div className="flex gap-4">
         <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-          <p className="text-xs font-medium text-slate-500">Total Outliers</p>
+          <p className="text-xs font-medium text-slate-500">Unusual Values Found</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{totalOutliers.toLocaleString()}</p>
         </div>
         <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-          <p className="text-xs font-medium text-slate-500">Columns Affected</p>
+          <p className="text-xs font-medium text-slate-500">Fields Affected</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">
             {colsWithOutliers} <span className="text-sm font-normal text-slate-400">/ {sorted.length}</span>
           </p>
         </div>
         <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-          <p className="text-xs font-medium text-slate-500">Detection Method</p>
-          <p className="mt-1 text-sm font-medium text-slate-900">IQR (1.5x)</p>
-          <p className="text-[11px] text-slate-400">Interquartile Range</p>
+          <p className="text-xs font-medium text-slate-500">How they&apos;re found</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">Far outside the typical range</p>
+          <p className="text-[11px] text-slate-400">Statistical rule (IQR × 1.5)</p>
         </div>
       </div>
 
       {/* Box plot visualization */}
       <div className="rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-        <h3 className="text-sm font-medium text-slate-900">Outlier Distribution</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Box plots for columns with detected outliers (red dots)</p>
+        <h3 className="text-sm font-medium text-slate-900">Where the unusual values sit</h3>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Each box shows a field&apos;s typical range; red dots are the values that fall far outside it
+        </p>
         <div className="mt-2">
           <BoxPlot outliers={outliers} preview={preview} />
         </div>
@@ -83,7 +93,9 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
                 <div>
                   <p className="font-mono text-sm font-medium text-slate-900">{o.column}</p>
                   <p className="text-xs text-slate-500">
-                    {o.outlier_count.toLocaleString()} outlier{o.outlier_count !== 1 ? "s" : ""} detected
+                    {o.outlier_count === 0
+                      ? "all values look typical"
+                      : `${o.outlier_count.toLocaleString()} value${o.outlier_count !== 1 ? "s" : ""} far outside the typical range`}
                   </p>
                 </div>
               </div>
@@ -99,22 +111,18 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
             </div>
 
             {o.outlier_count > 0 && (
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-md bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] text-slate-400">Lower Bound</p>
+                  <p className="text-[11px] text-slate-400">Typical range</p>
+                  <p className="mt-0.5 font-mono text-sm text-slate-900 tabular-nums">{o.q1} – {o.q3}</p>
+                </div>
+                <div className="rounded-md bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] text-slate-400">Flagged below</p>
                   <p className="mt-0.5 font-mono text-sm text-slate-900 tabular-nums">{o.lower_bound}</p>
                 </div>
                 <div className="rounded-md bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] text-slate-400">Upper Bound</p>
+                  <p className="text-[11px] text-slate-400">Flagged above</p>
                   <p className="mt-0.5 font-mono text-sm text-slate-900 tabular-nums">{o.upper_bound}</p>
-                </div>
-                <div className="rounded-md bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] text-slate-400">Q1 / Q3</p>
-                  <p className="mt-0.5 font-mono text-sm text-slate-900 tabular-nums">{o.q1} / {o.q3}</p>
-                </div>
-                <div className="rounded-md bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] text-slate-400">IQR</p>
-                  <p className="mt-0.5 font-mono text-sm text-slate-900 tabular-nums">{o.iqr}</p>
                 </div>
               </div>
             )}
@@ -142,7 +150,7 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
                 </div>
                 <div className="mt-1 flex justify-between text-[10px] text-slate-400 tabular-nums">
                   <span>{o.lower_bound}</span>
-                  <span className="text-indigo-500">IQR</span>
+                  <span className="text-indigo-500">typical range</span>
                   <span>{o.upper_bound}</span>
                 </div>
               </div>
