@@ -19,6 +19,8 @@ const isPublicRoute = createRouteMatcher([
   "/compare(.*)",
   "/privacy(.*)",
   "/examples(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
 ]);
 
 export default CLERK_ENABLED
