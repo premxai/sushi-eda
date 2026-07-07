@@ -122,10 +122,29 @@ class AdvancedStatistics:
             "n2": int(len(data2)),
         }
 
+    _MAX_CHI_SQUARE_CATEGORIES = 50
+
     def chi_square_test(self, col1: str, col2: str) -> Dict[str, Any]:
         """Perform chi-square test of independence between two categorical columns."""
         if col1 not in self.df.columns or col2 not in self.df.columns:
             return {"error": "Column not found"}
+
+        # A contingency table is built before any cardinality is known, so an
+        # unbounded pair of high-cardinality columns (e.g. two ID-like fields)
+        # can produce a table with millions of cells — this previously took
+        # 45s+ and returned a 150MB+ response on a single-process server,
+        # freezing it for every other concurrent user. Checked before building
+        # the table since nunique() is cheap relative to crosstab + chi2.
+        n1 = self.df[col1].nunique(dropna=True)
+        n2 = self.df[col2].nunique(dropna=True)
+        if n1 > self._MAX_CHI_SQUARE_CATEGORIES or n2 > self._MAX_CHI_SQUARE_CATEGORIES:
+            return {
+                "error": (
+                    f"Too many categories for a chi-square test (col1 has {n1}, "
+                    f"col2 has {n2}; max {self._MAX_CHI_SQUARE_CATEGORIES} each). "
+                    "Try columns with fewer distinct values."
+                )
+            }
 
         contingency = pd.crosstab(self.df[col1], self.df[col2])
         if contingency.size < 4:
@@ -353,7 +372,7 @@ class AdvancedStatistics:
             "column": column,
             "statistic": float(statistic),
             "p_value": float(p_value),
-            "is_normal": p_value > 0.05,
+            "is_normal": bool(p_value > 0.05),
             "n_samples": int(len(data)),
         }
 
@@ -485,6 +504,8 @@ class AdvancedStatistics:
             "forecast": forecast_rows,
         }
 
+    _MAX_COHORT_PERIODS = 400
+
     def cohort_analysis(self, entity_col: str, date_col: str, freq: str = "M") -> Dict[str, Any]:
         """Calculate cohort retention matrix by entity first-seen period."""
         if entity_col not in self.df.columns or date_col not in self.df.columns:
@@ -500,6 +521,21 @@ class AdvancedStatistics:
             return {"error": "No valid cohort data after date parsing"}
 
         cohort_df["activity_period"] = cohort_df[date_col].dt.to_period(freq)
+        # The retention matrix is at most (distinct periods) x (distinct periods)
+        # in each dimension, and building it involves a slow per-row Period
+        # subtraction below. An unbounded date range at daily/weekly granularity
+        # (e.g. a 15-year daily log) previously took 90s+ and multiple hundred MB
+        # of RAM, hanging the single-process server for every other user.
+        # Checked here, before that expensive work, using a cheap vectorized count.
+        n_periods = cohort_df["activity_period"].nunique()
+        if n_periods > self._MAX_COHORT_PERIODS:
+            return {
+                "error": (
+                    f"Date range has {n_periods} distinct {freq} periods, which is "
+                    f"too many for a cohort matrix (max {self._MAX_COHORT_PERIODS}). "
+                    "Try a coarser frequency (e.g. Month or Quarter) or a narrower date range."
+                )
+            }
         cohort_df["cohort_period"] = cohort_df.groupby(entity_col)["activity_period"].transform("min")
         cohort_df["period_index"] = (cohort_df["activity_period"] - cohort_df["cohort_period"]).apply(lambda p: p.n)
         cohort_df = cohort_df[cohort_df["period_index"] >= 0]

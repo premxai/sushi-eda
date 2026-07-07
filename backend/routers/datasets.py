@@ -33,6 +33,7 @@ from typing import Any, Optional
 
 import pandas as pd
 from advanced_stats import AdvancedStatistics
+from analysis_runner import sanitize_json
 from ai_limits import enforce_ai_limit
 from auth import get_current_user, validate_org_access
 from db import get_db
@@ -770,7 +771,7 @@ async def advanced_stats(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).generate_all_tests()
+    return sanitize_json(AdvancedStatistics(df).generate_all_tests())
 
 
 @router.post("/{dataset_id}/stats/regression")
@@ -786,7 +787,7 @@ async def regression(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).linear_regression(x_col, y_col)
+    return sanitize_json(AdvancedStatistics(df).linear_regression(x_col, y_col))
 
 
 @router.post("/{dataset_id}/stats/regression/logistic")
@@ -803,9 +804,9 @@ async def logistic_regression(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).logistic_regression(
+    return sanitize_json(AdvancedStatistics(df).logistic_regression(
         x_col, y_col, positive_class=positive_class
-    )
+    ))
 
 
 @router.post("/{dataset_id}/stats/regression/polynomial")
@@ -822,7 +823,7 @@ async def polynomial_regression(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree)
+    return sanitize_json(AdvancedStatistics(df).polynomial_regression(x_col, y_col, degree=degree))
 
 
 @router.post("/{dataset_id}/stats/ttest")
@@ -838,7 +839,7 @@ async def ttest(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).t_test_independent(col1, col2)
+    return sanitize_json(AdvancedStatistics(df).t_test_independent(col1, col2))
 
 
 @router.post("/{dataset_id}/stats/mann_whitney")
@@ -855,7 +856,7 @@ async def mann_whitney(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative)
+    return sanitize_json(AdvancedStatistics(df).mann_whitney_u(col1, col2, alternative=alternative))
 
 
 @router.post("/{dataset_id}/stats/chi_square")
@@ -871,7 +872,7 @@ async def chi_square(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).chi_square_test(col1, col2)
+    return sanitize_json(AdvancedStatistics(df).chi_square_test(col1, col2))
 
 
 @router.post("/{dataset_id}/stats/anova")
@@ -887,7 +888,7 @@ async def anova(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).anova_one_way(numeric_col, group_col)
+    return sanitize_json(AdvancedStatistics(df).anova_one_way(numeric_col, group_col))
 
 
 @router.post("/{dataset_id}/stats/correlation")
@@ -924,15 +925,15 @@ async def correlation_test(
         "kendall": scipy_stats.kendalltau,
     }[method]
     stat, p = fn(data[col1], data[col2])
-    return {
+    return sanitize_json({
         "test": f"{method.title()} correlation",
         "column1": col1,
         "column2": col2,
         "coefficient": float(stat),
         "p_value": float(p),
-        "significant": p < 0.05,
+        "significant": bool(p < 0.05),
         "n": int(len(data)),
-    }
+    })
 
 
 # ── DuckDB SQL Query ───────────────────────────────────────────────────────────
@@ -953,12 +954,12 @@ async def time_series_decompose(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).time_series_decomposition(
+    return sanitize_json(AdvancedStatistics(df).time_series_decomposition(
         date_col=date_col,
         value_col=value_col,
         period=period,
         model=model,
-    )
+    ))
 
 
 @router.post("/{dataset_id}/stats/time_series/arima")
@@ -979,7 +980,7 @@ async def time_series_arima(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).arima_forecast(
+    return sanitize_json(AdvancedStatistics(df).arima_forecast(
         date_col=date_col,
         value_col=value_col,
         periods=periods,
@@ -987,7 +988,7 @@ async def time_series_arima(
         d=d,
         q=q,
         alpha=alpha,
-    )
+    ))
 
 
 @router.post("/{dataset_id}/stats/cohort")
@@ -1004,9 +1005,9 @@ async def cohort_analysis(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    return AdvancedStatistics(df).cohort_analysis(
+    return sanitize_json(AdvancedStatistics(df).cohort_analysis(
         entity_col=entity_col, date_col=date_col, freq=freq
-    )
+    ))
 
 
 @router.post("/{dataset_id}/stats/ab_test")
@@ -1024,13 +1025,13 @@ async def ab_test_significance(
     """A/B test significance calculator using two-proportion z-test (viewer+)."""
     await validate_org_access(org_id, current_user, db)
     await _get_dataset_or_404(dataset_id, org_id, db, current_user)
-    return AdvancedStatistics(pd.DataFrame()).ab_test_significance(
+    return sanitize_json(AdvancedStatistics(pd.DataFrame()).ab_test_significance(
         control_conversions=control_conversions,
         control_total=control_total,
         variant_conversions=variant_conversions,
         variant_total=variant_total,
         alpha=alpha,
-    )
+    ))
 
 
 @router.get("/{dataset_id}/query/schema")
