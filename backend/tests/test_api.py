@@ -787,18 +787,20 @@ def test_retention_sweep_exempts_example_dataset(client):
     assert example_id is not None, "example dataset never became ready"
     assert defaults.EXAMPLE_DATASET_ID == example_id
 
-    async def _age_everything() -> None:
+    async def _age_example_only() -> None:
+        import uuid
+
         from sqlalchemy import update
 
         async with AsyncSessionLocal() as db:
             await db.execute(
-                update(Dataset).values(
-                    created_at=datetime.now(timezone.utc) - timedelta(days=30)
-                )
+                update(Dataset)
+                .where(Dataset.id == uuid.UUID(example_id))
+                .values(created_at=datetime.now(timezone.utc) - timedelta(days=30))
             )
             await db.commit()
 
-    asyncio.run(_age_everything())
+    asyncio.run(_age_example_only())
     asyncio.run(sweep_expired_datasets(retention_days=7))
 
     # The example dataset's row must still exist and still be fetchable
@@ -823,3 +825,80 @@ def test_compare_endpoint_still_works_after_threading_fix(client, sample_csv_pat
     body = response.json()
     assert body["file1"]["report"]["basic_info"]["rows"] > 0
     assert body["file2"]["report"]["basic_info"]["rows"] > 0
+
+
+# ── Export ────────────────────────────────────────────────────────────────────
+
+
+def test_export_filename_neutralizes_content_disposition_injection(client, viz_dataset_id):
+    """Regression test: dataset.name is a free-text rename field with no
+    character restrictions and was interpolated into the Content-Disposition
+    header raw. A name containing a quote let an attacker inject a second
+    filename= parameter (confirmed live: renaming to
+    'evil"; filename=hacked.exe' produced a header with both, which could
+    spoof the downloaded file's apparent name/extension), and a name
+    containing a literal CR/LF crashed the connection outright since the
+    ASGI server correctly refuses to write control characters into a
+    response header."""
+    try:
+        r = client.patch(f"/datasets/{viz_dataset_id}/rename", json={"name": 'evil"; filename=hacked.exe'})
+        assert r.status_code == 200, r.text
+
+        r = client.get(f"/datasets/{viz_dataset_id}/export/excel")
+        assert r.status_code == 200, r.text
+        disposition = r.headers["content-disposition"]
+        assert disposition.count("filename=") == 1, disposition
+
+        r = client.patch(f"/datasets/{viz_dataset_id}/rename", json={"name": "evil\r\nX-Injected: pwned"})
+        assert r.status_code == 200, r.text
+
+        r = client.get(f"/datasets/{viz_dataset_id}/export/markdown")
+        assert r.status_code == 200, r.text
+        assert "x-injected" not in {k.lower() for k in r.headers.keys()}
+    finally:
+        client.patch(f"/datasets/{viz_dataset_id}/rename", json={"name": "sample_sales.csv"})
+
+
+def test_excel_export_neutralizes_formula_injection():
+    """Regression test: pandas/openpyxl writes a leading '=' string cell as
+    an actual <f> formula node, not literal text — confirmed live that a
+    cell value of '=1+1' round-tripped through /export/excel became a live
+    Excel formula. A malicious uploaded value (e.g. a DDE command-execution
+    or data-exfiltration payload) must not become an executable formula
+    just because someone opens the export (CWE-1236, 'CSV injection').
+
+    Pure unit test against DataExporter directly (no HTTP/upload) so it
+    doesn't compete with the module's shared 10/minute upload rate limit."""
+    import io
+    import zipfile
+
+    import pandas as pd
+
+    from export_utils import DataExporter
+
+    df = pd.DataFrame(
+        {
+            "name": ["Alice", "Bob", "Carl"],
+            "formula": ["=1+1", "+cmd|calc", "@SUM(A1:A2)"],
+        }
+    )
+    excel_bytes = DataExporter(df, {}).to_excel()
+
+    z = zipfile.ZipFile(io.BytesIO(excel_bytes))
+    sheet_xml = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    assert "<f>" not in sheet_xml, "a cell was written as a live formula, not literal text"
+    assert "'=1+1" in sheet_xml
+    assert "'+cmd|calc" in sheet_xml
+    assert "'@SUM(A1:A2)" in sheet_xml
+
+
+def test_export_excel_still_works_after_threading_fix(client, viz_dataset_id):
+    """Sanity check that offloading DataExporter.to_excel onto
+    asyncio.to_thread (previously called synchronously inside the async
+    handler — measured at 5+ seconds for a 100k-row export, blocking the
+    whole single-process server for that window) didn't change the
+    endpoint's actual behavior."""
+    r = client.get(f"/datasets/{viz_dataset_id}/export/excel")
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert len(r.content) > 0

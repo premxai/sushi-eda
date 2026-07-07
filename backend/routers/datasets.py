@@ -28,6 +28,7 @@ Routes:
 """
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Optional
@@ -61,6 +62,27 @@ class RenameDatasetBody(BaseModel):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+_UNSAFE_FILENAME_CHARS = re.compile(r'[^A-Za-z0-9._ -]')
+
+
+def _safe_export_filename(name: str, suffix: str) -> str:
+    """Sanitize a user-controlled dataset name for use in a
+    Content-Disposition header.
+
+    dataset.name is renamed via a free-text field with no character
+    restrictions and was previously interpolated into the header raw: a
+    name containing a quote let an attacker inject a second filename=
+    parameter (spoofing the downloaded file's apparent name/extension —
+    e.g. renaming to 'evil"; filename=hacked.exe' produced a header with
+    both), and a name containing a literal CR/LF crashed the connection
+    outright, since the ASGI server correctly refuses to write control
+    characters into a response header. Stripping to a conservative
+    allowlist and quoting the result (now safe since quotes can't survive
+    the allowlist) closes both.
+    """
+    cleaned = _UNSAFE_FILENAME_CHARS.sub("_", name).strip() or "export"
+    return f"{cleaned[:100]}{suffix}"
 
 
 def _dataset_dict(d: "Dataset") -> dict:  # type: ignore[name-defined]
@@ -1111,11 +1133,17 @@ async def export_excel(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
-    excel_data = DataExporter(df, analysis.report).to_excel()
+    # openpyxl writes cell-by-cell and is measured at 5+ seconds for a
+    # 100k-row export well within the 25MB upload cap — synchronously
+    # blocking the whole single-process server for that whole window, the
+    # same pattern already fixed for /compare and the SQL/stats endpoints.
+    excel_data = await asyncio.to_thread(lambda: DataExporter(df, analysis.report).to_excel())
     return Response(
         content=excel_data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={dataset.name}.xlsx"},
+        headers={
+            "Content-Disposition": f'attachment; filename="{_safe_export_filename(dataset.name, ".xlsx")}"'
+        },
     )
 
 
@@ -1136,6 +1164,6 @@ async def export_markdown(
         content=md,
         media_type="text/markdown",
         headers={
-            "Content-Disposition": f"attachment; filename={dataset.name}_report.md"
+            "Content-Disposition": f'attachment; filename="{_safe_export_filename(dataset.name, "_report.md")}"'
         },
     )
