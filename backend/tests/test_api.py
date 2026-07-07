@@ -695,3 +695,131 @@ def test_sql_query_timeout_cancels_expensive_query(client, viz_dataset_id, monke
     assert r.status_code == 422, r.text
     assert "execution limit" in r.json()["detail"]
     assert elapsed < 10, f"query took {elapsed:.1f}s — timeout did not actually cancel it"
+
+
+# ── Dataset lifecycle & sharing ──────────────────────────────────────────────
+
+
+def test_sse_stream_enforces_per_creator_privacy(client, viz_dataset_id):
+    """Regression test: _resolve_stream_user previously returned None whenever
+    the query-string `token` param was absent — the normal case, since
+    EventSource can't send an Authorization header and demo mode has no
+    Clerk session to draw a token from. _authorize_job_access only checks
+    dataset ownership when current_user is not None, so this silently
+    skipped the "shared default org: private to creator" check for the SSE
+    endpoint specifically, even though the sibling poll endpoint
+    (GET /jobs/{id}, via get_optional_user) already resolved demo mode
+    correctly. Simulates another creator by writing a Dataset row directly
+    rather than uploading (uploads always resolve to the one shared demo
+    user, so there's no way to get a second creator through the API)."""
+    import asyncio
+    import uuid as _uuid
+
+    from db.connection import AsyncSessionLocal
+    from db.models import Dataset, Organization, User
+
+    async def _make_other_users_dataset() -> str:
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            org = (
+                await db.execute(select(Organization).where(Organization.slug == "default"))
+            ).scalar_one()
+            other = User(clerk_id="test_other_user_sse", email="other_sse@test.local")
+            db.add(other)
+            await db.flush()
+            fake_ds = Dataset(
+                id=_uuid.uuid4(),
+                org_id=org.id,
+                created_by=other.id,
+                name="other.csv",
+                original_filename="other.csv",
+                file_key="uploads/fake/fake/fake.csv",
+                file_size_bytes=10,
+                file_format="csv",
+                status="ready",
+            )
+            db.add(fake_ds)
+            await db.commit()
+            return str(fake_ds.id)
+
+    other_dataset_id = asyncio.run(_make_other_users_dataset())
+
+    # Poll endpoint already correctly rejects this (via get_optional_user)
+    poll = client.get(f"/jobs/{other_dataset_id}")
+    assert poll.status_code == 404, poll.text
+
+    # SSE stream must reject it the same way, not silently allow it
+    with client.stream("GET", f"/jobs/{other_dataset_id}/stream") as resp:
+        assert resp.status_code == 404, resp.read()
+
+    # Sanity: the fix didn't break access to a dataset we DO own
+    own = client.get(f"/jobs/{viz_dataset_id}")
+    assert own.status_code == 200, own.text
+
+
+def test_retention_sweep_exempts_example_dataset(client):
+    """Regression test: the example dataset must survive the retention
+    sweep even when its created_at is older than the retention window —
+    it's the "instant try it" dataset that must always be available. Had no
+    prior test coverage; the sweep's example-dataset exemption reads
+    defaults.EXAMPLE_DATASET_ID, which is only populated inside the running
+    app's own process, so this must run against the shared `client` app
+    context rather than a bare subprocess script."""
+    import asyncio
+    import time
+    from datetime import datetime, timedelta, timezone
+
+    from db.connection import AsyncSessionLocal
+    from db.models import Dataset
+    from retention import sweep_expired_datasets
+
+    import defaults
+
+    deadline = time.time() + 60
+    example_id = None
+    while time.time() < deadline:
+        r = client.get("/example")
+        if r.status_code == 200:
+            example_id = r.json()["dataset_id"]
+            break
+        time.sleep(1)
+    assert example_id is not None, "example dataset never became ready"
+    assert defaults.EXAMPLE_DATASET_ID == example_id
+
+    async def _age_everything() -> None:
+        from sqlalchemy import update
+
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                update(Dataset).values(
+                    created_at=datetime.now(timezone.utc) - timedelta(days=30)
+                )
+            )
+            await db.commit()
+
+    asyncio.run(_age_everything())
+    asyncio.run(sweep_expired_datasets(retention_days=7))
+
+    # The example dataset's row must still exist and still be fetchable
+    still_there = client.get(f"/datasets/{example_id}/analysis")
+    assert still_there.status_code == 200, still_there.text
+
+
+def test_compare_endpoint_still_works_after_threading_fix(client, sample_csv_path):
+    """Sanity check that offloading generate_full_report onto asyncio.to_thread
+    (previously called synchronously, twice, inside the async handler) didn't
+    change the endpoint's actual behavior."""
+    other = os.path.join(os.path.dirname(sample_csv_path), "customer_data.csv")
+    with open(sample_csv_path, "rb") as f1, open(other, "rb") as f2:
+        response = client.post(
+            "/compare",
+            files={
+                "file1": ("sales_data.csv", f1, "text/csv"),
+                "file2": ("customer_data.csv", f2, "text/csv"),
+            },
+        )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["file1"]["report"]["basic_info"]["rows"] > 0
+    assert body["file2"]["report"]["basic_info"]["rows"] > 0

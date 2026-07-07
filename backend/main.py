@@ -432,11 +432,18 @@ async def compare_datasets(
     file2: UploadFile = File(...),
 ):
     """Compare two datasets side-by-side (stateless, nothing stored)."""
+    import asyncio
+
     df1 = _read_upload_df(file1)
     df2 = _read_upload_df(file2)
 
-    report1 = EDAAnalyzer(df1).generate_full_report()
-    report2 = EDAAnalyzer(df2).generate_full_report()
+    # generate_full_report is the same CPU-heavy call analysis_runner.py
+    # offloads via asyncio.to_thread for uploads; a wide (many-column) file
+    # measured multiple seconds here, and this endpoint ran it synchronously
+    # twice inside an async handler, freezing the whole single-process
+    # server for every other request for that whole window.
+    report1 = await asyncio.to_thread(lambda: EDAAnalyzer(df1).generate_full_report())
+    report2 = await asyncio.to_thread(lambda: EDAAnalyzer(df2).generate_full_report())
     report1["preview"] = df1.head(50).fillna("").to_dict(orient="records")
     report2["preview"] = df2.head(50).fillna("").to_dict(orient="records")
 

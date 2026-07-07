@@ -23,7 +23,7 @@ import time
 import uuid
 from typing import AsyncGenerator
 
-from auth import _decode_clerk_token, get_optional_user, validate_org_access
+from auth import AUTH_ENABLED, _decode_clerk_token, _get_demo_user, get_optional_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Dataset, User
@@ -50,6 +50,17 @@ async def _resolve_stream_user(
     token: str | None,
     db: AsyncSession,
 ) -> User | None:
+    # In demo mode every other endpoint resolves to the shared "system" user
+    # via get_optional_user/get_current_user, and _authorize_job_access's
+    # ownership check below only runs when current_user is not None. This
+    # function previously always returned None when the query-string token
+    # was absent (the normal case here — EventSource can't send an
+    # Authorization header, and demo mode has no Clerk session to draw a
+    # token from), silently skipping that check and letting anyone stream
+    # job status — including the analysis_id — for any dataset_id in the
+    # shared default org, bypassing per-user dataset privacy entirely.
+    if not AUTH_ENABLED:
+        return await _get_demo_user(db)
     if not token:
         return None
 
