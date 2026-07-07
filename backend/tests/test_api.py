@@ -623,3 +623,75 @@ def test_stats_cohort_rejects_too_many_periods():
     result = AdvancedStatistics(df).cohort_analysis("entity", "date", freq="D")
     assert "error" in result
     assert "too many" in result["error"]
+
+
+# ── SQL query editor ─────────────────────────────────────────────────────────
+#
+# Reuses viz_dataset_id (sample_sales.csv) rather than uploading again — the
+# module's upload budget is already tight against the 10/minute limit.
+
+
+def test_sql_common_column_names_not_blocked_by_keyword_filter(client, viz_dataset_id):
+    """Regression test: the forbidden-keyword scan used to check for the
+    literal substring anywhere in the query text, so aliasing any column as
+    created_at/updated_at/deleted_at (extremely common real-world column
+    names) was rejected as if it were a CREATE/UPDATE/DELETE statement."""
+    for alias in ("created_at", "updated_at", "deleted_at"):
+        r = client.post(
+            f"/datasets/{viz_dataset_id}/query",
+            json={"sql": f"SELECT quantity AS {alias} FROM df LIMIT 5"},
+        )
+        assert r.status_code == 200, f"alias {alias!r} incorrectly rejected: {r.text}"
+
+
+def test_sql_string_literal_keyword_not_blocked(client, viz_dataset_id):
+    """Regression test: a filter value that happens to contain a forbidden
+    keyword as a whole word (e.g. comparing against 'Alter Ego') was
+    rejected, since the old check scanned the raw SQL text including string
+    literals instead of stripping them first."""
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/query",
+        json={"sql": "SELECT * FROM df WHERE category != 'Alter Ego' LIMIT 5"},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_sql_cte_query_works(client, viz_dataset_id):
+    """Regression test: statements starting with WITH (a CTE) were rejected
+    outright because only a literal 'select' first word was accepted."""
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/query",
+        json={"sql": "WITH ranked AS (SELECT quantity FROM df) SELECT COUNT(*) FROM ranked"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["rows"][0][0] > 0
+
+
+def test_sql_mutating_statements_still_rejected(client, viz_dataset_id):
+    """Sanity check that fixing the false-positive keyword bug didn't also
+    loosen the real protection against DDL/DML."""
+    for sql in ("DROP TABLE df", "UPDATE df SET quantity = 0", "SELECT 1; DELETE FROM df"):
+        r = client.post(f"/datasets/{viz_dataset_id}/query", json={"sql": sql})
+        assert r.status_code == 400, f"{sql!r} should have been rejected: {r.text}"
+
+
+def test_sql_query_timeout_cancels_expensive_query(client, viz_dataset_id, monkeypatch):
+    """Regression test: DuckDB has no built-in statement timeout, so a query
+    like a wide cross join ran fully synchronously — confirmed live to hang
+    the entire single-process server (every /health check timed out) for
+    30+ seconds. Must now be cancelled at a fixed wall-clock cap instead."""
+    import time
+
+    import duckdb_query
+
+    monkeypatch.setattr(duckdb_query, "_QUERY_TIMEOUT_SECONDS", 1)
+    expensive_sql = (
+        "SELECT count(*) FROM range(2000000) a, range(2000000) b "
+        "WHERE (a.range % 7) = (b.range % 11)"
+    )
+    start = time.time()
+    r = client.post(f"/datasets/{viz_dataset_id}/query", json={"sql": expensive_sql})
+    elapsed = time.time() - start
+    assert r.status_code == 422, r.text
+    assert "execution limit" in r.json()["detail"]
+    assert elapsed < 10, f"query took {elapsed:.1f}s — timeout did not actually cancel it"

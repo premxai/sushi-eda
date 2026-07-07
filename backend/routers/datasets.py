@@ -27,6 +27,7 @@ Routes:
   GET  /datasets/{dataset_id}/export/markdown
 """
 
+import asyncio
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Optional
@@ -1045,7 +1046,7 @@ async def query_schema(
     await validate_org_access(org_id, current_user, db)
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
-    return {"schema": get_schema(pl_df)}
+    return {"schema": await asyncio.to_thread(get_schema, pl_df)}
 
 
 @router.post("/{dataset_id}/query")
@@ -1068,7 +1069,7 @@ async def query_dataset(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
-        return run_query(pl_df, sql, limit=limit, offset=offset)
+        return await asyncio.to_thread(run_query, pl_df, sql, limit=limit, offset=offset)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -1088,7 +1089,7 @@ async def explain_dataset_query(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     pl_df = _load_polars_from_r2(dataset.file_key, dataset.file_format)
     try:
-        return explain_query(pl_df, sql)
+        return await asyncio.to_thread(explain_query, pl_df, sql)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
