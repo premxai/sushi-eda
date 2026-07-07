@@ -194,7 +194,7 @@ function NewFileModal({
                 ))}
               </div>
               <p style={{ fontSize: 14, color: "#111010" }}>Drop a dataset or <span style={{ color: "#9060f8", fontWeight: 600 }}>browse</span></p>
-              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>Saved automatically to My Datasets. CSV, JSON, Excel, Parquet, SQLite up to 100 MB.</p>
+              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>Saved automatically to My Datasets. CSV, JSON, Excel, Parquet, SQLite up to 25 MB.</p>
             </div>
           )}
 

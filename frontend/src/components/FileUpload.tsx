@@ -15,6 +15,8 @@ interface FileUploadProps {
   onClearError: () => void;
   onLoadSample?: () => void;
   isSignedIn?: boolean;
+  /** False on flows like /compare that don't persist the file anywhere. */
+  savesData?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -40,6 +42,7 @@ export function FileUpload({
   onClearError,
   onLoadSample,
   isSignedIn = true,
+  savesData = true,
 }: FileUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -255,7 +258,7 @@ export function FileUpload({
                   <span style={{ color: "#7dd3fc", fontWeight: 700 }}>BROWSE</span>
                 </p>
                 <p className="text-[11px]" style={{ color: "#4a4f5c", fontFamily: "'Geist Mono', monospace" }}>
-                  saved by default · up to 100 MB · CSV · TSV · XLS · JSON · Parquet
+                  {savesData ? "saved by default · " : "not saved · "}up to 25 MB · CSV · TSV · XLS · JSON · Parquet
                 </p>
               </div>
             )}

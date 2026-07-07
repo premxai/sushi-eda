@@ -197,6 +197,7 @@ export default function ComparePage() {
               uploadProgress={0}
               error={null}
               onClearError={() => setError(null)}
+              savesData={false}
             />
             {file1 && (
               <p className="mt-2 text-xs text-slate-600">
@@ -216,6 +217,7 @@ export default function ComparePage() {
               uploadProgress={0}
               error={null}
               onClearError={() => setError(null)}
+              savesData={false}
             />
             {file2 && (
               <p className="mt-2 text-xs text-slate-600">

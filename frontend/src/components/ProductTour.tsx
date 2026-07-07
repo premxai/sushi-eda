@@ -21,7 +21,7 @@ const STEPS = [
     accent: "#9060f8",
     title: "Drop your data, get instant insights",
     description:
-      "Upload CSV, Excel, JSON, Parquet, or SQLite — up to 100 MB. Sushi runs a full EDA in seconds: quality score, column stats, outliers, and a plain-English narrative.",
+      "Upload CSV, Excel, JSON, Parquet, or SQLite — up to 25 MB. Sushi runs a full EDA in seconds: quality score, column stats, outliers, and a plain-English narrative.",
   },
   {
     icon: Sparkles,
