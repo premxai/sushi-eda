@@ -23,8 +23,17 @@ def _connect_with_df(df: pl.DataFrame) -> duckdb.DuckDBPyConnection:
     A per-call connection avoids cross-request races on a shared register
     slot. Registration goes through Arrow, which every DuckDB version
     supports (registering a Polars frame directly is version-dependent).
+
+    enable_external_access=False is load-bearing: without it, DuckDB's
+    built-in table functions (read_csv_auto, read_parquet, read_json_auto,
+    glob, ...) let any SELECT statement read arbitrary files on the host —
+    a full local-file-read vulnerability reachable from the SQL editor and
+    the AI chat, neither of which restrict what the query can reference
+    beyond a keyword denylist. This setting blocks all filesystem/network
+    access from within the query itself; only the in-memory `df` table
+    (registered below, before external access matters) is reachable.
     """
-    conn = duckdb.connect()
+    conn = duckdb.connect(config={"enable_external_access": False})
     conn.register("df", df.to_arrow())
     return conn
 

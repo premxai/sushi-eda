@@ -308,8 +308,14 @@ async def upload_dataset(
     GET /jobs/{dataset_id}/stream (SSE) or poll GET /jobs/{dataset_id}.
     """
     contents = file.file.read()
-    filename = file.filename or "upload"
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
+    raw_filename = file.filename or "upload"
+    ext = raw_filename.rsplit(".", 1)[-1].lower() if "." in raw_filename else "csv"
+    # Client-supplied filenames are untrusted and get embedded directly in the
+    # storage key (uploads/{org}/{dataset_id}/{filename}) — strip any path
+    # components so a crafted name like "../../../etc/x" can't be used to
+    # write outside the storage root (storage.py also enforces containment
+    # as a second layer, but a clean name here avoids the request failing).
+    filename = os.path.basename(raw_filename.replace("\\", "/")) or "upload"
     is_production = os.getenv("ENVIRONMENT", "development") == "production"
 
     if is_production and current_user is None:

@@ -72,8 +72,22 @@ class R2Storage:
         return not R2_ACCOUNT_ID
 
     def _local_path(self, key: str) -> str:
+        """Resolve a storage key to a path, refusing to leave LOCAL_STORAGE_DIR.
+
+        `key` embeds the client-supplied original filename (see
+        make_dataset_key / callers), so it must never be trusted to be a
+        clean relative path — a filename like "../../../etc/x" would
+        otherwise let an upload write (and later read/delete) files outside
+        the storage root. os.path.join does not resolve ".." itself, but
+        the underlying OS calls do, so the check has to happen after
+        normalization, comparing against the resolved root.
+        """
         safe_key = key.replace("/", os.sep)
-        return os.path.join(LOCAL_STORAGE_DIR, safe_key)
+        root = os.path.realpath(LOCAL_STORAGE_DIR)
+        resolved = os.path.realpath(os.path.join(root, safe_key))
+        if resolved != root and not resolved.startswith(root + os.sep):
+            raise ValueError(f"Refusing to resolve storage key outside storage root: {key!r}")
+        return resolved
 
     # ── Upload ─────────────────────────────────────────────────────────────────
 

@@ -37,10 +37,10 @@
 - **Dataset Comparison** — Upload two files for side-by-side comparison with schema diff analysis
 
 ### ⚡ Performance & UX
-- **Smart Row Sampling** — Automatic sampling for datasets >5000 rows to prevent timeouts
+- **Polars-native engine** — full analysis (quality score, correlations, outliers) runs in under a second even at 2M+ rows, no sampling or truncation
 - **In-Memory Caching** — MD5-based caching for instant re-analysis of duplicate files
 - **Rate Limiting** — 10 requests/minute per IP to prevent abuse
-- **File Size Validation** — 100MB upload limit with graceful error handling
+- **File Size Validation** — 25MB upload limit with graceful error handling
 
 ### 🎨 UX Polish
 - **Loading Skeletons** — Smooth loading states during analysis

@@ -15,7 +15,8 @@ Usage:
 """
 import json
 import os
-from typing import Any, Optional
+import time
+from typing import Any, Callable, Optional, TypeVar
 
 import redis
 from loguru import logger
@@ -32,6 +33,20 @@ RATE_LIMIT_TTL     = 60                  # 1 minute window
 # Pub/Sub channel name pattern: jobs:{org_id}
 JOB_CHANNEL_PREFIX = "jobs"
 
+# Circuit breaker: once Redis fails once, skip trying it for this long and go
+# straight to the in-memory fallback. Without this, every call blocks the
+# caller for the full socket timeout below — and since analysis_runner.py and
+# main.py call these methods synchronously inside async handlers/background
+# tasks, an unreachable Redis (the default with no REDIS_URL configured)
+# would otherwise freeze the whole single-process event loop for seconds on
+# every single call, serializing all concurrent requests behind it.
+_BREAKER_COOLDOWN_SECONDS = 30
+# Real timeout in the worst case — must stay well under a second so a single
+# detection probe never itself becomes a user-visible stall.
+_SOCKET_TIMEOUT_SECONDS = 0.75
+
+T = TypeVar("T")
+
 
 class RedisCache:
     """Thin Redis wrapper. All methods are synchronous (use in Celery workers too)."""
@@ -41,6 +56,7 @@ class RedisCache:
         self._analysis_memory: dict[str, dict] = {}
         self._job_memory: dict[str, dict] = {}
         self._kv_memory: dict[str, Any] = {}
+        self._breaker_open_until: float = 0.0
 
     @property
     def client(self) -> redis.Redis:
@@ -48,19 +64,28 @@ class RedisCache:
             self._client = redis.from_url(
                 REDIS_URL,
                 decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True,
+                socket_connect_timeout=_SOCKET_TIMEOUT_SECONDS,
+                socket_timeout=_SOCKET_TIMEOUT_SECONDS,
+                retry_on_timeout=False,
             )
         return self._client
 
+    def _call(self, fn: Callable[[], T], fallback: Callable[[], T], op: str) -> T:
+        """Run a Redis operation, short-circuiting to `fallback` when the
+        breaker is open, and opening the breaker on any failure."""
+        now = time.monotonic()
+        if now < self._breaker_open_until:
+            return fallback()
+        try:
+            return fn()
+        except Exception as e:
+            logger.warning(f"Redis {op} error: {e}")
+            self._breaker_open_until = now + _BREAKER_COOLDOWN_SECONDS
+            return fallback()
+
     def ping(self) -> bool:
         """Check Redis connectivity. Returns True if reachable."""
-        try:
-            self.client.ping()
-            return True
-        except Exception:
-            return False
+        return self._call(lambda: bool(self.client.ping()), lambda: False, "ping")
 
     # ── Analysis Cache ─────────────────────────────────────────────────────────
 
@@ -69,33 +94,37 @@ class RedisCache:
 
     def get_analysis(self, file_hash: str) -> Optional[dict]:
         """Return cached EDAReport dict or None if not found / expired."""
-        try:
+        def _redis() -> Optional[dict]:
             raw = self.client.get(self._analysis_key(file_hash))
             if raw:
                 logger.debug(f"Cache hit: analysis:{file_hash[:8]}")
                 return json.loads(raw)
-        except Exception as e:
-            logger.warning(f"Redis get_analysis error: {e}")
-        return self._analysis_memory.get(file_hash)
+            return self._analysis_memory.get(file_hash)
+
+        return self._call(
+            _redis, lambda: self._analysis_memory.get(file_hash), "get_analysis"
+        )
 
     def set_analysis(self, file_hash: str, report: dict) -> None:
         """Cache an EDAReport. Overwrites any existing entry."""
-        try:
+        def _redis() -> None:
             self.client.setex(
                 self._analysis_key(file_hash),
                 ANALYSIS_CACHE_TTL,
                 json.dumps(report, default=str),
             )
             logger.debug(f"Cached analysis:{file_hash[:8]} (TTL={ANALYSIS_CACHE_TTL}s)")
-        except Exception as e:
-            logger.warning(f"Redis set_analysis error: {e}")
+
+        def _fallback() -> None:
             self._analysis_memory[file_hash] = report
 
+        self._call(_redis, _fallback, "set_analysis")
+
     def delete_analysis(self, file_hash: str) -> None:
-        try:
+        def _redis() -> None:
             self.client.delete(self._analysis_key(file_hash))
-        except Exception as e:
-            logger.warning(f"Redis delete_analysis error: {e}")
+
+        self._call(_redis, lambda: None, "delete_analysis")
         self._analysis_memory.pop(file_hash, None)
 
     # ── Job Status ─────────────────────────────────────────────────────────────
@@ -110,23 +139,27 @@ class RedisCache:
         extra: optional dict (e.g. {"progress": 42, "error": "..."})
         """
         payload = {"status": status, **(extra or {})}
-        try:
+        # Always keep the in-memory copy current, independent of Redis outcome,
+        # so a mid-session breaker trip never loses the latest known status.
+        self._job_memory[dataset_id] = payload
+
+        def _redis() -> None:
             self.client.setex(
                 self._job_key(dataset_id),
                 JOB_STATUS_TTL,
                 json.dumps(payload),
             )
-        except Exception as e:
-            logger.warning(f"Redis set_job_status error: {e}")
-        self._job_memory[dataset_id] = payload
+
+        self._call(_redis, lambda: None, "set_job_status")
 
     def get_job_status(self, dataset_id: str) -> Optional[dict]:
-        try:
+        def _redis() -> Optional[dict]:
             raw = self.client.get(self._job_key(dataset_id))
-            return json.loads(raw) if raw else None
-        except Exception as e:
-            logger.warning(f"Redis get_job_status error: {e}")
-            return self._job_memory.get(dataset_id)
+            return json.loads(raw) if raw else self._job_memory.get(dataset_id)
+
+        return self._call(
+            _redis, lambda: self._job_memory.get(dataset_id), "get_job_status"
+        )
 
     # ── Pub/Sub (job completion notifications) ─────────────────────────────────
 
@@ -141,11 +174,11 @@ class RedisCache:
             "dataset_id": dataset_id,
             "analysis_id": analysis_id,
         })
-        try:
+        def _redis() -> None:
             self.client.publish(channel, message)
             logger.info(f"Published job_done to {channel}: dataset={dataset_id}")
-        except Exception as e:
-            logger.warning(f"Redis publish error: {e}")
+
+        self._call(_redis, lambda: None, "publish_job_done")
 
     def publish_job_failed(self, org_id: str, dataset_id: str, error: str) -> None:
         channel = f"{JOB_CHANNEL_PREFIX}:{org_id}"
@@ -154,28 +187,29 @@ class RedisCache:
             "dataset_id": dataset_id,
             "error": error,
         })
-        try:
-            self.client.publish(channel, message)
-        except Exception as e:
-            logger.warning(f"Redis publish error: {e}")
+        self._call(
+            lambda: self.client.publish(channel, message), lambda: None, "publish_job_failed"
+        )
+
+    @staticmethod
+    def _dummy_pubsub() -> "redis.client.PubSub":
+        class DummyPubSub:
+            def get_message(self, timeout=0.1):
+                return None
+
+            def close(self):
+                return None
+
+        return DummyPubSub()  # type: ignore[return-value]
 
     def subscribe_org_jobs(self, org_id: str) -> "redis.client.PubSub":
         """Return a PubSub object subscribed to the org's job channel."""
-        try:
+        def _redis() -> "redis.client.PubSub":
             ps = self.client.pubsub(ignore_subscribe_messages=True)
             ps.subscribe(f"{JOB_CHANNEL_PREFIX}:{org_id}")
             return ps
-        except Exception as e:
-            logger.warning(f"Redis subscribe error: {e}")
 
-            class DummyPubSub:
-                def get_message(self, timeout=0.1):
-                    return None
-
-                def close(self):
-                    return None
-
-            return DummyPubSub()
+        return self._call(_redis, self._dummy_pubsub, "subscribe")
 
     # ── Rate Limiting ──────────────────────────────────────────────────────────
 
@@ -184,7 +218,7 @@ class RedisCache:
         Sliding-window rate limiter. Returns True if the request is allowed.
         key: e.g. "ratelimit:upload:{ip}" or "ratelimit:ai:{user_id}"
         """
-        try:
+        def _redis() -> bool:
             pipe = self.client.pipeline()
             pipe.incr(key)
             pipe.expire(key, window_seconds)
@@ -194,45 +228,45 @@ class RedisCache:
             if not allowed:
                 logger.warning(f"Rate limit hit: {key} ({count}/{max_requests})")
             return allowed
-        except Exception as e:
-            logger.warning(f"Redis rate_limit error: {e} — allowing request")
-            return True  # fail open so Redis downtime doesn't break the app
+
+        # Fail open so Redis downtime doesn't break the app.
+        return self._call(_redis, lambda: True, "rate_limit")
 
     # ── Generic helpers ────────────────────────────────────────────────────────
 
     def get(self, key: str) -> Optional[Any]:
-        try:
+        def _redis() -> Optional[Any]:
             raw = self.client.get(key)
             return json.loads(raw) if raw else None
-        except Exception:
-            return self._kv_memory.get(key)
+
+        return self._call(_redis, lambda: self._kv_memory.get(key), "get")
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
-        try:
+        def _redis() -> None:
             serialized = json.dumps(value, default=str)
             if ttl:
                 self.client.setex(key, ttl, serialized)
             else:
                 self.client.set(key, serialized)
-        except Exception as e:
-            logger.warning(f"Redis set error for {key}: {e}")
+
+        def _fallback() -> None:
             # In-memory fallback has no TTL; callers that care about expiry
             # must check expiry timestamps stored inside the value.
             self._kv_memory[key] = value
 
+        self._call(_redis, _fallback, "set")
+
     def delete(self, key: str) -> None:
-        try:
-            self.client.delete(key)
-        except Exception as e:
-            logger.warning(f"Redis delete error for {key}: {e}")
+        self._call(lambda: self.client.delete(key), lambda: None, "delete")
         self._kv_memory.pop(key, None)
 
     def cache_size(self) -> int:
         """Rough count of analysis cache keys (for /health endpoint)."""
-        try:
-            return len(self.client.keys("analysis:*"))
-        except Exception:
-            return len(self._analysis_memory)
+        return self._call(
+            lambda: len(self.client.keys("analysis:*")),
+            lambda: len(self._analysis_memory),
+            "cache_size",
+        )
 
 
 # ── Singleton ─────────────────────────────────────────────────────────────────

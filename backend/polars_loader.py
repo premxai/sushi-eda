@@ -77,15 +77,27 @@ def parse_to_polars(data: bytes, file_format: str) -> pl.DataFrame:
             tmp_path = tmp.name
         try:
             conn = sqlite3.connect(tmp_path)
-            tables = pd.read_sql_query(
-                "SELECT name FROM sqlite_master WHERE type='table'", conn
-            )
-            if tables.empty:
-                raise ValueError("No tables found in SQLite database")
-            pdf = pd.read_sql_query(
-                f"SELECT * FROM {tables.iloc[0]['name']}", conn
-            )
-            conn.close()
+            try:
+                tables = pd.read_sql_query(
+                    "SELECT name FROM sqlite_master WHERE type='table'", conn
+                )
+                if tables.empty:
+                    raise ValueError("No tables found in SQLite database")
+                # Table names come from the attacker's own uploaded file, so
+                # they must be treated as untrusted: a name like
+                # `x UNION SELECT ... FROM sqlite_master--` interpolated
+                # unquoted here would let a crafted upload inject arbitrary
+                # SQL into this query. Quote the identifier and escape
+                # embedded quotes the standard SQL way (double them).
+                table_name = str(tables.iloc[0]["name"])
+                safe_name = table_name.replace('"', '""')
+                pdf = pd.read_sql_query(f'SELECT * FROM "{safe_name}"', conn)
+            finally:
+                # Must close before the outer `finally: os.unlink(tmp_path)`
+                # runs — on Windows, unlinking a file with an open handle
+                # (e.g. because the query above raised) fails with
+                # WinError 32, masking the real error.
+                conn.close()
         finally:
             os.unlink(tmp_path)
         return pl.from_pandas(pdf)

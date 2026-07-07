@@ -10,6 +10,7 @@ import os
 import tempfile
 from typing import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -59,6 +60,20 @@ if DATABASE_URL:
         autoflush=False,
         autocommit=False,
     )
+
+    if DATABASE_URL.startswith("sqlite"):
+        # SQLite's default rollback-journal mode takes an exclusive lock for
+        # the whole duration of a write, so two requests writing at once
+        # (e.g. two concurrent analyses updating their Dataset rows) throw
+        # "database is locked" instead of one just waiting briefly. WAL lets
+        # readers and a writer coexist, and busy_timeout makes writer-vs-writer
+        # contention retry for a few seconds instead of failing immediately.
+        @event.listens_for(engine.sync_engine, "connect")
+        def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+            cursor.close()
 else:
     engine = None  # type: ignore[assignment]
     AsyncSessionLocal = None  # type: ignore[assignment]
