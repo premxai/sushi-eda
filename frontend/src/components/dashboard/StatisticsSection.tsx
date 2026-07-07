@@ -298,11 +298,24 @@ function plainEnglishSummary(
     };
   }
 
-  if (
-    testType === "linear_regression" ||
-    testType === "polynomial_regression" ||
-    testType === "logistic_regression"
-  ) {
+  if (testType === "logistic_regression") {
+    const accuracy = numericValue(result.accuracy);
+    const auc = numericValue(result.roc_auc);
+    return {
+      headline:
+        auc !== null && auc >= 0.7
+          ? "This input meaningfully predicts the outcome."
+          : "This input has only a weak link to the outcome.",
+      confidence,
+      detail:
+        accuracy !== null
+          ? `The model correctly classifies about ${(accuracy * 100).toFixed(0)}% of cases in this dataset${auc !== null ? ` (AUC ${auc.toFixed(2)}).` : "."}`
+          : "The model finished successfully and is ready for a deeper review in advanced details.",
+      nextStep: "Try another predictor or compare this result with a second field before acting on it.",
+    };
+  }
+
+  if (testType === "linear_regression" || testType === "polynomial_regression") {
     return {
       headline:
         rSquared !== null && rSquared >= 0.5
@@ -396,6 +409,24 @@ const GUIDED_INTENTS: Array<{
     label: "What changed over time?",
     description: "Separate trend from seasonality or explore the next likely period.",
     test: "decomposition",
+  },
+  {
+    id: "categories",
+    label: "Are these categories related?",
+    description: "Check whether two grouping fields, like region and plan type, tend to occur together more than chance would suggest.",
+    test: "chi_square",
+  },
+  {
+    id: "predict",
+    label: "What predicts a yes/no outcome?",
+    description: "Estimate how one field affects the odds of a binary outcome, like whether a customer converts or churns.",
+    test: "logistic_regression",
+  },
+  {
+    id: "retention",
+    label: "How well do we retain people over time?",
+    description: "See what share of each starting group, like a signup month, is still active in later periods.",
+    test: "cohort",
   },
 ];
 
@@ -493,7 +524,13 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
   }, [logisticTarget, report.preview]);
 
   useEffect(() => {
-    if (!positiveClass && logisticClasses.length > 0) {
+    // Reset whenever the current value isn't one of the target column's own
+    // classes — not just when empty — otherwise switching the target column
+    // after already picking a positive class leaves a stale value (e.g. "B"
+    // from a previous A/B target) that silently fails against the new
+    // column's classes (e.g. "0"/"1"), even though the dropdown visually
+    // falls back to showing "Auto".
+    if (logisticClasses.length > 0 && (!positiveClass || !logisticClasses.includes(positiveClass))) {
       setPositiveClass(logisticClasses[logisticClasses.length - 1]);
     }
   }, [logisticClasses, positiveClass]);
@@ -1053,7 +1090,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
             </>
           )}
 
-          {analysisMode === "advanced" && activeTest === "cohort" && (
+          {activeTest === "cohort" && (
             <>
               <div>
                 <label className="mb-1 block text-xs text-zinc-500">Entity/User column</label>
