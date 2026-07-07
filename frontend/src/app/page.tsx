@@ -508,7 +508,7 @@ export default function Home() {
                   <GitCompare className="h-3.5 w-3.5" />Compare
                 </Button>
               </Link>
-              <ExportButton report={report} fileName={fileName} />
+              <ExportButton report={report} fileName={fileName} aiNarrative={aiNarrative} />
             </div>
           </header>
 

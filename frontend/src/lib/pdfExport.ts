@@ -1,0 +1,155 @@
+import { EDAReport } from "@/lib/types";
+
+/**
+ * Flatten the narrative markdown into plain-text lines for PDF export.
+ * Headings keep their text; bullets become "• "; bold markers are stripped.
+ */
+function narrativeToPlainLines(narrative: string): { isHeading: boolean; text: string }[] {
+  const out: { isHeading: boolean; text: string }[] = [];
+  narrative.split("\n").forEach((raw) => {
+    const line = raw.trim();
+    if (!line) return;
+    const heading = line.match(/^#{1,4}\s+(.*)/) || line.match(/^\*\*([^*]+)\*\*:?$/);
+    if (heading) {
+      out.push({ isHeading: true, text: heading[1].replace(/\*\*/g, "") });
+      return;
+    }
+    const bullet = line.match(/^[-*•]\s+(.*)/) || line.match(/^\d+\.\s+(.*)/);
+    const text = (bullet ? `• ${bullet[1]}` : line).replace(/\*\*/g, "");
+    out.push({ isHeading: false, text });
+  });
+  return out;
+}
+
+/**
+ * Build and download the Sushi PDF report — the single canonical
+ * implementation, always leading with the AI summary when available.
+ * Used by both the report-tab export and the top-banner quick-export
+ * button, which previously had its own, older copy that never learned
+ * about ai_narrative and silently produced a narrative-less PDF despite
+ * looking identical to the "real" export.
+ */
+export async function exportReportPDF(
+  report: EDAReport,
+  fileName: string,
+  aiNarrative?: string | null,
+): Promise<void> {
+  const { default: jsPDF } = await import("jspdf");
+  const { basic_info: info, quality_score: qs, column_analysis: cols, outliers, correlation_matrix } = report;
+
+  const topCorrs: { col1: string; col2: string; r: number }[] = [];
+  const { columns, matrix } = correlation_matrix;
+  for (let i = 0; i < columns.length; i++) {
+    for (let j = i + 1; j < columns.length; j++) {
+      const r = matrix[i][j];
+      if (!isNaN(r) && Math.abs(r) > 0.5) {
+        topCorrs.push({ col1: columns[i], col2: columns[j], r });
+      }
+    }
+  }
+  topCorrs.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  const strongCorrs = topCorrs.slice(0, 6);
+  const firingOutliers = outliers.filter((o) => o.outlier_count > 0);
+  const missingPct =
+    info.total_missing === 0
+      ? "0%"
+      : `${((info.total_missing / (info.rows * info.columns)) * 100).toFixed(1)}%`;
+
+  const pdf = new jsPDF("p", "mm", "a4");
+  const W = pdf.internal.pageSize.getWidth();
+  const H = pdf.internal.pageSize.getHeight();
+  const M = 16;
+  let y = M;
+
+  const nl = (space = 6) => {
+    y += space;
+    if (y > H - M) {
+      pdf.addPage();
+      y = M;
+    }
+  };
+  const h1 = (text: string) => {
+    pdf.setFontSize(18);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(17, 16, 16);
+    pdf.text(text, M, y);
+    nl(10);
+  };
+  const h2 = (text: string) => {
+    nl(4);
+    pdf.setFontSize(13);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(17, 16, 16);
+    pdf.text(text, M, y);
+    nl(7);
+  };
+  const body = (text: string, indent = 0) => {
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(80, 80, 80);
+    const lines = pdf.splitTextToSize(text, W - 2 * M - indent);
+    if (y + lines.length * 4.5 > H - M) {
+      pdf.addPage();
+      y = M;
+    }
+    pdf.text(lines, M + indent, y);
+    nl(lines.length * 4.5 + 1);
+  };
+
+  h1(`Sushi Report — ${fileName}`);
+  pdf.setFontSize(8);
+  pdf.setTextColor(150, 150, 150);
+  pdf.text(`Generated ${new Date().toLocaleString()}`, M, y);
+  nl(10);
+
+  if (aiNarrative) {
+    h2("What Your Data Says");
+    narrativeToPlainLines(aiNarrative).forEach(({ isHeading, text }) => {
+      if (isHeading) {
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(40, 40, 40);
+        if (y + 5 > H - M) {
+          pdf.addPage();
+          y = M;
+        }
+        pdf.text(text, M, y);
+        nl(6);
+      } else {
+        body(text, text.startsWith("•") ? 4 : 0);
+      }
+    });
+  }
+
+  h2("Quality Score");
+  body(`Overall: ${qs.overall_score}/100 — Grade ${qs.grade}`);
+  Object.entries(qs.breakdown).forEach(([k, v]) => body(`${k.replace(/_/g, " ")}: ${v.score}/100`, 4));
+  if (qs.recommendations.length) {
+    nl(2);
+    qs.recommendations.forEach((r) => body(`• ${r}`, 4));
+  }
+
+  h2("Dataset Overview");
+  body(
+    `${info.rows.toLocaleString()} rows × ${info.columns} columns | ${info.memory_usage_mb} MB | ${info.duplicate_rows} duplicates | ${missingPct} missing`,
+  );
+
+  h2("Column Summary");
+  cols.slice(0, 20).forEach((c) => body(`${c.name} [${c.dtype}]  missing ${c.missing_percent}%  unique ${c.unique_count}`, 4));
+
+  if (strongCorrs.length) {
+    h2("Strong Correlations");
+    strongCorrs.forEach(({ col1, col2, r }) => body(`${col1} ↔ ${col2}: r = ${r.toFixed(3)}`, 4));
+  }
+
+  if (firingOutliers.length) {
+    h2("Outliers");
+    firingOutliers.slice(0, 10).forEach((o) => body(`${o.column}: ${o.outlier_count} outliers (${o.outlier_percent}%)`, 4));
+  }
+
+  pdf.setFontSize(7);
+  pdf.setTextColor(180, 180, 180);
+  pdf.text("Generated by Sushi — sushi-eda.vercel.app", W / 2, H - 8, { align: "center" });
+
+  pdf.save(`${fileName.replace(/\.[^/.]+$/, "")}_sushi_report.pdf`);
+}
