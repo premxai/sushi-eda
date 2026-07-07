@@ -583,7 +583,7 @@ export default function Home() {
                   : <StatisticsSection report={report} datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "visualizations" && (
-                <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} />
+                <VisualizationsSection visualizations={visualizations} isLoading={vizLoading} report={report} datasetId={openDatasetId} orgId="default" />
               )}
               {activeSection === "sql" && (
                 isPreviewMode ? <LockedPreview feature="Advanced Queries" />

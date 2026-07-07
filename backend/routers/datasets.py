@@ -571,6 +571,95 @@ async def ai_cleaning_suggestions(
 
 
 # ── Visualizations ─────────────────────────────────────────────────────────────
+#
+# Route ORDER matters here: FastAPI/Starlette matches path operations in
+# registration order, and "/{dataset_id}/visualize/{column_name}" below is a
+# single-segment wildcard that would otherwise swallow literal single-segment
+# paths like "/visualize/trend" (column_name="trend") before they ever reach
+# their real handler. Every visualize/<literal-segment> route must therefore
+# be declared ABOVE the generic per-column route.
+
+
+@router.get("/{dataset_id}/visualize/business/{chart_type}")
+async def visualize_business_chart(
+    dataset_id: str,
+    chart_type: str,
+    category: str = Query(..., description="Categorical column to group by"),
+    value: Optional[str] = Query(default=None, description="Numeric column to aggregate"),
+    agg: str = Query(default="sum", description="sum | mean | count | max | min | median"),
+    top_n: int = Query(default=10, ge=1, le=50),
+    ascending: bool = Query(default=False),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pareto / top-n / waterfall — the category+value business charts
+    (viewer+). These need two user-chosen columns, unlike the single-column
+    charts above, so they get their own parameterised endpoint.
+    """
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    viz = Visualizer(df)
+
+    if chart_type == "pareto":
+        return viz.create_pareto_chart(category, value, top_n=top_n)
+    elif chart_type == "top_n":
+        return viz.create_top_n_chart(category, value, agg=agg, top_n=top_n, ascending=ascending)
+    elif chart_type == "waterfall":
+        if not value:
+            raise HTTPException(status_code=400, detail="waterfall requires a 'value' column")
+        return viz.create_waterfall_chart(category, value, top_n=top_n)
+    raise HTTPException(
+        status_code=400, detail="chart_type must be one of: pareto, top_n, waterfall"
+    )
+
+
+@router.get("/{dataset_id}/visualize/trend")
+async def visualize_trend_chart(
+    dataset_id: str,
+    date_column: str = Query(..., description="Date/datetime-like column"),
+    value_column: Optional[str] = Query(default=None, description="Numeric column to aggregate"),
+    agg: str = Query(default="sum", description="sum | mean | count | max | min | median"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Time-series trend with auto granularity + rolling average (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return Visualizer(df).create_trend_chart(date_column, value_column, agg=agg)
+
+
+@router.get("/{dataset_id}/visualize/scatter-matrix")
+async def visualize_scatter_matrix(
+    dataset_id: str,
+    columns: Optional[str] = Query(default=None, description="Comma-separated numeric column names"),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pairwise numeric scatter grid (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    col_list = [c.strip() for c in columns.split(",") if c.strip()] if columns else None
+    return Visualizer(df).create_scatter_matrix(col_list)
+
+
+@router.get("/{dataset_id}/visualize/quality-radar")
+async def visualize_quality_radar(
+    dataset_id: str,
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Radar chart of the 5 quality-score dimensions (viewer+)."""
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+    return Visualizer(df).create_quality_radar()
 
 
 @router.get("/{dataset_id}/visualize/{column_name}")
@@ -602,6 +691,8 @@ async def visualize_column(
         return viz.create_distribution_plot(column_name)
     elif resolved == "box_plot":
         return viz.create_box_plot(column_name)
+    elif resolved == "violin":
+        return viz.create_violin_plot(column_name)
     elif resolved == "categorical_bar":
         return viz.create_categorical_bar(column_name)
     raise HTTPException(status_code=400, detail=f"Unknown chart_type: {resolved}")
@@ -619,6 +710,50 @@ async def visualize_all(
     dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
     return Visualizer(df).generate_all_visualizations()
+
+
+# Hard ceiling on rows returned by /data regardless of what the caller asks
+# for — this endpoint exists so the frontend Custom Chart Builder can
+# aggregate over real data instead of the 50-row report preview, not so it
+# can page through an entire multi-million-row dataset as JSON.
+_MAX_DATA_ROWS = 20_000
+
+
+@router.get("/{dataset_id}/data")
+async def get_dataset_rows(
+    dataset_id: str,
+    columns: Optional[str] = Query(default=None, description="Comma-separated column names to include"),
+    limit: int = Query(default=5000, ge=1, le=_MAX_DATA_ROWS),
+    org_id: str = Query(default="default"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Full-dataset rows (capped) for client-side chart building (viewer+).
+
+    The stored Analysis.report only ever carries a 50-row preview; the
+    Custom Chart Builder needs real aggregates (sums, group counts) across
+    the actual dataset, so it calls this instead of reading report.preview.
+    """
+    await validate_org_access(org_id, current_user, db)
+    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    df = _load_df_from_r2(dataset.file_key, dataset.file_format)
+
+    if columns:
+        requested = [c.strip() for c in columns.split(",") if c.strip()]
+        missing = [c for c in requested if c not in df.columns]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Columns not found: {missing}")
+        df = df[requested]
+
+    total_rows = len(df)
+    truncated = total_rows > limit
+    rows = df.head(limit).fillna("").to_dict(orient="records")
+    return {
+        "rows": rows,
+        "row_count": len(rows),
+        "total_rows": total_rows,
+        "truncated": truncated,
+    }
 
 
 # ── Advanced Stats ─────────────────────────────────────────────────────────────

@@ -152,6 +152,29 @@ export async function fetchDatasetVisualizations(
   return data;
 }
 
+export interface DatasetRowsResult {
+  rows: Record<string, unknown>[];
+  row_count: number;
+  total_rows: number;
+  truncated: boolean;
+}
+
+/** Real (uncapped-ish, up to 20k) dataset rows for client-side chart building — unlike
+ * report.preview, which is always just the first 50 rows. */
+export async function fetchDatasetRows(
+  datasetId: string,
+  opts: { columns?: string[]; limit?: number } = {},
+  orgId: string = "default",
+): Promise<DatasetRowsResult> {
+  const params = new URLSearchParams({ org_id: orgId });
+  if (opts.columns?.length) params.set("columns", opts.columns.join(","));
+  if (opts.limit != null) params.set("limit", String(opts.limit));
+  const { data } = await client.get<DatasetRowsResult>(
+    `/datasets/${datasetId}/data?${params}`,
+  );
+  return data;
+}
+
 export async function fetchColumnVisualization(
   datasetId: string,
   columnName: string,

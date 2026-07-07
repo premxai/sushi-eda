@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   AlertCircle,
@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { EDAReport } from "@/lib/types";
+import { fetchDatasetRows } from "@/lib/api";
 
 const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
@@ -34,6 +35,8 @@ interface Props {
   visualizations: Record<string, any> | null;
   isLoading: boolean;
   report: EDAReport;
+  datasetId: string | null;
+  orgId?: string;
 }
 
 type ChartType =
@@ -193,8 +196,37 @@ function aggregateSingle(
   return Array.from(totals.entries()).map(([label, value]) => ({ label, value }));
 }
 
-function ChartBuilder({ report }: { report: EDAReport }) {
-  const preview = useMemo(() => report.preview ?? [], [report.preview]);
+function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDAReport; datasetId: string | null; orgId?: string }) {
+  const reportPreview = useMemo(() => report.preview ?? [], [report.preview]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [fullRows, setFullRows] = useState<any[] | null>(null);
+  const [rowsLoading, setRowsLoading] = useState(false);
+  const [rowsMeta, setRowsMeta] = useState<{ total: number; truncated: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!datasetId) return;
+    let cancelled = false;
+    setRowsLoading(true);
+    fetchDatasetRows(datasetId, {}, orgId)
+      .then((result) => {
+        if (cancelled) return;
+        setFullRows(result.rows);
+        setRowsMeta({ total: result.total_rows, truncated: result.truncated });
+      })
+      .catch(() => {
+        // Fall back silently to report.preview below.
+      })
+      .finally(() => {
+        if (!cancelled) setRowsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetId, orgId]);
+
+  // Real dataset rows (up to 5,000) once loaded; falls back to the 50-row
+  // report preview so the builder still works while fetching or if it fails.
+  const preview = fullRows ?? reportPreview;
   const columns = report.column_analysis;
   const numericCols = columns.filter((c) => c.is_numeric).map((c) => c.name);
   const categoricalCols = columns.filter((c) => !c.is_numeric).map((c) => c.name);
@@ -549,7 +581,13 @@ function ChartBuilder({ report }: { report: EDAReport }) {
         </div>
 
         <p style={{ fontSize: 10, color: "#c0bdb8", marginTop: 12, lineHeight: 1.5 }}>
-          Using first {Math.min(preview.length, 5000)} rows of preview data
+          {rowsLoading && !fullRows
+            ? "Loading full dataset…"
+            : rowsMeta
+              ? rowsMeta.truncated
+                ? `Aggregating ${preview.length.toLocaleString()} of ${rowsMeta.total.toLocaleString()} rows`
+                : `Aggregating all ${rowsMeta.total.toLocaleString()} rows`
+              : `Using first ${Math.min(preview.length, 5000)} rows of preview data`}
         </p>
         {chartType === "auto" && (
           <p style={{ fontSize: 10, color: "#9060f8", marginTop: 8 }}>
@@ -641,7 +679,7 @@ function ChartBuilder({ report }: { report: EDAReport }) {
 
 // ── Main Section ──────────────────────────────────────────────────────────────
 
-export function VisualizationsSection({ visualizations, isLoading, report }: Props) {
+export function VisualizationsSection({ visualizations, isLoading, report, datasetId, orgId = "default" }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   if (isLoading) {
@@ -654,7 +692,7 @@ export function VisualizationsSection({ visualizations, isLoading, report }: Pro
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const columnCharts: Record<string, { distribution?: any; box_plot?: any; categorical_bar?: any }> =
+  const columnCharts: Record<string, { distribution?: any; box_plot?: any; violin?: any; categorical_bar?: any }> =
     visualizations?.columns ?? {};
 
   const numericColumns = report.column_analysis.filter((c) => c.is_numeric);
@@ -711,13 +749,34 @@ export function VisualizationsSection({ visualizations, isLoading, report }: Pro
             </div>
           ) : (
             <>
+              {visualizations.quality_radar && !visualizations.quality_radar.error && (
+                <ChartCard title="Quality Score Breakdown" spec={visualizations.quality_radar} />
+              )}
+              {visualizations.trend && !visualizations.trend.error && (
+                <ChartCard title="Trend Over Time" spec={visualizations.trend} />
+              )}
+              {visualizations.pareto && !visualizations.pareto.error && (
+                <ChartCard title="Pareto (80/20) Analysis" spec={visualizations.pareto} />
+              )}
+              {visualizations.top_n && !visualizations.top_n.error && (
+                <ChartCard title="Top Contributors" spec={visualizations.top_n} />
+              )}
+              {visualizations.waterfall && !visualizations.waterfall.error && (
+                <ChartCard title="Contribution Breakdown" spec={visualizations.waterfall} />
+              )}
               {visualizations.correlation_heatmap && !visualizations.correlation_heatmap.error && (
                 <ChartCard title="Correlation Heatmap" spec={visualizations.correlation_heatmap} />
+              )}
+              {visualizations.scatter_matrix && !visualizations.scatter_matrix.error && (
+                <ChartCard title="Pairwise Scatter Matrix" spec={visualizations.scatter_matrix} />
               )}
               {visualizations.missing_data_matrix && !visualizations.missing_data_matrix.error && (
                 <ChartCard title="Missing Data Matrix" spec={visualizations.missing_data_matrix} />
               )}
-              {!visualizations.correlation_heatmap && !visualizations.missing_data_matrix && (
+              {[
+                "quality_radar", "trend", "pareto", "top_n", "waterfall",
+                "correlation_heatmap", "scatter_matrix", "missing_data_matrix",
+              ].every((key) => !visualizations[key] || visualizations[key].error) && (
                 <div style={{ textAlign: "center", padding: "60px 0" }}>
                   <p style={{ fontSize: 13, color: "#9a9690" }}>No overview charts available for this dataset.</p>
                 </div>
@@ -753,7 +812,8 @@ export function VisualizationsSection({ visualizations, isLoading, report }: Pro
                 <div style={{ padding: "0 8px 8px" }}>
                   {charts.distribution && <PlotlyChart spec={charts.distribution} />}
                   {charts.box_plot && <PlotlyChart spec={charts.box_plot} height={180} />}
-                  {!charts.distribution && !charts.box_plot && (
+                  {charts.violin && <PlotlyChart spec={charts.violin} height={220} />}
+                  {!charts.distribution && !charts.box_plot && !charts.violin && (
                     <p style={{ fontSize: 12, color: "#c0bdb8", padding: "20px 8px", textAlign: "center" }}>No charts generated</p>
                   )}
                 </div>
@@ -798,7 +858,7 @@ export function VisualizationsSection({ visualizations, isLoading, report }: Pro
       )}
 
       {/* Builder */}
-      {activeTab === "builder" && <ChartBuilder report={report} />}
+      {activeTab === "builder" && <ChartBuilder report={report} datasetId={datasetId} orgId={orgId} />}
     </div>
   );
 }
