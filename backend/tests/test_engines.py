@@ -82,3 +82,16 @@ def test_pandas_dataframe_accepted():
     pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
     report = EDAAnalyzer(pdf).generate_full_report()
     assert report["basic_info"]["rows"] == 3
+
+
+def test_single_row_report_does_not_crash():
+    """Std is undefined (ddof=1) for a single-row numeric column — must degrade
+    to null instead of raising float(None)."""
+    import polars as pl
+
+    df = pl.DataFrame({"a": [1], "b": [2]})
+    report = EDAAnalyzer(df).generate_full_report()
+
+    assert report["basic_info"]["rows"] == 1
+    for col in report["column_analysis"]:
+        assert col["stats"]["std"] is None

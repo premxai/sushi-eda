@@ -87,10 +87,11 @@ class EDAAnalyzer:
                         skew_val = round(float(skew), 4) if skew is not None else None
                     except Exception:
                         skew_val = None
+                    std = clean.std()
                     info["stats"] = {
                         "mean": round(float(clean.mean()), 4),
                         "median": round(float(clean.median()), 4),
-                        "std": round(float(clean.std()), 4),
+                        "std": round(float(std), 4) if std is not None else None,
                         "min": round(float(clean.min()), 4),
                         "max": round(float(clean.max()), 4),
                         "q1": round(float(clean.quantile(0.25, interpolation="midpoint")), 4),

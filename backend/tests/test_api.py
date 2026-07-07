@@ -457,3 +457,169 @@ def test_dataset_data_endpoint_column_filter_and_validation(client, viz_dataset_
 
     over_cap = client.get(f"/datasets/{dataset_id}/data", params={"limit": 999_999})
     assert over_cap.status_code == 422
+
+
+# ── Advanced statistics ─────────────────────────────────────────────────────────
+#
+# Smoke-tests every one of the 12 stats endpoints, reusing the already-shared
+# viz_dataset_id fixture (sample_sales.csv) rather than uploading again —
+# /datasets/upload is rate-limited to 10/minute and this whole test module
+# already sits close to that budget.
+
+
+def test_stats_ttest_and_mann_whitney(client, viz_dataset_id):
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/ttest",
+        params={"col1": "quantity", "col2": "price"},
+    ).json()
+    assert "error" not in r, r
+    assert r["p_value"] is not None
+
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/mann_whitney",
+        params={"col1": "quantity", "col2": "price"},
+    ).json()
+    assert "error" not in r, r
+
+
+def test_stats_chi_square_and_anova(client, viz_dataset_id):
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/chi_square",
+        params={"col1": "region", "col2": "customer_type"},
+    ).json()
+    assert "error" not in r, r
+    assert r["degrees_of_freedom"] >= 1
+
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/anova",
+        params={"numeric_col": "revenue", "group_col": "region"},
+    ).json()
+    assert "error" not in r, r
+
+
+def test_stats_correlation_all_methods(client, viz_dataset_id):
+    for method in ("pearson", "spearman", "kendall"):
+        r = client.post(
+            f"/datasets/{viz_dataset_id}/stats/correlation",
+            params={"col1": "quantity", "col2": "revenue", "method": method},
+        )
+        assert r.status_code == 200, r.text
+        assert "coefficient" in r.json()
+
+
+def test_stats_regressions(client, viz_dataset_id):
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/regression",
+        params={"x_col": "quantity", "y_col": "revenue"},
+    ).json()
+    assert "error" not in r, r
+
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/regression/polynomial",
+        params={"x_col": "quantity", "y_col": "revenue", "degree": 2},
+    ).json()
+    assert "error" not in r, r
+
+
+def test_stats_time_series_and_advanced_overview(client, viz_dataset_id):
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/time_series/decompose",
+        params={"date_col": "date", "value_col": "revenue"},
+    ).json()
+    assert "error" not in r, r
+
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/time_series/arima",
+        params={"date_col": "date", "value_col": "revenue", "periods": 3},
+    ).json()
+    assert "error" not in r, r
+
+    r = client.get(f"/datasets/{viz_dataset_id}/stats/advanced")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "normality_tests" in body and "correlations_with_significance" in body
+
+
+def test_stats_cohort_and_ab_test(client, viz_dataset_id):
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/cohort",
+        params={"entity_col": "customer_type", "date_col": "date", "freq": "M"},
+    ).json()
+    assert "error" not in r, r
+
+    r = client.post(
+        f"/datasets/{viz_dataset_id}/stats/ab_test",
+        params={
+            "control_conversions": 120,
+            "control_total": 1000,
+            "variant_conversions": 150,
+            "variant_total": 1000,
+        },
+    ).json()
+    assert "error" not in r, r
+    assert r["winner"] == "variant"
+
+
+
+# These three are pure unit tests against AdvancedStatistics/sanitize_json
+# directly (no /datasets/upload call) — the whole module's upload budget is
+# already fully used by the fixtures above, and the fixes themselves live
+# in plain Python functions that don't need the HTTP layer to exercise.
+
+
+def test_stats_correlation_zero_variance_column_returns_null_not_500():
+    """Regression test: scipy's pearsonr/spearmanr/kendalltau return
+    numpy.float64, so a degenerate zero-variance column produces NaN, and
+    NaN raised ValueError out of Starlette's JSON encoder (500) before every
+    stats endpoint's return value was wrapped in analysis_runner.sanitize_json."""
+    import math
+
+    import pandas as pd
+    from scipy import stats as scipy_stats
+
+    from analysis_runner import sanitize_json
+
+    a = pd.Series(range(10))
+    b = pd.Series([5] * 10)  # constant -> zero variance -> NaN correlation
+    stat, p = scipy_stats.pearsonr(a, b)
+    assert math.isnan(stat), "expected pearsonr to produce NaN for a constant column"
+
+    result = sanitize_json({"coefficient": float(stat), "p_value": float(p)})
+    assert result["coefficient"] is None
+    assert result["p_value"] is None
+
+
+def test_stats_chi_square_rejects_high_cardinality_columns():
+    """Regression test: an unbounded contingency table between two
+    high-cardinality columns previously took 45s+ and returned a 150MB+
+    response on a single-process server. Must now fail fast with a clean
+    error instead of building the table."""
+    import pandas as pd
+    from advanced_stats import AdvancedStatistics
+
+    df = pd.DataFrame({
+        "colA": [f"a_{i % 60}" for i in range(300)],
+        "colB": [f"b_{i % 60}" for i in range(300)],
+    })
+    result = AdvancedStatistics(df).chi_square_test("colA", "colB")
+    assert "error" in result
+    assert "Too many categories" in result["error"]
+
+
+def test_stats_cohort_rejects_too_many_periods():
+    """Regression test: a wide date range at daily granularity previously
+    built an unbounded retention matrix, hanging the whole single-process
+    server (90s+, ~1GB RAM) for one request. Must fail fast instead."""
+    import pandas as pd
+    from advanced_stats import AdvancedStatistics
+
+    # 500 distinct days spread across 2000-2020 — comfortably over the
+    # 400-period cap regardless of row count.
+    dates = pd.date_range("2000-01-01", "2020-12-31", freq="3D")[:500]
+    df = pd.DataFrame({
+        "entity": [f"e{i}" for i in range(len(dates))],
+        "date": dates,
+    })
+    result = AdvancedStatistics(df).cohort_analysis("entity", "date", freq="D")
+    assert "error" in result
+    assert "too many" in result["error"]
