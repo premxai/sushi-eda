@@ -7,7 +7,6 @@ import { useDropzone } from "react-dropzone";
 import {
   ArrowRight,
   FileText,
-  Loader2,
   MessageSquareText,
   ShieldCheck,
   Share2,
@@ -17,6 +16,10 @@ import {
 } from "lucide-react";
 import { Button, Card, Container, Eyebrow, LinkButton } from "@/components/sushi/primitives";
 import { SushiLogo } from "@/components/sushi/SushiLogo";
+import { DataGrain } from "@/components/sushi/DataGrain";
+import { HankoStamp } from "@/components/sushi/HankoStamp";
+import { ConveyorLoader } from "@/components/sushi/ConveyorLoader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface SushiHomeProps {
   onFileAccepted: (file: File) => void;
@@ -66,6 +69,7 @@ const FEATURES = [
     title: "A trust score, up front",
     body: "Every report opens with a 0 to 100 quality grade and a plain verdict, so you know whether to trust the numbers before you present them.",
     icon: ShieldCheck,
+    stamp: true,
   },
   {
     title: "Written like an analyst would",
@@ -96,16 +100,17 @@ function AmbientBackground() {
 
 function Nav() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-line bg-[rgba(250,249,245,0.72)] backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-line bg-[rgba(251,247,238,0.72)] backdrop-blur-xl">
       <Container size="xl" className="flex h-16 items-center justify-between">
-        <Link href="/docs" className="rounded-full px-3 py-2 text-[13.5px] text-muted-ink no-underline transition-colors hover:bg-[rgba(26,25,23,0.05)] hover:text-ink">
-          Docs
+        <Link href="/" className="flex items-center gap-2 no-underline" aria-label="Sushi home">
+          <SushiLogo size={30} />
+          <span className="text-[17px] font-semibold tracking-tight text-ink">Sushi</span>
         </Link>
         <div className="flex items-center gap-2.5">
-          <Link href="/" className="flex items-center gap-2 no-underline" aria-label="Sushi home">
-            <SushiLogo size={30} />
-            <span className="text-[17px] font-semibold tracking-tight text-ink">Sushi</span>
+          <Link href="/docs" className="rounded-full px-3 py-2 text-[13.5px] text-muted-ink no-underline transition-colors hover:bg-ink/5 hover:text-ink">
+            Docs
           </Link>
+          <ThemeToggle />
           <span className="mx-1 h-5 w-px bg-line-2" />
           <LinkButton href="/sign-in" variant="ghost" size="sm">
             Log in
@@ -147,15 +152,9 @@ function UploadPanel({
   if (isUploading) {
     return (
       <Card className="p-10 text-center">
-        <Loader2 className="mx-auto h-7 w-7 animate-spin text-brand" />
-        <p className="mt-4 text-[15px] font-medium text-ink">Reading your data</p>
+        <p className="text-[15px] font-medium text-ink">Reading your data</p>
         <p className="mt-1 text-[13px] text-muted-ink">This usually takes 5 to 30 seconds.</p>
-        <div className="mx-auto mt-5 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-paper-2">
-          <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,var(--brand),#8B6FF0)] transition-[width] duration-500"
-            style={{ width: `${Math.max(8, uploadProgress)}%` }}
-          />
-        </div>
+        <ConveyorLoader progress={uploadProgress} className="mx-auto mt-5 max-w-sm" />
       </Card>
     );
   }
@@ -163,7 +162,7 @@ function UploadPanel({
   return (
     <Card
       {...getRootProps()}
-      className={`cursor-default border-dashed p-10 text-center transition-colors ${
+      className={`sushi-board cursor-default border-dashed p-10 text-center transition-colors ${
         isDragActive ? "border-brand bg-brand-weak" : "border-line-2"
       }`}
     >
@@ -171,7 +170,7 @@ function UploadPanel({
       <div className="sushi-float mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-weak">
         <UploadCloud className="h-6 w-6 text-brand" />
       </div>
-      <p className="mt-5 font-display text-[24px] leading-tight text-ink">Drop a data file to begin</p>
+      <p className="mt-5 font-display text-[24px] leading-tight text-ink">Drop a file on the board</p>
       <p className="mt-1.5 text-[14px] text-muted-ink">Drag it here, or choose a file from your computer.</p>
 
       <div className="mt-6 flex items-center justify-center gap-3">
@@ -234,7 +233,14 @@ export default function SushiHome({
         <Nav />
 
         {/* Hero */}
-        <Container size="lg" className="pt-16 pb-4 text-center sm:pt-24">
+        <Container size="lg" className="relative pt-16 pb-4 text-center sm:pt-24">
+          <div className="pointer-events-none absolute -left-2 top-14 hidden opacity-70 md:block" aria-hidden>
+            <DataGrain count={12} cols={3} cell={13} grainSize={8} seed={3} />
+          </div>
+          <div className="pointer-events-none absolute -right-2 top-20 hidden opacity-70 md:block" aria-hidden>
+            <DataGrain count={9} cols={3} cell={13} grainSize={8} seed={11} />
+          </div>
+
           <motion.div
             initial="hidden"
             animate="show"
@@ -243,7 +249,7 @@ export default function SushiHome({
             <motion.div variants={fadeUp} transition={{ duration: 0.5 }}>
               <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-3 py-1 shadow-soft-sm">
                 <Sparkles className="h-3.5 w-3.5 text-brand" />
-                <span className="text-[12.5px] text-muted-ink">Your AI data analyst</span>
+                <span className="text-[12.5px] text-muted-ink">Omakase for your data</span>
               </div>
             </motion.div>
 
@@ -269,7 +275,7 @@ export default function SushiHome({
         {/* Upload */}
         <Container size="sm" className="pb-2">
           {error && (
-            <div className="mb-4 flex items-start gap-3 rounded-card border border-[rgba(207,84,57,0.25)] bg-[rgba(207,84,57,0.06)] px-4 py-3">
+            <div className="mb-4 flex items-start gap-3 rounded-card border border-danger/25 bg-danger/[0.06] px-4 py-3">
               <p className="flex-1 text-[13.5px] text-danger">{error}</p>
               <button onClick={onClearError} aria-label="Dismiss error" className="text-danger/70 hover:text-danger">
                 <X className="h-4 w-4" />
@@ -343,9 +349,13 @@ export default function SushiHome({
                 transition={{ duration: 0.5, delay: i * 0.08 }}
                 className="px-1"
               >
-                <span className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface shadow-soft-sm">
-                  <f.icon className="h-5 w-5 text-ink" />
-                </span>
+                {"stamp" in f && f.stamp ? (
+                  <HankoStamp value={92} label="Grade A" tone="tuna" size={56} rotation={-10} />
+                ) : (
+                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface shadow-soft-sm">
+                    <f.icon className="h-5 w-5 text-ink" />
+                  </span>
+                )}
                 <h3 className="mt-4 text-[16px] font-semibold text-ink">{f.title}</h3>
                 <p className="mt-1.5 text-[14px] leading-relaxed text-muted-ink">{f.body}</p>
               </motion.div>

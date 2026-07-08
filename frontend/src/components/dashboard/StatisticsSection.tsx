@@ -828,11 +828,11 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
                     }}
                     className={`rounded-xl border p-4 text-left transition ${
                       active
-                        ? "border-indigo-300 bg-indigo-50"
+                        ? "border-brand/40 bg-brand-weak"
                         : "border-zinc-200 bg-zinc-50 hover:border-zinc-300 hover:bg-white"
                     }`}
                   >
-                    <p className={`text-sm font-semibold ${active ? "text-indigo-700" : "text-zinc-900"}`}>
+                    <p className={`text-sm font-semibold ${active ? "text-brand-hover" : "text-zinc-900"}`}>
                       {intent.label}
                     </p>
                     <p className="mt-2 text-sm text-zinc-500">{intent.description}</p>
@@ -840,8 +840,8 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
                 );
               })}
             </div>
-            <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-700">Selected path</p>
+            <div className="mb-4 rounded-xl border border-brand/20 bg-brand-weak p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-hover">Selected path</p>
               <p className="mt-2 text-sm font-medium text-zinc-900">{activeIntent.label}</p>
               <p className="mt-1 text-sm text-zinc-600">{activeIntent.description}</p>
             </div>
@@ -860,7 +860,7 @@ export function StatisticsSection({ report, datasetId, orgId = "default" }: Prop
                     }}
                     className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition ${
                       active
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                        ? "border-brand/40 bg-brand-weak text-brand-hover"
                         : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
                     }`}
                     type="button"

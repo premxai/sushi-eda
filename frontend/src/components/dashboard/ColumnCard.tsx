@@ -18,10 +18,10 @@ interface ColumnCardProps {
 }
 
 function dtypeBadgeColor(dtype: string): string {
-  if (dtype.includes("int") || dtype.includes("float")) return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (dtype.includes("int") || dtype.includes("float")) return "bg-brand-weak text-brand-hover border-brand/25";
   if (dtype.includes("object") || dtype.includes("str")) return "bg-amber-50 text-amber-700 border-amber-200";
   if (dtype.includes("bool")) return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  if (dtype.includes("datetime") || dtype.includes("date")) return "bg-violet-50 text-violet-700 border-violet-200";
+  if (dtype.includes("datetime") || dtype.includes("date")) return "border-[color:#3C8FA0]/25 bg-[#3C8FA0]/10 text-[#2A6E7D]";
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
@@ -38,7 +38,7 @@ function BackendChart({ spec }: { spec: any }) {
     ...(spec.layout ?? {}),
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
-    font: { family: "Inter, sans-serif", size: 11, color: "#334155" },
+    font: { family: "Inter, sans-serif", size: 11, color: "var(--ink)" },
     autosize: true,
     margin: { t: 10, r: 20, b: 40, l: 55 },
   };
@@ -84,7 +84,7 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
   }, [isOpen, chartSpec, chartLoading, column.name, column.is_numeric, datasetId]);
 
   return (
-    <div className="rounded-2xl bg-white transition-shadow hover:shadow-md" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
+    <div className="rounded-2xl border border-line bg-surface transition-shadow hover:shadow-md">
       {/* Header — always visible */}
       <button
         onClick={handleToggle}
@@ -92,7 +92,7 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
       >
         <div className="flex items-center gap-3 min-w-0">
           {isOpen ? (
-            <ChevronDown className="h-4 w-4 shrink-0" style={{ color: "#9060f8" }} />
+            <ChevronDown className="h-4 w-4 shrink-0 text-brand" />
           ) : (
             <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
           )}
@@ -112,7 +112,7 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
 
       {/* Expanded content */}
       {isOpen && (
-        <div className="p-4" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+        <div className="border-t border-line p-4">
           {/* Quick stats */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             <StatCell label="Unique" value={column.unique_count.toLocaleString()} />
@@ -146,8 +146,8 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
                       <span className="w-32 shrink-0 truncate font-mono text-xs text-slate-700">{tv.value}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{ width: `${Math.min(100, (tv.count / totalRows) * 100)}%`, background: "linear-gradient(90deg, #9060f8, #e840c8)" }}
+                          className="h-full rounded-full bg-[linear-gradient(90deg,var(--salmon),var(--tuna))]"
+                          style={{ width: `${Math.min(100, (tv.count / totalRows) * 100)}%` }}
                         />
                       </div>
                       <span className="w-16 shrink-0 text-right font-mono text-xs text-slate-500 tabular-nums">
@@ -164,17 +164,17 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
           <div className="mt-4 space-y-3">
             {chartLoading && (
               <div className="flex h-32 items-center justify-center gap-2 text-xs text-slate-400">
-                <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#9060f8" }} />
+                <Loader2 className="h-4 w-4 animate-spin text-brand" />
                 Loading chart…
               </div>
             )}
             {!chartLoading && chartSpec && (
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.05)" }}>
+              <div className="rounded-xl overflow-hidden border border-line">
                 <BackendChart spec={chartSpec} />
               </div>
             )}
             {!chartLoading && boxSpec && (
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.05)" }}>
+              <div className="rounded-xl overflow-hidden border border-line">
                 <BackendChart spec={boxSpec} />
               </div>
             )}
@@ -187,9 +187,9 @@ export function ColumnCard({ column, totalRows, datasetId }: ColumnCardProps) {
 
 function StatCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.04)" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className={cn("mt-0.5 text-sm font-semibold text-slate-800 tabular-nums", mono && "font-mono")}>
+    <div className="rounded-xl border border-line bg-paper-2 px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-faint-ink">{label}</p>
+      <p className={cn("mt-0.5 text-sm font-semibold tabular-nums text-ink", mono && "font-mono")}>
         {value}
       </p>
     </div>

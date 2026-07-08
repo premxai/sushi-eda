@@ -225,7 +225,7 @@ export function FileUpload({
             ) : !isSignedIn ? (
               /* Anonymous: show lock + CTA */
               <div className="flex flex-col items-center gap-2">
-                <Lock className="h-7 w-7 mb-1" style={{ color: "#9060f8" }} />
+                <Lock className="h-7 w-7 mb-1" style={{ color: "var(--salmon)" }} />
                 <p className="text-sm font-semibold text-white">Sign in to save and reopen your data</p>
                 <p className="text-[11px]" style={{ color: "#777", fontFamily: "'Geist Mono', monospace" }}>
                   Create a free account to keep datasets in one place
@@ -235,7 +235,7 @@ export function FileUpload({
                     marginTop: 8,
                     padding: "7px 20px",
                     borderRadius: 8,
-                    background: "linear-gradient(135deg, #9060f8, #e840c8)",
+                    background: "linear-gradient(135deg, var(--salmon), var(--tuna))",
                     fontSize: 12,
                     fontWeight: 600,
                     color: "#fff",
@@ -285,7 +285,7 @@ export function FileUpload({
           style={{ color: "#7a7570" }}
         >
           {isSignedIn ? "Try with our sample" : "Create an account to try the sample"}{" "}
-          <span style={{ color: "#111010", fontWeight: 500 }}>&quot;Sales Data&quot;</span> dataset.
+          <span style={{ color: "var(--ink)", fontWeight: 500 }}>&quot;Sales Data&quot;</span> dataset.
         </button>
       )}
 

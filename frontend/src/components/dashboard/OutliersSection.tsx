@@ -139,7 +139,7 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
                     return (
                       <>
                         <div
-                          className="absolute top-0 h-full rounded-full bg-indigo-200"
+                          className="absolute top-0 h-full rounded-full bg-brand/30"
                           style={{ left: `${iqrStart}%`, width: `${iqrWidth}%` }}
                         />
                         <div className="absolute left-0 top-0 h-full w-1 rounded-full bg-rose-400" />
@@ -150,7 +150,7 @@ export function OutliersSection({ outliers, preview }: OutliersSectionProps) {
                 </div>
                 <div className="mt-1 flex justify-between text-[10px] text-slate-400 tabular-nums">
                   <span>{o.lower_bound}</span>
-                  <span className="text-indigo-500">typical range</span>
+                  <span className="text-brand">typical range</span>
                   <span>{o.upper_bound}</span>
                 </div>
               </div>

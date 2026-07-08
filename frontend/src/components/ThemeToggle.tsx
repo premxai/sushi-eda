@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
@@ -13,34 +13,19 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 px-0"
-        disabled
-        aria-label="Toggle theme"
-      >
-        <Sun className="h-4 w-4" />
-      </Button>
-    );
-  }
+  const isDark = mounted && theme === "dark";
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-8 w-8 px-0 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-    >
-      {theme === "dark" ? (
-        <Sun className="h-4 w-4 text-slate-400 transition-colors hover:text-slate-100" />
-      ) : (
-        <Moon className="h-4 w-4 text-slate-600 transition-colors hover:text-slate-900" />
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+      className={cn(
+        "grid h-8 w-8 place-items-center rounded-full border border-line text-muted-ink transition-colors hover:bg-[rgba(21,19,15,0.05)] hover:text-ink",
+        className,
       )}
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+    >
+      {mounted && (isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />)}
+    </button>
   );
 }

@@ -26,6 +26,7 @@ import {
   starDataset,
 } from "@/lib/api";
 import { SignedIn, UserButton } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 type Tab = "all" | "starred" | "archived";
 
@@ -33,26 +34,15 @@ const REPORT_KEY = "eda_report";
 const FILE_KEY = "eda_filename";
 const DATASET_KEY = "eda_dataset_id";
 
-const FORMAT_BG: Record<string, string> = {
-  csv:     "rgba(16,185,129,0.12)",
-  xlsx:    "rgba(59,130,246,0.12)",
-  xls:     "rgba(59,130,246,0.12)",
-  parquet: "rgba(144,96,248,0.12)",
-  json:    "rgba(245,158,11,0.12)",
-  tsv:     "rgba(20,184,166,0.12)",
-  sqlite:  "rgba(249,115,22,0.12)",
-  db:      "rgba(249,115,22,0.12)",
-};
-
-const FORMAT_TEXT: Record<string, string> = {
-  csv:     "#059669",
-  xlsx:    "#2563eb",
-  xls:     "#2563eb",
-  parquet: "#7c3aed",
-  json:    "#d97706",
-  tsv:     "#0f766e",
-  sqlite:  "#ea580c",
-  db:      "#ea580c",
+const FILE_TONE: Record<string, string> = {
+  csv: "bg-brand-weak text-brand",
+  tsv: "bg-brand-weak text-brand",
+  xlsx: "bg-ink/8 text-ink",
+  xls: "bg-ink/8 text-ink",
+  json: "bg-warning/10 text-warning",
+  parquet: "bg-success/10 text-success",
+  sqlite: "bg-success/10 text-success",
+  db: "bg-success/10 text-success",
 };
 
 function formatBytes(bytes: number): string {
@@ -191,40 +181,29 @@ export default function DatasetsPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
+    <div className="min-h-screen bg-paper">
 
       {/* ── NAV ── */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        background: "rgba(240,238,233,0.88)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.07)",
-        padding: "0 48px",
-        height: 60,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        {/* Purple accent line */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #9060f8, #e840c8)" }} />
+      <nav className="sticky top-0 z-[100] flex h-[60px] items-center justify-between border-b border-line bg-paper-2/90 px-12 backdrop-blur-xl">
+        {/* Accent line */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[linear-gradient(90deg,var(--salmon),var(--tuna))]" />
 
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <Link href="/" className="flex items-center gap-2.5 no-underline">
           <Image src="/sushi-logo.png" alt="Sushi" width={28} height={28} />
-          <span style={{ fontWeight: 600, fontSize: 17, color: "#111010", letterSpacing: "-0.3px" }}>Sushi</span>
+          <span className="text-[17px] font-semibold tracking-[-0.3px] text-ink">Sushi</span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/compare" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+        <div className="flex items-center gap-3">
+          <Link href="/compare" className="text-[13px] text-muted-ink no-underline">
             Compare
           </Link>
-          <Link href="/docs" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>
+          <Link href="/docs" className="text-[13px] text-muted-ink no-underline">
             Docs
           </Link>
-          <Link href="/" style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 14px", borderRadius: 8, fontSize: 13,
-            color: "#6b6860", textDecoration: "none",
-            border: "1px solid rgba(0,0,0,0.1)",
-          }}>
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 rounded-lg border border-line-2 px-3.5 py-1.5 text-[13px] text-muted-ink no-underline"
+          >
             <Plus size={13} />
             New upload
           </Link>
@@ -235,14 +214,14 @@ export default function DatasetsPage() {
       </nav>
 
       {/* ── CONTENT ── */}
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 24px" }}>
+      <div className="mx-auto max-w-[860px] px-6 py-12">
 
         {/* Page heading */}
-        <div style={{ marginBottom: 36 }}>
-          <h1 className="font-display" style={{ fontSize: 38, fontWeight: 400, color: "#111010", lineHeight: 1.15, marginBottom: 8 }}>
+        <div className="mb-9">
+          <h1 className="font-display mb-2 text-[38px] font-normal leading-[1.15] text-ink">
             My Datasets
           </h1>
-          <p style={{ fontSize: 14, color: "#6b6860" }}>
+          <p className="text-sm text-muted-ink">
             {datasets.length > 0
               ? `${datasets.length} saved workspace${datasets.length !== 1 ? "s" : ""}`
               : "Every uploaded dataset is saved here automatically."}
@@ -250,41 +229,25 @@ export default function DatasetsPage() {
         </div>
 
         {actionError && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(220,38,38,0.16)",
-              background: "rgba(254,242,242,0.92)",
-              color: "#b91c1c",
-              fontSize: 13,
-            }}
-          >
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger">
             {actionError}
           </div>
         )}
 
         {/* Toolbar: pill tabs + upload CTA */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div className="mb-5 flex items-center justify-between">
           {/* Pill tabs */}
-          <div style={{ display: "flex", gap: 4, background: "rgba(0,0,0,0.05)", borderRadius: 12, padding: 3 }}>
+          <div className="flex gap-1 rounded-xl bg-ink/5 p-[3px]">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: 9,
-                  fontSize: 13,
-                  fontWeight: tab === t.key ? 500 : 400,
-                  color: tab === t.key ? "#111010" : "#6b6860",
-                  background: tab === t.key ? "white" : "transparent",
-                  boxShadow: tab === t.key ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
+                className={cn(
+                  "rounded-[9px] px-4 py-1.5 text-[13px] transition-all",
+                  tab === t.key
+                    ? "bg-surface font-medium text-ink shadow-soft-sm"
+                    : "font-normal text-muted-ink",
+                )}
               >
                 {t.label}
               </button>
@@ -292,37 +255,25 @@ export default function DatasetsPage() {
           </div>
 
           {/* CTAs */}
-          <div style={{ display: "flex", gap: 8 }}>
-            <Link href="/compare" style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 16px", borderRadius: 10,
-              fontSize: 13.5, fontWeight: 500,
-              background: "rgba(255,255,255,0.72)",
-              border: "1px solid rgba(0,0,0,0.1)",
-              color: "#6b6860", textDecoration: "none",
-            }}>
+          <div className="flex gap-2">
+            <Link
+              href="/compare"
+              className="flex items-center gap-[7px] rounded-[10px] border border-line-2 bg-surface/70 px-4 py-2 text-[13.5px] font-medium text-muted-ink no-underline"
+            >
               <ArrowUpDown size={13} />
               Compare datasets
             </Link>
-            <Link href="/docs" style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 16px", borderRadius: 10,
-              fontSize: 13.5, fontWeight: 500,
-              background: "rgba(255,255,255,0.72)",
-              border: "1px solid rgba(0,0,0,0.1)",
-              color: "#6b6860", textDecoration: "none",
-            }}>
+            <Link
+              href="/docs"
+              className="flex items-center gap-[7px] rounded-[10px] border border-line-2 bg-surface/70 px-4 py-2 text-[13.5px] font-medium text-muted-ink no-underline"
+            >
               <BookOpen size={13} />
               Sharing guide
             </Link>
-            <Link href="/" style={{
-              display: "flex", alignItems: "center", gap: 7,
-              padding: "8px 18px", borderRadius: 10,
-              fontSize: 13.5, fontWeight: 500,
-              background: "linear-gradient(135deg, #9060f8, #e840c8)",
-              color: "white", textDecoration: "none",
-              boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
-            }}>
+            <Link
+              href="/"
+              className="flex items-center gap-[7px] rounded-[10px] bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] px-[18px] py-2 text-[13.5px] font-medium text-white no-underline shadow-[0_2px_12px_rgba(242,112,74,0.35)]"
+            >
               <Plus size={14} />
               Upload dataset
             </Link>
@@ -331,179 +282,140 @@ export default function DatasetsPage() {
 
         {/* ── DATASET LIST ── */}
         {loading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
-            <Loader2 style={{ width: 22, height: 22, color: "#9060f8", animation: "spin 1s linear infinite" }} />
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-[22px] w-[22px] animate-spin text-brand" />
           </div>
         ) : error ? (
-          <div style={{ textAlign: "center", padding: "80px 0" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-            <p style={{ fontSize: 14, color: "#6b6860" }}>{error}</p>
+          <div className="py-20 text-center">
+            <div className="mb-3 text-4xl">⚠️</div>
+            <p className="text-sm text-muted-ink">{error}</p>
           </div>
         ) : datasets.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 0" }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: 20, margin: "0 auto 20px",
-              background: "linear-gradient(135deg, rgba(144,96,248,0.12), rgba(232,64,200,0.12))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 32,
-            }}>
+          <div className="py-20 text-center">
+            <div className="mx-auto mb-5 flex h-[72px] w-[72px] items-center justify-center rounded-[20px] bg-brand-weak text-[32px]">
               {tab === "starred" ? "⭐" : tab === "archived" ? "📦" : "📂"}
             </div>
-            <p style={{ fontSize: 15, fontWeight: 500, color: "#111010", marginBottom: 8 }}>
+            <p className="mb-2 text-[15px] font-medium text-ink">
               {tab === "starred" ? "No starred datasets yet" :
                tab === "archived" ? "Archive is empty" :
                "No saved datasets yet"}
             </p>
-            <p style={{ fontSize: 13, color: "#6b6860", marginBottom: 20 }}>
+            <p className="mb-5 text-[13px] text-muted-ink">
               {tab === "all" ? "Upload a file to create a saved workspace you can reopen anytime." : ""}
             </p>
             {tab === "all" && (
-              <Link href="/" style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "8px 20px", borderRadius: 10,
-                fontSize: 13.5, fontWeight: 500,
-                background: "linear-gradient(135deg, #9060f8, #e840c8)",
-                color: "white", textDecoration: "none",
-                boxShadow: "0 2px 12px rgba(144,96,248,0.3)",
-              }}>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] px-5 py-2 text-[13.5px] font-medium text-white no-underline shadow-[0_2px_12px_rgba(242,112,74,0.3)]"
+              >
                 <Plus size={14} />
                 Upload your first dataset
               </Link>
             )}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {datasets.map((d) => (
-              <div
-                key={d.id}
-                onClick={() => handleOpen(d)}
-                className="group"
-                style={{
-                  display: "flex", alignItems: "center", gap: 14,
-                  padding: "14px 18px",
-                  background: "rgba(255,255,255,0.72)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.8)",
-                  cursor: d.status === "ready" ? "pointer" : "default",
-                  boxShadow: "0 2px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
-                  transition: "all 0.15s ease",
-                  opacity: d.status !== "ready" ? 0.6 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (d.status === "ready") {
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.09)";
-                    (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(144,96,248,0.25)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)";
-                  (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,255,255,0.8)";
-                }}
-              >
-                {/* Format badge */}
-                <span style={{
-                  flexShrink: 0,
-                  padding: "3px 9px",
-                  borderRadius: 7,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  background: FORMAT_BG[d.file_format] ?? "rgba(0,0,0,0.06)",
-                  color: FORMAT_TEXT[d.file_format] ?? "#6b6860",
-                }}>
-                  {d.file_format}
-                </span>
-
-                {/* File icon */}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: "linear-gradient(135deg, rgba(144,96,248,0.1), rgba(232,64,200,0.1))",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <FileSpreadsheet style={{ width: 16, height: 16, color: "#9060f8" }} />
-                </div>
-
-                {/* Name + meta */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {d.name}
-                  </p>
-                  <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
-                    {d.row_count != null ? `${d.row_count.toLocaleString()} rows` : "—"}
-                    {d.column_count != null ? ` · ${d.column_count} cols` : ""}
-                    {" · "}{formatBytes(d.file_size_bytes)}
-                    {" · "}{timeAgo(d.created_at)}
-                  </p>
-                </div>
-
-                {/* Processing badge */}
-                {d.status !== "ready" && (
-                  <span style={{
-                    padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 500,
-                    background: d.status === "processing" || d.status === "pending"
-                      ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
-                    color: d.status === "processing" || d.status === "pending" ? "#b45309" : "#dc2626",
-                    flexShrink: 0,
-                  }}>
-                    {d.status}
+          <div className="flex flex-col gap-2">
+            {datasets.map((d) => {
+              const tone = FILE_TONE[d.file_format] ?? "bg-ink/6 text-muted-ink";
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => handleOpen(d)}
+                  className={cn(
+                    "group flex items-center gap-3.5 rounded-card border border-surface bg-surface/70 px-[18px] py-3.5 shadow-soft-sm backdrop-blur-md transition-all hover:border-brand/25 hover:shadow-soft",
+                    d.status === "ready" ? "cursor-pointer" : "cursor-default opacity-60",
+                  )}
+                >
+                  {/* Format badge */}
+                  <span className={cn(
+                    "shrink-0 rounded-md px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-[0.04em]",
+                    tone,
+                  )}>
+                    {d.file_format}
                   </span>
-                )}
 
-                {/* Opening spinner */}
-                {openingId === d.id && (
-                  <Loader2 style={{ width: 16, height: 16, color: "#9060f8", flexShrink: 0, animation: "spin 1s linear infinite" }} />
-                )}
+                  {/* File icon */}
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-weak">
+                    <FileSpreadsheet className="h-4 w-4 text-brand" />
+                  </div>
 
-                {/* Hover actions */}
-                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => handleRename(e, d)}
-                    title="Rename dataset"
-                    style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
-                  >
-                    <Pencil style={{ width: 15, height: 15 }} />
-                  </button>
+                  {/* Name + meta */}
+                  <div className="min-w-0 flex-1">
+                    <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-ink">
+                      {d.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-faint-ink">
+                      {d.row_count != null ? `${d.row_count.toLocaleString()} rows` : "—"}
+                      {d.column_count != null ? ` · ${d.column_count} cols` : ""}
+                      {" · "}{formatBytes(d.file_size_bytes)}
+                      {" · "}{timeAgo(d.created_at)}
+                    </p>
+                  </div>
 
-                  <button
-                    onClick={(e) => handleStar(e, d.id)}
-                    title={d.is_starred ? "Unstar" : "Star"}
-                    style={{
-                      padding: 7, borderRadius: 8, border: "none",
-                      background: "transparent", cursor: "pointer",
-                      color: d.is_starred ? "#f59e0b" : "#d1d5db",
-                    }}
-                  >
-                    <Star style={{ width: 15, height: 15 }} fill={d.is_starred ? "currentColor" : "none"} />
-                  </button>
+                  {/* Processing badge */}
+                  {d.status !== "ready" && (
+                    <span className={cn(
+                      "shrink-0 rounded-pill px-2.5 py-[3px] text-[11px] font-medium",
+                      d.status === "processing" || d.status === "pending"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-danger/10 text-danger",
+                    )}>
+                      {d.status}
+                    </span>
+                  )}
 
-                  {tab === "archived" ? (
+                  {/* Opening spinner */}
+                  {openingId === d.id && (
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand" />
+                  )}
+
+                  {/* Hover actions */}
+                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={(e) => handleRestore(e, d.id)}
-                      title="Restore"
-                      style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
+                      onClick={(e) => handleRename(e, d)}
+                      title="Rename dataset"
+                      className="rounded-lg border-none bg-transparent p-[7px] text-faint-ink"
                     >
-                      <ArchiveRestore style={{ width: 15, height: 15 }} />
+                      <Pencil className="h-[15px] w-[15px]" />
                     </button>
-                  ) : (
+
                     <button
-                      onClick={(e) => handleArchive(e, d.id)}
-                      title="Move to archive"
-                      style={{ padding: 7, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#d1d5db" }}
+                      onClick={(e) => handleStar(e, d.id)}
+                      title={d.is_starred ? "Unstar" : "Star"}
+                      className={cn(
+                        "rounded-lg border-none bg-transparent p-[7px]",
+                        d.is_starred ? "text-warning" : "text-faint-ink",
+                      )}
                     >
-                      <Trash2 style={{ width: 15, height: 15 }} />
+                      <Star className="h-[15px] w-[15px]" fill={d.is_starred ? "currentColor" : "none"} />
                     </button>
+
+                    {tab === "archived" ? (
+                      <button
+                        onClick={(e) => handleRestore(e, d.id)}
+                        title="Restore"
+                        className="rounded-lg border-none bg-transparent p-[7px] text-faint-ink"
+                      >
+                        <ArchiveRestore className="h-[15px] w-[15px]" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => handleArchive(e, d.id)}
+                        title="Move to archive"
+                        className="rounded-lg border-none bg-transparent p-[7px] text-faint-ink"
+                      >
+                        <Trash2 className="h-[15px] w-[15px]" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Persistent star indicator */}
+                  {d.is_starred && openingId !== d.id && (
+                    <Star className="h-3.5 w-3.5 shrink-0 text-warning group-hover:hidden" fill="currentColor" />
                   )}
                 </div>
-
-                {/* Persistent star indicator */}
-                {d.is_starred && openingId !== d.id && (
-                  <Star className="group-hover:hidden" style={{ width: 14, height: 14, color: "#f59e0b", flexShrink: 0 }} fill="currentColor" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

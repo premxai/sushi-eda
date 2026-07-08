@@ -26,7 +26,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         Uploaded files and their analysis reports are automatically and
         permanently deleted 7 days after upload. Share links stop working when
         the underlying report is deleted. If you need something gone sooner,
-        archive or delete the dataset yourself from <Link href="/datasets" style={{ color: "#9060f8" }}>My Datasets</Link>.
+        archive or delete the dataset yourself from <Link href="/datasets" style={{ color: "var(--salmon)" }}>My Datasets</Link>.
       </>
     ),
   },
@@ -60,7 +60,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         For confidential datasets, Sushi is open source and can be{" "}
         <a
           href="https://github.com/premxai/sushi-eda"
-          style={{ color: "#9060f8" }}
+          style={{ color: "var(--salmon)" }}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -77,7 +77,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
         Use the Feedback button in the app, or open an issue on{" "}
         <a
           href="https://github.com/premxai/sushi-eda/issues"
-          style={{ color: "#9060f8" }}
+          style={{ color: "var(--salmon)" }}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -91,7 +91,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
 
 export default function PrivacyPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#f0eee9" }}>
+    <div style={{ minHeight: "100vh", background: "var(--paper)" }}>
       <div
         style={{
           background: "rgba(240,238,233,0.92)",
@@ -108,38 +108,38 @@ export default function PrivacyPage() {
       >
         <Link
           href="/"
-          style={{ color: "#9a9690", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}
+          style={{ color: "var(--muted-ink)", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}
         >
           <ArrowLeft size={15} /> Back
         </Link>
         <span style={{ color: "rgba(0,0,0,0.15)" }}>|</span>
-        <span style={{ fontWeight: 700, fontSize: 16, color: "#111010" }}>Privacy</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>Privacy</span>
       </div>
 
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <ShieldCheck size={22} style={{ color: "#22c55e" }} />
-          <h1 style={{ fontSize: 30, fontWeight: 800, color: "#111010", margin: 0, letterSpacing: "-0.4px" }}>
+          <ShieldCheck size={22} style={{ color: "#6E8F2E" }} />
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.4px" }}>
             Your data, plainly
           </h1>
         </div>
-        <p style={{ fontSize: 14, color: "#6b6860", margin: "6px 0 32px", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 14, color: "var(--muted-ink)", margin: "6px 0 32px", lineHeight: 1.6 }}>
           Sushi exists to help you understand a data file, not to collect your data.
           Here is exactly what happens to what you upload — no legalese.
         </p>
 
         {SECTIONS.map((s) => (
           <section key={s.title} style={{ marginBottom: 26 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111010", marginBottom: 6 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>
               {s.title}
             </h2>
-            <p style={{ fontSize: 13.5, color: "#4b4540", lineHeight: 1.65, margin: 0 }}>{s.body}</p>
+            <p style={{ fontSize: 13.5, color: "var(--muted-ink)", lineHeight: 1.65, margin: 0 }}>{s.body}</p>
           </section>
         ))}
 
-        <p style={{ fontSize: 12, color: "#9a9690", marginTop: 40 }}>
+        <p style={{ fontSize: 12, color: "var(--muted-ink)", marginTop: 40 }}>
           Last updated July 2026. Material changes will be noted in the{" "}
-          <Link href="/changelog" style={{ color: "#9060f8" }}>changelog</Link>.
+          <Link href="/changelog" style={{ color: "var(--salmon)" }}>changelog</Link>.
         </p>
       </div>
     </div>

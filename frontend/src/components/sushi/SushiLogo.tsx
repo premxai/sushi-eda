@@ -1,12 +1,10 @@
 import React from "react";
 
 /**
- * Sushi mark — recreated as SVG from the brand logo: a dark ring around a
- * white field holding a data "sushi roll" (coral + red pie slices, a green
- * quadrant, and a small ascending bar chart). Scales cleanly at any size.
- *
- * To use the exact raster instead, drop it at /public/logo.png and swap this
- * for <Image src="/logo.png" .../>.
+ * Sushi mark: a dark ring around a paper-white field holding a data
+ * "nigiri" — four quadrants (salmon, tuna, wasabi, paper) plus a small
+ * ascending bar chart in the top-right cell. Ring/field read from the
+ * --ink/--paper tokens so the mark flips automatically in dark mode.
  */
 export function SushiLogo({ size = 32, className }: { size?: number; className?: string }) {
   const id = React.useId();
@@ -27,21 +25,21 @@ export function SushiLogo({ size = 32, className }: { size?: number; className?:
         </clipPath>
       </defs>
 
-      {/* dark ring + white field */}
-      <circle cx="32" cy="32" r="31" fill="#2C332F" />
-      <circle cx="32" cy="32" r="24" fill="#FFFFFF" />
+      {/* dark ring + paper field */}
+      <circle cx="32" cy="32" r="31" fill="var(--ink)" />
+      <circle cx="32" cy="32" r="24" fill="var(--paper)" />
 
-      {/* chart quadrants (2px white gap through the centre) */}
+      {/* chart quadrants (2px gap through the centre) */}
       <g clipPath={`url(#${id}-clip)`}>
-        <rect x="8" y="8" width="23" height="23" fill="#EC7A63" />
-        <rect x="8" y="33" width="23" height="23" fill="#CE4130" />
-        <rect x="33" y="33" width="23" height="23" fill="#98C23D" />
-        <rect x="33" y="8" width="23" height="23" fill="#FFFFFF" />
+        <rect x="8" y="8" width="23" height="23" fill="var(--salmon)" />
+        <rect x="8" y="33" width="23" height="23" fill="var(--tuna)" />
+        <rect x="33" y="33" width="23" height="23" fill="var(--wasabi)" />
+        <rect x="33" y="8" width="23" height="23" fill="var(--paper)" />
 
         {/* ascending bars in the top-right cell */}
-        <rect x="35" y="23" width="3.4" height="7" rx="1" fill="#EC7A63" />
-        <rect x="40" y="20" width="3.4" height="10" rx="1" fill="#CE4130" />
-        <rect x="45" y="17" width="3.4" height="13" rx="1" fill="#98C23D" />
+        <rect x="35" y="23" width="3.4" height="7" rx="1" fill="var(--salmon)" />
+        <rect x="40" y="20" width="3.4" height="10" rx="1" fill="var(--tuna)" />
+        <rect x="45" y="17" width="3.4" height="13" rx="1" fill="var(--wasabi)" />
       </g>
     </svg>
   );

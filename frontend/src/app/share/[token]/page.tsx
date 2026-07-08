@@ -17,6 +17,8 @@ import {
   getSharedReport,
 } from "@/lib/api";
 import { NarrativeMarkdown } from "@/components/dashboard/AISummarySection";
+import { HankoStamp } from "@/components/sushi/HankoStamp";
+import { cn } from "@/lib/utils";
 
 function formatNumber(value: number | undefined) {
   return typeof value === "number" ? value.toLocaleString() : "—";
@@ -28,6 +30,12 @@ function formatQuality(value: number | undefined) {
 
 function formatStat(value: number | undefined) {
   return typeof value === "number" ? value.toFixed(2) : "—";
+}
+
+function stampTone(score: number): "wasabi" | "salmon" | "tuna" {
+  if (score >= 80) return "wasabi";
+  if (score >= 60) return "salmon";
+  return "tuna";
 }
 
 export default function SharedReportPage() {
@@ -56,8 +64,8 @@ export default function SharedReportPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-        <div className="rounded-2xl border border-neutral-200 bg-white px-5 py-4 text-sm text-neutral-500 shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <div className="rounded-card border border-line bg-surface px-5 py-4 text-sm text-muted-ink shadow-soft-sm">
           Loading shared report...
         </div>
       </div>
@@ -66,19 +74,19 @@ export default function SharedReportPage() {
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-6">
-        <div className="w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-          <AlertCircle className="mx-auto h-10 w-10 text-rose-400" />
-          <p className="mt-4 text-base font-semibold text-neutral-900">
+      <div className="flex min-h-screen items-center justify-center bg-paper px-6">
+        <div className="w-full max-w-md rounded-card-lg border border-line bg-surface p-8 text-center shadow-soft">
+          <AlertCircle className="mx-auto h-10 w-10 text-danger" />
+          <p className="mt-4 text-base font-semibold text-ink">
             {error || "Report not found"}
           </p>
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="mt-2 text-sm text-muted-ink">
             The link may have expired, been revoked, or point to a report that is
             no longer available.
           </p>
           <Link
             href="/"
-            className="mt-6 inline-flex rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
+            className="mt-6 inline-flex rounded-pill border border-line px-4 py-2 text-sm font-medium text-muted-ink transition hover:border-line-2 hover:text-ink"
           >
             Back to Sushi
           </Link>
@@ -92,21 +100,21 @@ export default function SharedReportPage() {
   const quality = report.quality_score;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f4ef_100%)]">
-      <div className="border-b border-neutral-200 bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-paper">
+      <div className="border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <Image src="/sushi-logo.png" alt="Sushi" width={32} height={32} />
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint-ink">
                 Shared Analysis
               </p>
-              <h1 className="text-base font-semibold text-neutral-900">
+              <h1 className="font-display text-lg font-semibold text-ink">
                 {data.dataset_name}
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-neutral-500">
+          <div className="flex items-center gap-4 text-xs text-muted-ink">
             <span className="inline-flex items-center gap-1.5">
               <Clock3 className="h-3.5 w-3.5" />
               Expires {new Date(data.expires_at).toLocaleDateString()}
@@ -120,34 +128,50 @@ export default function SharedReportPage() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <div className="grid gap-4 md:grid-cols-4">
-          {[
-            { label: "Rows", value: formatNumber(basic?.rows) },
-            { label: "Columns", value: formatNumber(basic?.columns) },
-            { label: "Missing Cells", value: formatNumber(basic?.total_missing) },
-            {
-              label: "Quality Score",
-              value: formatQuality(quality?.overall_score),
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm"
-            >
-              <p className="text-xs text-neutral-500">{item.label}</p>
-              <p className="mt-1 text-2xl font-semibold text-neutral-900">
-                {item.value}
-              </p>
+        <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-stretch">
+          {typeof quality?.overall_score === "number" && (
+            <div className="flex shrink-0 items-center justify-center rounded-card-lg border border-line bg-surface px-6 py-5 shadow-soft-sm">
+              <HankoStamp
+                value={quality.overall_score}
+                label={quality.grade ? `Grade ${quality.grade}` : "Quality"}
+                tone={stampTone(quality.overall_score)}
+                size={96}
+                rotation={-8}
+              />
             </div>
-          ))}
+          )}
+
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[
+              { label: "Rows", value: formatNumber(basic?.rows) },
+              { label: "Columns", value: formatNumber(basic?.columns) },
+              { label: "Missing Cells", value: formatNumber(basic?.total_missing) },
+              {
+                label: "Quality Score",
+                value: formatQuality(quality?.overall_score),
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-card border border-line bg-surface px-4 py-4 shadow-soft-sm"
+              >
+                <p className="font-mono text-[11px] uppercase tracking-wide text-faint-ink">
+                  {item.label}
+                </p>
+                <p className="mt-1 font-display text-2xl font-semibold text-ink">
+                  {item.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
           <div className="space-y-6">
-            <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <section className="rounded-card-lg border border-line bg-surface p-6 shadow-soft-sm">
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-neutral-400" />
-                <h2 className="text-sm font-semibold text-neutral-900">
+                <FileText className="h-4 w-4 text-faint-ink" />
+                <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[1.5px] text-muted-ink">
                   Executive Summary
                 </h2>
               </div>
@@ -156,23 +180,23 @@ export default function SharedReportPage() {
                   <NarrativeMarkdown text={data.analysis.ai_narrative} />
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-neutral-600">
+                <p className="mt-4 text-sm text-muted-ink">
                   No AI summary was saved for this analysis. The summary metrics
                   and column profile below are still available.
                 </p>
               )}
             </section>
 
-            <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-              <div className="flex items-center gap-2 border-b border-neutral-100 px-6 py-4">
-                <Database className="h-4 w-4 text-neutral-400" />
-                <h2 className="text-sm font-semibold text-neutral-900">
+            <section className="overflow-hidden rounded-card-lg border border-line bg-surface shadow-soft-sm">
+              <div className="flex items-center gap-2 border-b border-line px-6 py-4">
+                <Database className="h-4 w-4 text-faint-ink" />
+                <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[1.5px] text-muted-ink">
                   Column Profile
                 </h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
+                  <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-faint-ink">
                     <tr>
                       <th className="px-6 py-3 font-medium">Column</th>
                       <th className="px-6 py-3 font-medium">Type</th>
@@ -185,23 +209,34 @@ export default function SharedReportPage() {
                     {(report.column_analysis ?? []).map((column) => (
                       <tr
                         key={column.name}
-                        className="border-t border-neutral-100 align-top"
+                        className="border-t border-line align-top"
                       >
-                        <td className="px-6 py-4 font-medium text-neutral-900">
+                        <td className="px-6 py-4 font-medium text-ink">
                           {column.name}
                         </td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td className="px-6 py-4 text-muted-ink">
                           {column.dtype}
                         </td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td
+                          className={cn(
+                            "px-6 py-4",
+                            typeof column.missing_percent === "number"
+                              ? column.missing_percent > 20
+                                ? "text-danger"
+                                : column.missing_percent > 5
+                                  ? "text-warning"
+                                  : "text-muted-ink"
+                              : "text-muted-ink",
+                          )}
+                        >
                           {typeof column.missing_percent === "number"
                             ? `${column.missing_percent.toFixed(1)}%`
                             : "—"}
                         </td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td className="px-6 py-4 text-muted-ink">
                           {formatNumber(column.unique_count)}
                         </td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td className="px-6 py-4 text-muted-ink">
                           {column.stats ? (
                             <span>
                               Mean {formatStat(column.stats.mean)} · Std{" "}
@@ -220,26 +255,26 @@ export default function SharedReportPage() {
           </div>
 
           <aside className="space-y-6">
-            <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-neutral-900">
+            <section className="rounded-card-lg border border-line bg-surface p-6 shadow-soft-sm">
+              <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[1.5px] text-muted-ink">
                 Analysis Metadata
               </h2>
-              <dl className="mt-4 space-y-3 text-sm text-neutral-600">
+              <dl className="mt-4 space-y-3 text-sm text-muted-ink">
                 <div className="flex items-start justify-between gap-4">
                   <dt>Version</dt>
-                  <dd className="font-medium text-neutral-900">
+                  <dd className="font-medium text-ink">
                     v{data.analysis.version}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <dt>Generated</dt>
-                  <dd className="text-right font-medium text-neutral-900">
+                  <dd className="text-right font-medium text-ink">
                     {new Date(data.analysis.created_at).toLocaleString()}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <dt>Duration</dt>
-                  <dd className="font-medium text-neutral-900">
+                  <dd className="font-medium text-ink">
                     {typeof data.analysis.duration_seconds === "number"
                       ? `${data.analysis.duration_seconds.toFixed(1)}s`
                       : "—"}
@@ -248,20 +283,20 @@ export default function SharedReportPage() {
               </dl>
             </section>
 
-            <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-neutral-900">
+            <section className="rounded-card-lg border border-line bg-surface p-6 shadow-soft-sm">
+              <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[1.5px] text-muted-ink">
                 Quality Snapshot
               </h2>
-              <ul className="mt-4 space-y-3 text-sm text-neutral-600">
+              <ul className="mt-4 space-y-3 text-sm text-muted-ink">
                 <li className="flex items-start justify-between gap-4">
                   <span>Duplicate Rows</span>
-                  <span className="font-medium text-neutral-900">
+                  <span className="font-medium text-ink">
                     {formatNumber(basic?.duplicate_rows)}
                   </span>
                 </li>
                 <li className="flex items-start justify-between gap-4">
                   <span>Memory Usage</span>
-                  <span className="font-medium text-neutral-900">
+                  <span className="font-medium text-ink">
                     {typeof basic?.memory_usage_mb === "number"
                       ? `${basic.memory_usage_mb.toFixed(1)} MB`
                       : "—"}
@@ -269,12 +304,19 @@ export default function SharedReportPage() {
                 </li>
                 <li className="flex items-start justify-between gap-4">
                   <span>Profiled Columns</span>
-                  <span className="font-medium text-neutral-900">
+                  <span className="font-medium text-ink">
                     {formatNumber(report.column_analysis?.length)}
                   </span>
                 </li>
               </ul>
             </section>
+
+            <p className="px-1 text-center text-[11px] text-faint-ink">
+              Generated with{" "}
+              <Link href="/" className="font-medium text-brand hover:underline">
+                Sushi
+              </Link>
+            </p>
           </aside>
         </div>
       </div>

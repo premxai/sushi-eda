@@ -15,6 +15,8 @@ import {
 import { EDAReport } from "@/lib/types";
 import { NarrativeMarkdown } from "@/components/dashboard/AISummarySection";
 import { exportReportPDF } from "@/lib/pdfExport";
+import { HankoStamp } from "@/components/sushi/HankoStamp";
+import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 
 interface Props {
@@ -25,48 +27,18 @@ interface Props {
 
 const PINNED_KEY = "sushi_pinned_notes";
 
-function ScoreRing({ score, grade }: { score: number; grade: string }) {
-  const radius = 44;
-  const circumference = 2 * Math.PI * radius;
-  const pct = Math.min(Math.max(score, 0), 100) / 100;
-  const dash = circumference * pct;
-  const color =
-    score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444";
-
-  return (
-    <svg width={110} height={110} viewBox="0 0 110 110">
-      <circle cx={55} cy={55} r={radius} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={10} />
-      <circle
-        cx={55} cy={55} r={radius} fill="none"
-        stroke={color} strokeWidth={10}
-        strokeDasharray={`${dash} ${circumference}`}
-        strokeLinecap="round"
-        transform="rotate(-90 55 55)"
-        style={{ transition: "stroke-dasharray 0.8s ease" }}
-      />
-      <text x={55} y={51} textAnchor="middle" fontSize={20} fontWeight={700} fill={color}>
-        {score}
-      </text>
-      <text x={55} y={65} textAnchor="middle" fontSize={12} fill="#9a9690">
-        {grade}
-      </text>
-    </svg>
-  );
+function stampTone(score: number): "wasabi" | "salmon" | "tuna" {
+  if (score >= 80) return "wasabi";
+  if (score >= 60) return "salmon";
+  return "tuna";
 }
 
 function MetricCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.72)",
-      border: "1px solid rgba(0,0,0,0.07)",
-      borderRadius: 12, padding: "12px 16px",
-    }}>
-      <div style={{ fontSize: 20, fontWeight: 700, color: "#111010" }}>{value}</div>
-      <div style={{
-        fontSize: 10, letterSpacing: "1px", textTransform: "uppercase", color: "#9a9690",
-        fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", marginTop: 2,
-      }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: "#9a9690", marginTop: 2 }}>{sub}</div>}
+    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+      <div className="text-[20px] font-bold text-ink">{value}</div>
+      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[1px] text-muted-ink">{label}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-muted-ink">{sub}</div>}
     </div>
   );
 }
@@ -182,46 +154,36 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
   }
 
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 900, margin: "0 auto" }}>
+    <div className="mx-auto max-w-[900px] px-8 py-6">
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+      <div className="mb-7 flex items-start justify-between">
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111010", margin: 0 }}>Report</h2>
-          <p style={{ fontSize: 13, color: "#9a9690", margin: "4px 0 0" }}>
+          <h2 className="text-[20px] font-bold text-ink">Report</h2>
+          <p className="mt-1 text-[13px] text-muted-ink">
             {fileName} · {new Date().toLocaleDateString()}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={exportMarkdown} style={btnStyle("ghost")}>
+        <div className="flex gap-2">
+          <button onClick={exportMarkdown} className={ghostBtn}>
             <FileText size={13} /> Markdown
           </button>
-          <button onClick={exportJSON} style={btnStyle("ghost")}>
+          <button onClick={exportJSON} className={ghostBtn}>
             <FileJson size={13} /> JSON
           </button>
-          <button onClick={exportPDF} disabled={exporting} style={btnStyle("primary")}>
-            {exporting ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={13} />}
+          <button onClick={exportPDF} disabled={exporting} className={primaryBtn}>
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             {exporting ? "Exporting…" : "Export PDF"}
           </button>
         </div>
       </div>
 
       {/* Quality score + key metrics */}
-      <div style={{ display: "flex", gap: 20, marginBottom: 24, alignItems: "center" }}>
-        <div style={{
-          background: "rgba(255,255,255,0.72)",
-          border: "1px solid rgba(0,0,0,0.07)",
-          borderRadius: 16, padding: "20px 24px",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-          flexShrink: 0,
-        }}>
-          <ScoreRing score={qs.overall_score} grade={qs.grade} />
-          <span style={{
-            fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase",
-            color: "#9a9690", fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-          }}>Quality score</span>
+      <div className="mb-6 flex items-center gap-5">
+        <div className="flex shrink-0 flex-col items-center gap-1.5 rounded-card border border-line bg-surface px-6 py-5">
+          <HankoStamp value={qs.overall_score} label={`Grade ${qs.grade}`} tone={stampTone(qs.overall_score)} size={100} rotation={-8} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, flex: 1 }}>
+        <div className="grid flex-1 grid-cols-2 gap-2.5">
           <MetricCard label="Rows" value={info.rows.toLocaleString()} />
           <MetricCard label="Columns" value={info.columns} />
           <MetricCard label="Missing" value={missingPct} sub={`${info.total_missing.toLocaleString()} cells`} />
@@ -231,19 +193,19 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
 
       {/* AI summary — leads the report */}
       {aiNarrative && (
-        <Section title="What your data says" icon={<Sparkles size={14} style={{ color: "#9060f8" }} />}>
+        <Section title="What your data says" icon={<Sparkles size={14} className="text-brand" />}>
           <NarrativeMarkdown text={aiNarrative} />
         </Section>
       )}
 
       {/* Recommendations */}
       {qs.recommendations.length > 0 && (
-        <Section title="Recommendations" icon={<Star size={14} style={{ color: "#f59e0b" }} />}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Section title="Recommendations" icon={<Star size={14} className="text-warning" />}>
+          <div className="flex flex-col gap-1.5">
             {qs.recommendations.map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ color: "#f59e0b", marginTop: 1, flexShrink: 0 }}>•</span>
-                <span style={{ fontSize: 13, color: "#4b4540" }}>{r}</span>
+              <div key={i} className="flex items-start gap-2">
+                <span className="mt-px shrink-0 text-warning">•</span>
+                <span className="text-[13px] text-ink/80">{r}</span>
               </div>
             ))}
           </div>
@@ -252,19 +214,12 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
 
       {/* Strong correlations */}
       {topCorrs.length > 0 && (
-        <Section title="Strong Correlations" icon={<TrendingUp size={14} style={{ color: "#9060f8" }} />}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 8 }}>
+        <Section title="Strong Correlations" icon={<TrendingUp size={14} className="text-brand" />}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2">
             {topCorrs.map(({ col1, col2, r }) => (
-              <div key={`${col1}-${col2}`} style={{
-                background: "rgba(144,96,248,0.05)", border: "1px solid rgba(144,96,248,0.12)",
-                borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}>
-                <span style={{ fontSize: 12, color: "#4b4540" }}>{col1} ↔ {col2}</span>
-                <span style={{
-                  fontWeight: 700, fontSize: 13,
-                  color: r > 0 ? "#9060f8" : "#ef4444",
-                  fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-                }}>
+              <div key={`${col1}-${col2}`} className="flex items-center justify-between rounded-lg border border-brand/[0.12] bg-brand-weak px-3 py-2">
+                <span className="text-[12px] text-ink/80">{col1} ↔ {col2}</span>
+                <span className={cn("font-mono text-[13px] font-bold", r > 0 ? "text-brand" : "text-danger")}>
                   {r > 0 ? "+" : ""}{r.toFixed(3)}
                 </span>
               </div>
@@ -275,15 +230,15 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
 
       {/* Outliers */}
       {firingOutliers.length > 0 && (
-        <Section title="Outlier Flags" icon={<AlertTriangle size={14} style={{ color: "#ef4444" }} />}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Section title="Outlier Flags" icon={<AlertTriangle size={14} className="text-danger" />}>
+          <div className="flex flex-col gap-1">
             {firingOutliers.slice(0, 10).map((o) => (
-              <div key={o.column} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
-                <span style={{ fontWeight: 600, color: "#111010", minWidth: 120 }}>{o.column}</span>
-                <span style={{ color: "#ef4444", fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace" }}>
+              <div key={o.column} className="flex items-center gap-2.5 text-[12px]">
+                <span className="min-w-[120px] font-semibold text-ink">{o.column}</span>
+                <span className="font-mono text-danger">
                   {o.outlier_count} outliers ({o.outlier_percent}%)
                 </span>
-                <span style={{ color: "#9a9690" }}>bounds [{o.lower_bound.toFixed(2)}, {o.upper_bound.toFixed(2)}]</span>
+                <span className="text-muted-ink">bounds [{o.lower_bound.toFixed(2)}, {o.upper_bound.toFixed(2)}]</span>
               </div>
             ))}
           </div>
@@ -292,35 +247,42 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
 
       {/* Column quality breakdown */}
       <Section title="Column Quality">
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[12px]">
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+              <tr className="border-b border-line">
                 {["Column", "Type", "Missing", "Unique", "Status"].map((h) => (
-                  <th key={h} style={{
-                    textAlign: "left", padding: "6px 10px",
-                    fontSize: 9, letterSpacing: "1px", textTransform: "uppercase",
-                    color: "#9a9690", fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-                    fontWeight: 600,
-                  }}>{h}</th>
+                  <th key={h} className="px-2.5 py-1.5 text-left font-mono text-[9px] font-semibold uppercase tracking-[1px] text-muted-ink">
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {cols.map((c) => (
-                <tr key={c.name} style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-                  <td style={{ padding: "6px 10px", fontWeight: 500, color: "#111010" }}>{c.name}</td>
-                  <td style={{ padding: "6px 10px", color: "#9a9690", fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace", fontSize: 11 }}>{c.dtype}</td>
-                  <td style={{ padding: "6px 10px", color: c.missing_percent > 20 ? "#ef4444" : c.missing_percent > 5 ? "#f59e0b" : "#22c55e" }}>
+                <tr key={c.name} className="border-b border-line/60">
+                  <td className="px-2.5 py-1.5 font-medium text-ink">{c.name}</td>
+                  <td className="px-2.5 py-1.5 font-mono text-[11px] text-muted-ink">{c.dtype}</td>
+                  <td
+                    className={cn(
+                      "px-2.5 py-1.5",
+                      c.missing_percent > 20 ? "text-danger" : c.missing_percent > 5 ? "text-warning" : "text-success",
+                    )}
+                  >
                     {c.missing_percent}%
                   </td>
-                  <td style={{ padding: "6px 10px", color: "#9a9690" }}>{c.unique_count.toLocaleString()}</td>
-                  <td style={{ padding: "6px 10px" }}>
-                    <span style={{
-                      display: "inline-block", padding: "1px 7px", borderRadius: 20, fontSize: 10,
-                      background: c.missing_percent === 0 ? "rgba(34,197,94,0.1)" : c.missing_percent > 20 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
-                      color: c.missing_percent === 0 ? "#22c55e" : c.missing_percent > 20 ? "#ef4444" : "#f59e0b",
-                    }}>
+                  <td className="px-2.5 py-1.5 text-muted-ink">{c.unique_count.toLocaleString()}</td>
+                  <td className="px-2.5 py-1.5">
+                    <span
+                      className={cn(
+                        "inline-block rounded-pill px-1.5 py-px text-[10px]",
+                        c.missing_percent === 0
+                          ? "bg-success/10 text-success"
+                          : c.missing_percent > 20
+                            ? "bg-danger/10 text-danger"
+                            : "bg-warning/10 text-warning",
+                      )}
+                    >
                       {c.missing_percent === 0 ? "clean" : c.missing_percent > 20 ? "high missing" : "some missing"}
                     </span>
                   </td>
@@ -332,81 +294,52 @@ export function ReportSection({ report, fileName = "dataset", aiNarrative }: Pro
       </Section>
 
       {/* Analyst notes (pinned) */}
-      <Section title="Analyst Notes" icon={<Pin size={14} style={{ color: "#9060f8" }} />}>
+      <Section title="Analyst Notes" icon={<Pin size={14} className="text-brand" />}>
         {editingNote ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="flex flex-col gap-2">
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               rows={4}
               placeholder="Add notes, observations, or next steps…"
-              style={{
-                width: "100%", padding: "10px 12px", borderRadius: 8,
-                border: "1px solid rgba(144,96,248,0.3)", fontSize: 13,
-                color: "#111010", background: "rgba(255,255,255,0.9)",
-                resize: "vertical", outline: "none", boxSizing: "border-box",
-              }}
+              className="w-full resize-y rounded-lg border border-brand/30 bg-surface px-3 py-2.5 text-[13px] text-ink outline-none"
             />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveNote} style={btnStyle("primary")}>Save</button>
-              <button onClick={() => { setEditingNote(false); setNoteText(pinnedNote); }} style={btnStyle("ghost")}>Cancel</button>
+            <div className="flex gap-2">
+              <button onClick={saveNote} className={primaryBtn}>Save</button>
+              <button onClick={() => { setEditingNote(false); setNoteText(pinnedNote); }} className={ghostBtn}>Cancel</button>
             </div>
           </div>
         ) : (
           <div>
             {pinnedNote ? (
-              <p style={{ fontSize: 13, color: "#4b4540", whiteSpace: "pre-wrap", marginBottom: 10 }}>{pinnedNote}</p>
+              <p className="mb-2.5 whitespace-pre-wrap text-[13px] text-ink/80">{pinnedNote}</p>
             ) : (
-              <p style={{ fontSize: 13, color: "#9a9690", marginBottom: 10 }}>No notes yet. Add observations or next steps.</p>
+              <p className="mb-2.5 text-[13px] text-muted-ink">No notes yet. Add observations or next steps.</p>
             )}
-            <button onClick={() => { setEditingNote(true); setNoteText(pinnedNote); }} style={btnStyle("ghost")}>
+            <button onClick={() => { setEditingNote(true); setNoteText(pinnedNote); }} className={ghostBtn}>
               {pinnedNote ? <><PinOff size={12} /> Edit notes</> : <><Pin size={12} /> Add notes</>}
             </button>
           </div>
         )}
       </Section>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
+
+const ghostBtn = "inline-flex items-center gap-1.5 rounded-lg bg-ink/5 px-3.5 py-1.5 text-[12px] font-semibold text-muted-ink";
+const primaryBtn = "inline-flex items-center gap-1.5 rounded-lg bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] px-3.5 py-1.5 text-[12px] font-semibold text-white";
 
 function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.72)",
-      border: "1px solid rgba(0,0,0,0.07)",
-      borderRadius: 14, overflow: "hidden", marginBottom: 16,
-    }}>
-      <div style={{
-        height: 3,
-        background: "linear-gradient(90deg, #9060f8, #e840c8, #00d4e8, #9060f8)",
-        backgroundSize: "200% 100%",
-        animation: "shimmer 4s linear infinite",
-      }} />
-      <div style={{ padding: "14px 18px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+    <div className="mb-4 overflow-hidden rounded-2xl border border-line bg-surface">
+      <div className="h-[3px] bg-[linear-gradient(90deg,var(--salmon),var(--tuna),var(--wasabi),var(--salmon))] bg-[length:200%_100%] [animation:sushiShimmer_4s_linear_infinite]" />
+      <div className="px-[18px] py-3.5">
+        <div className="mb-3 flex items-center gap-1.5">
           {icon}
-          <span style={{
-            fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase",
-            color: "#9a9690", fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-            fontWeight: 600,
-          }}>{title}</span>
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[1.5px] text-muted-ink">{title}</span>
         </div>
         {children}
       </div>
-      <style>{`@keyframes shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }`}</style>
     </div>
   );
-}
-
-function btnStyle(variant: "primary" | "ghost") {
-  const base: React.CSSProperties = {
-    display: "inline-flex", alignItems: "center", gap: 5,
-    padding: "7px 14px", borderRadius: 8, fontSize: 12,
-    fontWeight: 600, cursor: "pointer", border: "none",
-  };
-  return variant === "primary"
-    ? { ...base, background: "linear-gradient(135deg, #9060f8, #e840c8)", color: "#fff" }
-    : { ...base, background: "rgba(0,0,0,0.05)", color: "#6b6860" };
 }

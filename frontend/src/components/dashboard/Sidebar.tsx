@@ -24,6 +24,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
+import { SushiLogo } from "@/components/sushi/SushiLogo";
+import { cn } from "@/lib/utils";
 
 export type NavSection =
   | "overview"
@@ -98,263 +100,91 @@ export function Sidebar({
       <button
         key={item.id}
         onClick={() => onSectionChange(item.id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "9px 10px",
-          borderRadius: 8,
-          fontSize: 13.5,
-          fontWeight: isActive ? 500 : 400,
-          color: isActive ? "#9060f8" : "#6b6860",
-          background: isActive ? "rgba(144,96,248,0.1)" : "transparent",
-          border: "none",
-          cursor: "pointer",
-          width: "100%",
-          textAlign: "left",
-          transition: "background 0.15s, color 0.15s",
-        }}
+        className={cn(
+          "flex w-full items-center gap-2.5 rounded-lg border-l-2 py-2 pl-2.5 pr-2 text-left text-[13.5px] transition-colors",
+          isActive
+            ? "border-brand bg-brand/[0.16] font-medium text-brand"
+            : "border-transparent text-[#B9B4A4] hover:bg-white/5 hover:text-[#FBF7EE]",
+        )}
       >
-        <item.icon
-          style={{
-            width: 16,
-            height: 16,
-            flexShrink: 0,
-            opacity: isActive ? 1 : 0.5,
-          }}
-        />
+        <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-50")} />
         {item.label}
         {isActive && (
-          <div
-            style={{
-              marginLeft: "auto",
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "#9060f8",
-              flexShrink: 0,
-              boxShadow: "0 0 6px rgba(144,96,248,0.7)",
-            }}
-          />
+          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand shadow-[0_0_6px_var(--brand)]" />
         )}
       </button>
     );
   };
 
   return (
-    <aside
-      style={{
-        width: 230,
-        height: "100vh",
-        flexShrink: 0,
-        background: "rgba(255,255,255,0.65)",
-        borderRight: "1px solid rgba(0,0,0,0.07)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        display: "flex",
-        flexDirection: "column",
-        overflowY: "auto",
-        overflowX: "hidden",
-      }}
-    >
+    <aside className="flex h-screen w-[230px] shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-black/40 bg-[var(--nori)]">
       <button
         onClick={onNewFile}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "20px 20px",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          width: "100%",
-          textAlign: "left",
-        }}
+        className="flex w-full items-center gap-2.5 border-b border-white/[0.08] px-5 py-5 text-left"
       >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #1a1a1a, #333)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 16,
-            flexShrink: 0,
-          }}
-        >
-          S
-        </div>
-        <span style={{ fontWeight: 600, fontSize: 16, color: "#111010", letterSpacing: "-0.2px" }}>
-          Sushi
-        </span>
+        <SushiLogo size={26} />
+        <span className="text-[16px] font-semibold tracking-tight text-[#FBF7EE]">Sushi</span>
       </button>
 
-      <div style={{ padding: "10px 12px 8px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 10px",
-            borderRadius: 8,
-            background: "rgba(144,96,248,0.07)",
-            border: "1px solid rgba(144,96,248,0.14)",
-            marginBottom: 8,
-          }}
-        >
-          <FileSpreadsheet style={{ width: 13, height: 13, color: "#9060f8", flexShrink: 0 }} />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: "#111010",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {fileName}
-          </span>
+      <div className="px-3 pb-2 pt-2.5">
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-brand/25 bg-brand/[0.14] px-2.5 py-2">
+          <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-brand" />
+          <span className="truncate text-[12px] font-medium text-[#FBF7EE]">{fileName}</span>
         </div>
 
-        <div style={{ display: "flex", gap: 6 }}>
+        <div className="flex gap-1.5">
           <button
             onClick={onNewFile}
             title="Back to Home"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 5,
-              flex: 1,
-              padding: "7px 10px",
-              borderRadius: 7,
-              fontSize: 12.5,
-              fontWeight: 500,
-              background: "rgba(0,0,0,0.05)",
-              border: "1px solid rgba(0,0,0,0.08)",
-              color: "#6b6860",
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.09)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-[12.5px] font-medium text-[#B9B4A4] transition-colors hover:bg-white/10"
           >
-            <Home style={{ width: 13, height: 13 }} />
+            <Home className="h-3.5 w-3.5" />
             Home
           </button>
           <button
             onClick={() => (onNewFileRequest ? onNewFileRequest() : onNewFile())}
             title="Start a new saved workspace"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 5,
-              flex: 1,
-              padding: "7px 10px",
-              borderRadius: 7,
-              fontSize: 12.5,
-              fontWeight: 500,
-              background: "linear-gradient(135deg, #9060f8, #e840c8)",
-              border: "none",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(144,96,248,0.3)",
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] px-2.5 py-1.5 text-[12.5px] font-medium text-white shadow-[0_2px_8px_rgba(242,112,74,0.3)] transition-opacity hover:opacity-90"
           >
-            <Plus style={{ width: 13, height: 13 }} />
+            <Plus className="h-3.5 w-3.5" />
             New Upload
           </button>
         </div>
       </div>
 
-      <nav style={{ flex: 1, padding: "6px 12px" }}>
-        <div style={{ marginBottom: 18 }}>
-          <p
-            style={{
-              fontSize: 9,
-              fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              color: "#9a9690",
-              padding: "0 8px",
-              marginBottom: 3,
-            }}
-          >
-            Guided
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {guidedItems.map(renderNavButton)}
-          </div>
+      <nav className="flex-1 px-3 py-1.5">
+        <div className="mb-4">
+          <p className="mb-1 px-2 font-mono text-[9px] uppercase tracking-[2px] text-[#71695A]">Guided</p>
+          <div className="flex flex-col gap-0.5">{guidedItems.map(renderNavButton)}</div>
         </div>
 
-        <div style={{ marginBottom: 18 }}>
+        <div className="mb-4">
           <button
             type="button"
             onClick={() => setShowAdvanced((current) => !current)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "6px 8px",
-              borderRadius: 8,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-            }}
+            className="flex w-full items-center justify-between rounded-lg px-2 py-1.5"
           >
-            <span
-              style={{
-                fontSize: 9,
-                fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                color: "#9a9690",
-              }}
-            >
-              Advanced
-            </span>
+            <span className="font-mono text-[9px] uppercase tracking-[2px] text-[#71695A]">Advanced</span>
             {showAdvanced ? (
-              <ChevronDown style={{ width: 14, height: 14, color: "#9a9690" }} />
+              <ChevronDown className="h-3.5 w-3.5 text-[#71695A]" />
             ) : (
-              <ChevronRight style={{ width: 14, height: 14, color: "#9a9690" }} />
+              <ChevronRight className="h-3.5 w-3.5 text-[#71695A]" />
             )}
           </button>
           {showAdvanced && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 4 }}>
-              {advancedItems.map(renderNavButton)}
-            </div>
+            <div className="mt-1 flex flex-col gap-0.5">{advancedItems.map(renderNavButton)}</div>
           )}
         </div>
       </nav>
 
-      <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: 12 }}>
+      <div className="border-t border-white/[0.08] p-3">
         {launchFooterLinks.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "9px 10px",
-              borderRadius: 8,
-              marginBottom: 1,
-              fontSize: 13.5,
-              color: "#6b6860",
-              textDecoration: "none",
-              fontWeight: 400,
-            }}
+            className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-[#B9B4A4] no-underline transition-colors hover:bg-white/5 hover:text-[#FBF7EE]"
           >
-            <item.icon style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+            <item.icon className="h-4 w-4 shrink-0 opacity-50" />
             {item.label}
           </Link>
         ))}
@@ -362,24 +192,9 @@ export function Sidebar({
         {datasetId && onArchive && (
           <button
             onClick={onArchive}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "9px 10px",
-              borderRadius: 8,
-              marginBottom: 1,
-              fontSize: 13.5,
-              color: "#6b6860",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              width: "100%",
-              textAlign: "left",
-              fontWeight: 400,
-            }}
+            className="mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] text-[#B9B4A4] transition-colors hover:bg-white/5 hover:text-[#FBF7EE]"
           >
-            <Archive style={{ width: 16, height: 16, flexShrink: 0, opacity: 0.5 }} />
+            <Archive className="h-4 w-4 shrink-0 opacity-50" />
             Archive dataset
           </button>
         )}

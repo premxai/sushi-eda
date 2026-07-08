@@ -88,7 +88,7 @@ function TopCorrelations({ data }: { data: CorrelationMatrix }) {
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  p.value >= 0 ? "bg-indigo-400" : "bg-rose-400"
+                  p.value >= 0 ? "bg-brand" : "bg-danger"
                 )}
                 style={{ width: `${Math.abs(p.value) * 100}%` }}
               />

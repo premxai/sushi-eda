@@ -141,7 +141,7 @@ function generateInsights(report: EDAReport): Insight[] {
 const typeConfig = {
   success: { icon: CheckCircle2, border: "border-emerald-200", bg: "bg-emerald-50", text: "text-emerald-700", iconColor: "text-emerald-500" },
   warning: { icon: AlertTriangle, border: "border-amber-200", bg: "bg-amber-50", text: "text-amber-700", iconColor: "text-amber-500" },
-  info: { icon: Info, border: "border-indigo-200", bg: "bg-indigo-50", text: "text-indigo-700", iconColor: "text-indigo-500" },
+  info: { icon: Info, border: "border-brand/25", bg: "bg-brand-weak", text: "text-brand-hover", iconColor: "text-brand" },
   danger: { icon: TrendingDown, border: "border-rose-200", bg: "bg-rose-50", text: "text-rose-700", iconColor: "text-rose-500" },
 };
 

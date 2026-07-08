@@ -65,9 +65,9 @@ const TYPE_COLOR: Record<string, string> = {
   UInt64: "#3b82f6",
   Float32: "#8b5cf6",
   Float64: "#8b5cf6",
-  Utf8: "#10b981",
-  String: "#10b981",
-  Boolean: "#f59e0b",
+  Utf8: "var(--success)",
+  String: "var(--success)",
+  Boolean: "var(--warning)",
   Date: "#ec4899",
   Datetime: "#ec4899",
   Duration: "#ec4899",
@@ -77,7 +77,7 @@ function typeColor(dtype: string) {
   for (const [k, v] of Object.entries(TYPE_COLOR)) {
     if (dtype.startsWith(k)) return v;
   }
-  return "#9a9690";
+  return "var(--muted-ink)";
 }
 
 function loadHistory(): HistoryEntry[] {
@@ -299,8 +299,8 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
           borderRadius: 7,
           fontSize: 12,
           fontWeight: active ? 500 : 400,
-          color: active ? "#111010" : "#9a9690",
-          background: active ? "rgba(144,96,248,0.1)" : "transparent",
+          color: active ? "var(--ink)" : "var(--muted-ink)",
+          background: active ? "rgba(242,112,74,0.1)" : "transparent",
           border: "none",
           cursor: "pointer",
           transition: "all 0.12s",
@@ -328,10 +328,10 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
           style={{
             padding: "10px 16px",
             borderRadius: 10,
-            background: "#fef3c7",
-            border: "1px solid #fcd34d",
+            background: "var(--brand-weak)",
+            border: "1px solid var(--warning)",
             fontSize: 13,
-            color: "#92400e",
+            color: "var(--warning)",
             flexShrink: 0,
           }}
         >
@@ -380,12 +380,12 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   fontFamily: "ui-monospace, Menlo, monospace",
                   letterSpacing: "2px",
                   textTransform: "uppercase",
-                  color: "#9a9690",
+                  color: "var(--muted-ink)",
                 }}
               >
                 SQL Editor
               </span>
-              <span style={{ fontSize: 10, color: "#c0bdb8", marginLeft: 2 }}>
+              <span style={{ fontSize: 10, color: "var(--faint-ink)", marginLeft: 2 }}>
                 · table alias: df
               </span>
 
@@ -399,7 +399,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
               >
                 {/* Limit selector */}
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 11, color: "#9a9690" }}>Limit</span>
+                  <span style={{ fontSize: 11, color: "var(--muted-ink)" }}>Limit</span>
                   <select
                     value={limit}
                     onChange={(e) => {
@@ -412,7 +412,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                       fontSize: 12,
                       border: "1px solid rgba(0,0,0,0.1)",
                       background: "rgba(255,255,255,0.8)",
-                      color: "#111010",
+                      color: "var(--ink)",
                       cursor: "pointer",
                     }}
                   >
@@ -437,7 +437,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     fontSize: 12,
                     border: "1px solid rgba(0,0,0,0.1)",
                     background: "rgba(255,255,255,0.8)",
-                    color: "#6b6860",
+                    color: "var(--muted-ink)",
                     cursor: "pointer",
                   }}
                 >
@@ -459,7 +459,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     fontSize: 12,
                     border: "1px solid rgba(0,0,0,0.1)",
                     background: "rgba(255,255,255,0.8)",
-                    color: "#6b6860",
+                    color: "var(--muted-ink)",
                     cursor: "pointer",
                     opacity: explaining || running ? 0.7 : 1,
                   }}
@@ -491,11 +491,11 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     borderRadius: 7,
                     fontSize: 12,
                     fontWeight: 500,
-                    background: "linear-gradient(135deg, #9060f8, #e840c8)",
+                    background: "linear-gradient(135deg, var(--salmon), var(--tuna))",
                     color: "white",
                     border: "none",
                     cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(144,96,248,0.3)",
+                    boxShadow: "0 2px 8px rgba(242,112,74,0.3)",
                     opacity: running ? 0.7 : 1,
                   }}
                 >
@@ -524,7 +524,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   gap: 8,
                   padding: "8px 14px",
                   borderBottom: "1px solid rgba(0,0,0,0.06)",
-                  background: "rgba(144,96,248,0.04)",
+                  background: "rgba(242,112,74,0.04)",
                 }}
               >
                 <input
@@ -543,7 +543,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     fontSize: 12,
                     border: "1px solid rgba(0,0,0,0.1)",
                     background: "rgba(255,255,255,0.8)",
-                    color: "#111010",
+                    color: "var(--ink)",
                     outline: "none",
                   }}
                 />
@@ -555,9 +555,9 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     borderRadius: 7,
                     fontSize: 12,
                     fontWeight: 500,
-                    background: "rgba(144,96,248,0.12)",
-                    color: "#9060f8",
-                    border: "1px solid rgba(144,96,248,0.2)",
+                    background: "rgba(242,112,74,0.12)",
+                    color: "var(--salmon)",
+                    border: "1px solid rgba(242,112,74,0.2)",
                     cursor: "pointer",
                   }}
                 >
@@ -631,7 +631,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
             >
               <span
                 style={{
-                  color: "#ef4444",
+                  color: "var(--danger)",
                   flexShrink: 0,
                   fontSize: 13,
                   fontWeight: 500,
@@ -642,7 +642,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
               <p
                 style={{
                   fontSize: 12,
-                  color: "#ef4444",
+                  color: "var(--danger)",
                   fontFamily: "ui-monospace, Menlo, monospace",
                   lineHeight: 1.5,
                 }}
@@ -670,10 +670,10 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                 }}
               >
                 <FileSearch
-                  style={{ width: 13, height: 13, color: "#6b6860" }}
+                  style={{ width: 13, height: 13, color: "var(--muted-ink)" }}
                 />
                 <span
-                  style={{ fontSize: 12, color: "#6b6860", fontWeight: 600 }}
+                  style={{ fontSize: 12, color: "var(--muted-ink)", fontWeight: 600 }}
                 >
                   EXPLAIN plan
                 </span>
@@ -683,7 +683,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   margin: 0,
                   fontSize: 11,
                   lineHeight: 1.45,
-                  color: "#34312d",
+                  color: "var(--ink)",
                   fontFamily: "ui-monospace, Menlo, monospace",
                   whiteSpace: "pre-wrap",
                   maxHeight: 180,
@@ -722,23 +722,23 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   flexShrink: 0,
                 }}
               >
-                <Table2 style={{ width: 13, height: 13, color: "#9060f8" }} />
-                <span style={{ fontSize: 12, color: "#6b6860" }}>
-                  <strong style={{ color: "#111010" }}>
+                <Table2 style={{ width: 13, height: 13, color: "var(--salmon)" }} />
+                <span style={{ fontSize: 12, color: "var(--muted-ink)" }}>
+                  <strong style={{ color: "var(--ink)" }}>
                     {result.row_count === 0
                       ? "0"
                       : `${result.offset + 1}-${result.offset + result.row_count}`}
                   </strong>{" "}
                   of page results
                   {result.truncated && (
-                    <span style={{ color: "#f59e0b", marginLeft: 4 }}>
+                    <span style={{ color: "var(--warning)", marginLeft: 4 }}>
                       (page limited to {result.limit.toLocaleString()})
                     </span>
                   )}
                 </span>
                 {result.execution_time_ms != null && (
                   <span
-                    style={{ fontSize: 11, color: "#9a9690", marginLeft: 4 }}
+                    style={{ fontSize: 11, color: "var(--muted-ink)", marginLeft: 4 }}
                   >
                     <Clock
                       style={{
@@ -775,7 +775,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                       fontSize: 11,
                       border: "1px solid rgba(0,0,0,0.1)",
                       background: "rgba(255,255,255,0.8)",
-                      color: "#6b6860",
+                      color: "var(--muted-ink)",
                       cursor: result.offset <= 0 ? "not-allowed" : "pointer",
                       opacity: result.offset <= 0 ? 0.5 : 1,
                     }}
@@ -796,7 +796,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                       fontSize: 11,
                       border: "1px solid rgba(0,0,0,0.1)",
                       background: "rgba(255,255,255,0.8)",
-                      color: "#6b6860",
+                      color: "var(--muted-ink)",
                       cursor: !result.has_more ? "not-allowed" : "pointer",
                       opacity: !result.has_more ? 0.5 : 1,
                     }}
@@ -817,7 +817,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     fontSize: 11,
                     border: "1px solid rgba(0,0,0,0.1)",
                     background: "rgba(255,255,255,0.8)",
-                    color: copied ? "#10b981" : "#6b6860",
+                    color: copied ? "var(--success)" : "var(--muted-ink)",
                     cursor: "pointer",
                   }}
                 >
@@ -857,7 +857,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                             fontFamily: "ui-monospace, Menlo, monospace",
                             fontSize: 11,
                             fontWeight: 600,
-                            color: "#6b6860",
+                            color: "var(--muted-ink)",
                             borderBottom: "1px solid rgba(0,0,0,0.08)",
                             whiteSpace: "nowrap",
                           }}
@@ -878,7 +878,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                             key={ci}
                             style={{
                               padding: "6px 14px",
-                              color: cell === null ? "#c0bdb8" : "#111010",
+                              color: cell === null ? "var(--faint-ink)" : "var(--ink)",
                               fontStyle: cell === null ? "italic" : "normal",
                               maxWidth: 240,
                               overflow: "hidden",
@@ -915,14 +915,14 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                 style={{
                   width: 32,
                   height: 32,
-                  color: "rgba(144,96,248,0.3)",
+                  color: "rgba(242,112,74,0.3)",
                   marginBottom: 12,
                 }}
               />
-              <p style={{ fontSize: 13.5, color: "#9a9690", marginBottom: 4 }}>
+              <p style={{ fontSize: 13.5, color: "var(--muted-ink)", marginBottom: 4 }}>
                 Run a query to see results
               </p>
-              <p style={{ fontSize: 12, color: "#c0bdb8" }}>
+              <p style={{ fontSize: 12, color: "var(--faint-ink)" }}>
                 Press{" "}
                 <kbd
                   style={{
@@ -986,7 +986,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     cursor: "pointer",
                     fontSize: 11,
                     fontWeight: 600,
-                    color: "#6b6860",
+                    color: "var(--muted-ink)",
                     fontFamily: "ui-monospace, Menlo, monospace",
                     letterSpacing: "0.05em",
                     textTransform: "uppercase",
@@ -1032,7 +1032,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                           style={{
                             fontFamily: "ui-monospace, Menlo, monospace",
                             fontSize: 11,
-                            color: "#111010",
+                            color: "var(--ink)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -1072,7 +1072,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     marginBottom: 6,
                   }}
                 >
-                  <span style={{ fontSize: 11, color: "#9a9690" }}>
+                  <span style={{ fontSize: 11, color: "var(--muted-ink)" }}>
                     {history.length} queries
                   </span>
                   {history.length > 0 && (
@@ -1083,7 +1083,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                         alignItems: "center",
                         gap: 4,
                         fontSize: 11,
-                        color: "#9a9690",
+                        color: "var(--muted-ink)",
                         background: "none",
                         border: "none",
                         cursor: "pointer",
@@ -1097,7 +1097,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                   <p
                     style={{
                       fontSize: 12,
-                      color: "#c0bdb8",
+                      color: "var(--faint-ink)",
                       textAlign: "center",
                       padding: "20px 0",
                     }}
@@ -1122,7 +1122,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                       style={{
                         fontSize: 11,
                         fontFamily: "ui-monospace, Menlo, monospace",
-                        color: "#6b6860",
+                        color: "var(--muted-ink)",
                         lineHeight: 1.4,
                         overflow: "hidden",
                         display: "-webkit-box",
@@ -1132,7 +1132,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                     >
                       {h.sql}
                     </p>
-                    <p style={{ fontSize: 10, color: "#9a9690", marginTop: 3 }}>
+                    <p style={{ fontSize: 10, color: "var(--muted-ink)", marginTop: 3 }}>
                       {h.rows != null ? `${h.rows.toLocaleString()} rows` : ""}
                       {h.ms != null ? ` · ${h.ms}ms` : ""}
                       {" · "}
@@ -1147,7 +1147,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
             {sidePanel === "saved" && (
               <div>
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, color: "#9a9690" }}>
+                  <span style={{ fontSize: 11, color: "var(--muted-ink)" }}>
                     {saved.length} saved
                   </span>
                 </div>
@@ -1157,11 +1157,11 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                       style={{
                         width: 22,
                         height: 22,
-                        color: "#d1cfc9",
+                        color: "var(--faint-ink)",
                         margin: "0 auto 8px",
                       }}
                     />
-                    <p style={{ fontSize: 12, color: "#c0bdb8" }}>
+                    <p style={{ fontSize: 12, color: "var(--faint-ink)" }}>
                       Use the Save button to bookmark queries
                     </p>
                   </div>
@@ -1187,7 +1187,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                         style={{
                           fontSize: 12,
                           fontWeight: 500,
-                          color: "#111010",
+                          color: "var(--ink)",
                           marginBottom: 2,
                         }}
                       >
@@ -1197,7 +1197,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                         style={{
                           fontSize: 10,
                           fontFamily: "ui-monospace, Menlo, monospace",
-                          color: "#9a9690",
+                          color: "var(--muted-ink)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -1216,7 +1216,7 @@ export function SQLQuerySection({ datasetId, orgId = "default" }: Props) {
                         border: "none",
                         background: "none",
                         cursor: "pointer",
-                        color: "#d1cfc9",
+                        color: "var(--faint-ink)",
                         flexShrink: 0,
                       }}
                     >

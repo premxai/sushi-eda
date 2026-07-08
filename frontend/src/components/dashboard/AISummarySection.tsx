@@ -22,7 +22,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={`${keyPrefix}-${i}`} style={{ color: "#111010", fontWeight: 600 }}>
+        <strong key={`${keyPrefix}-${i}`} style={{ color: "var(--ink)", fontWeight: 600 }}>
           {part.slice(2, -2)}
         </strong>
       );
@@ -41,7 +41,7 @@ export function NarrativeMarkdown({ text }: { text: string }) {
     blocks.push(
       <ul key={`list-${listKey++}`} style={{ margin: "6px 0 12px", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
         {listItems.map((item, i) => (
-          <li key={i} style={{ fontSize: 13.5, lineHeight: 1.55, color: "#3d3a35" }}>
+          <li key={i} style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink)" }}>
             {renderInline(item, `li-${listKey}-${i}`)}
           </li>
         ))}
@@ -65,7 +65,7 @@ export function NarrativeMarkdown({ text }: { text: string }) {
     const heading = line.match(/^#{1,4}\s+(.*)/);
     if (heading) {
       blocks.push(
-        <h3 key={`h-${idx}`} style={{ fontSize: 13, fontWeight: 600, color: "#111010", margin: "14px 0 4px", letterSpacing: "-0.1px" }}>
+        <h3 key={`h-${idx}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", margin: "14px 0 4px", letterSpacing: "-0.1px" }}>
           {renderInline(heading[1].replace(/\*\*/g, ""), `h-${idx}`)}
         </h3>,
       );
@@ -75,14 +75,14 @@ export function NarrativeMarkdown({ text }: { text: string }) {
     const boldHeading = line.match(/^\*\*([^*]+)\*\*:?$/);
     if (boldHeading) {
       blocks.push(
-        <h3 key={`bh-${idx}`} style={{ fontSize: 13, fontWeight: 600, color: "#111010", margin: "14px 0 4px", letterSpacing: "-0.1px" }}>
+        <h3 key={`bh-${idx}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", margin: "14px 0 4px", letterSpacing: "-0.1px" }}>
           {boldHeading[1]}
         </h3>,
       );
       return;
     }
     blocks.push(
-      <p key={`p-${idx}`} style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3d3a35", margin: "4px 0" }}>
+      <p key={`p-${idx}`} style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)", margin: "4px 0" }}>
         {renderInline(line, `p-${idx}`)}
       </p>,
     );
@@ -186,7 +186,7 @@ export function AISummarySection({
               style={{
                 display: "flex", alignItems: "center", gap: 7, flexShrink: 0,
                 padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 500,
-                background: "linear-gradient(135deg, var(--brand), #8B6FF0)",
+                background: "linear-gradient(135deg, var(--brand), #FF9466)",
                 border: "none", color: "#fff", cursor: "pointer",
                 boxShadow: "var(--shadow-sm)",
                 opacity: generating ? 0.7 : 1,

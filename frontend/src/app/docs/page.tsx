@@ -13,23 +13,23 @@ function Code({ children }: { children: string }) {
   return (
     <code style={{
       padding: "1px 6px", borderRadius: 5, fontSize: 12.5,
-      background: "#1a1917", color: "#e8e4de",
+      background: "var(--nori)", color: "var(--rice)",
       fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
     }}>{children}</code>
   );
 }
 
 function H3({ children }: { children: React.ReactNode }) {
-  return <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111010", margin: "20px 0 8px" }}>{children}</h3>;
+  return <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", margin: "20px 0 8px" }}>{children}</h3>;
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 13.5, color: "#3a3835", lineHeight: 1.6, margin: "0 0 10px" }}>{children}</p>;
+  return <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 10px" }}>{children}</p>;
 }
 
 function Li({ children }: { children: React.ReactNode }) {
   return (
-    <li style={{ fontSize: 13.5, color: "#3a3835", lineHeight: 1.6, margin: "4px 0" }}>
+    <li style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.6, margin: "4px 0" }}>
       {children}
     </li>
   );
@@ -73,7 +73,7 @@ const SECTIONS = [
           <Li><Code>.json</Code> — array-of-objects or newline-delimited JSON</Li>
           <Li><Code>.sqlite</Code> / <Code>.db</Code> — all tables extracted as separate datasets</Li>
         </ul>
-        <P>Files are parsed with Polars for fast I/O and stored privately. Uploads are automatically deleted after 7 days — see <Link href="/privacy" style={{ color: "#9060f8" }}>Privacy</Link>.</P>
+        <P>Files are parsed with Polars for fast I/O and stored privately. Uploads are automatically deleted after 7 days — see <Link href="/privacy" style={{ color: "var(--salmon)" }}>Privacy</Link>.</P>
       </>
     ),
   },
@@ -169,7 +169,7 @@ const SECTIONS = [
 
 export default function DocsPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#f0eee9", fontFamily: "inherit" }}>
+    <div style={{ minHeight: "100vh", background: "var(--paper)", fontFamily: "inherit" }}>
       <style>{`@keyframes shimmer{0%{background-position:0% 0}100%{background-position:200% 0}}`}</style>
 
       {/* Header */}
@@ -183,16 +183,16 @@ export default function DocsPage() {
       }}>
         <div style={{
           height: 3, position: "absolute", top: 0, left: 0, right: 0,
-          background: "linear-gradient(90deg,#9060f8,#e840c8,#00d4e8,#9060f8)",
+          background: "linear-gradient(90deg,var(--salmon),var(--tuna),#6E8F2E,var(--salmon))",
           backgroundSize: "200% 100%", animation: "shimmer 4s linear infinite",
         }} />
-        <Link href="/" style={{ color: "#9a9690", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}>
+        <Link href="/" style={{ color: "var(--muted-ink)", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}>
           <ArrowLeft size={15} /> Back
         </Link>
         <span style={{ color: "rgba(0,0,0,0.15)" }}>|</span>
-        <span style={{ fontWeight: 700, fontSize: 16, color: "#111010" }}>Documentation</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>Documentation</span>
         <nav style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
-          <Link href="/changelog" style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Changelog</Link>
+          <Link href="/changelog" style={{ fontSize: 13, color: "var(--muted-ink)", textDecoration: "none" }}>Changelog</Link>
         </nav>
       </div>
 
@@ -209,7 +209,7 @@ export default function DocsPage() {
               key={s.id}
               href={`#${s.id}`}
               style={{
-                fontSize: 13, color: "#6b6860", textDecoration: "none",
+                fontSize: 13, color: "var(--muted-ink)", textDecoration: "none",
                 padding: "5px 10px", borderRadius: 8,
                 display: "flex", alignItems: "center", gap: 7,
               }}
@@ -219,7 +219,7 @@ export default function DocsPage() {
             </a>
           ))}
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.07)" }}>
-            <Link href="/changelog" style={{ fontSize: 12.5, color: "#9060f8", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+            <Link href="/changelog" style={{ fontSize: 12.5, color: "var(--salmon)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
               Changelog <ArrowRight size={11} />
             </Link>
           </div>
@@ -227,10 +227,10 @@ export default function DocsPage() {
 
         {/* Content */}
         <main style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 30, fontWeight: 800, color: "#111010", margin: "0 0 6px", letterSpacing: "-0.4px" }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: "var(--ink)", margin: "0 0 6px", letterSpacing: "-0.4px" }}>
             Sushi Documentation
           </h1>
-          <p style={{ fontSize: 14, color: "#9a9690", margin: "0 0 40px" }}>
+          <p style={{ fontSize: 14, color: "var(--muted-ink)", margin: "0 0 40px" }}>
             Quick-start guide and feature reference. Last updated March 2026.
           </p>
 
@@ -242,7 +242,7 @@ export default function DocsPage() {
                   border: "1px solid rgba(0,0,0,0.07)",
                   borderRadius: 16, padding: "20px 24px",
                 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111010", margin: "0 0 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", margin: "0 0 14px", display: "flex", alignItems: "center", gap: 10 }}>
                     <span>{s.emoji}</span> {s.title}
                   </h2>
                   {s.content}
@@ -252,8 +252,8 @@ export default function DocsPage() {
           </div>
 
           <div style={{ marginTop: 48, padding: "20px 24px", borderRadius: 16, background: "linear-gradient(135deg, rgba(144,96,248,0.08), rgba(232,64,200,0.06))", border: "1px solid rgba(144,96,248,0.15)" }}>
-            <p style={{ fontSize: 14, color: "#3a3835", margin: "0 0 10px", fontWeight: 600 }}>Still need help?</p>
-            <p style={{ fontSize: 13, color: "#6b6860", margin: "0 0 14px" }}>
+            <p style={{ fontSize: 14, color: "var(--ink)", margin: "0 0 10px", fontWeight: 600 }}>Still need help?</p>
+            <p style={{ fontSize: 13, color: "var(--muted-ink)", margin: "0 0 14px" }}>
               Open an issue on GitHub or reach out via the in-app chat. We respond within 24 hours.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
@@ -261,11 +261,11 @@ export default function DocsPage() {
                 href="https://github.com/premxai/sushi-eda/issues"
                 target="_blank"
                 rel="noreferrer"
-                style={{ padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#9060f8,#e840c8)", color: "#fff", textDecoration: "none" }}
+                style={{ padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,var(--salmon),var(--tuna))", color: "#fff", textDecoration: "none" }}
               >
                 GitHub Issues
               </a>
-              <Link href="/changelog" style={{ padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "rgba(0,0,0,0.06)", color: "#6b6860", textDecoration: "none" }}>
+              <Link href="/changelog" style={{ padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "rgba(0,0,0,0.06)", color: "var(--muted-ink)", textDecoration: "none" }}>
                 View Changelog
               </Link>
             </div>

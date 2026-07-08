@@ -21,7 +21,7 @@ const RELEASES: Release[] = [
     version: "v0.36",
     date: "2026-03-03",
     badge: "Latest",
-    badgeColor: "#22c55e",
+    badgeColor: "#6E8F2E",
     items: [
       { type: "feat", text: "SEO: sitemap.xml, robots.txt, changelog and docs pages" },
       { type: "feat", text: "Open Graph & Twitter card meta tags on all public pages" },
@@ -201,15 +201,15 @@ const RELEASES: Release[] = [
 ];
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  feat:  { label: "feat",  color: "#9060f8" },
-  fix:   { label: "fix",   color: "#22c55e" },
-  perf:  { label: "perf",  color: "#00d4e8" },
-  infra: { label: "infra", color: "#f97316" },
+  feat:  { label: "feat",  color: "var(--salmon)" },
+  fix:   { label: "fix",   color: "#6E8F2E" },
+  perf:  { label: "perf",  color: "#3C8FA0" },
+  infra: { label: "infra", color: "#B48A3C" },
 };
 
 export default function ChangelogPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#f0eee9", fontFamily: "inherit" }}>
+    <div style={{ minHeight: "100vh", background: "var(--paper)", fontFamily: "inherit" }}>
       <style>{`@keyframes shimmer{0%{background-position:0% 0}100%{background-position:200% 0}}`}</style>
 
       {/* Header */}
@@ -223,24 +223,24 @@ export default function ChangelogPage() {
       }}>
         <div style={{
           height: 3, position: "absolute", top: 0, left: 0, right: 0,
-          background: "linear-gradient(90deg,#9060f8,#e840c8,#00d4e8,#9060f8)",
+          background: "linear-gradient(90deg,var(--salmon),var(--tuna),#6E8F2E,var(--salmon))",
           backgroundSize: "200% 100%", animation: "shimmer 4s linear infinite",
         }} />
-        <Link href="/" style={{ color: "#9a9690", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}>
+        <Link href="/" style={{ color: "var(--muted-ink)", display: "flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13 }}>
           <ArrowLeft size={15} /> Back
         </Link>
         <span style={{ color: "rgba(0,0,0,0.15)" }}>|</span>
-        <span style={{ fontWeight: 700, fontSize: 16, color: "#111010" }}>Changelog</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>Changelog</span>
         <nav style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
-          <Link href="/docs"    style={{ fontSize: 13, color: "#6b6860", textDecoration: "none" }}>Docs</Link>
+          <Link href="/docs"    style={{ fontSize: 13, color: "var(--muted-ink)", textDecoration: "none" }}>Docs</Link>
         </nav>
       </div>
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px" }}>
-        <h1 style={{ fontSize: 34, fontWeight: 800, color: "#111010", margin: "0 0 8px", letterSpacing: "-0.5px" }}>
+        <h1 style={{ fontSize: 34, fontWeight: 800, color: "var(--ink)", margin: "0 0 8px", letterSpacing: "-0.5px" }}>
           Changelog
         </h1>
-        <p style={{ fontSize: 15, color: "#6b6860", margin: "0 0 48px" }}>
+        <p style={{ fontSize: 15, color: "var(--muted-ink)", margin: "0 0 48px" }}>
           Every release, big and small. Sushi ships fast.
         </p>
 
@@ -248,7 +248,7 @@ export default function ChangelogPage() {
           {/* Vertical timeline line */}
           <div style={{
             position: "absolute", left: 7, top: 8, bottom: 0, width: 2,
-            background: "linear-gradient(180deg, #9060f8, #e840c8, #00d4e8, rgba(0,0,0,0.05))",
+            background: "linear-gradient(180deg, var(--salmon), var(--tuna), #6E8F2E, rgba(0,0,0,0.05))",
           }} />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
@@ -258,20 +258,20 @@ export default function ChangelogPage() {
                 <div style={{
                   position: "absolute", left: 0, top: 6,
                   width: 16, height: 16, borderRadius: "50%",
-                  background: "linear-gradient(135deg,#9060f8,#e840c8)",
-                  border: "3px solid #f0eee9",
+                  background: "linear-gradient(135deg,var(--salmon),var(--tuna))",
+                  border: "3px solid var(--paper)",
                 }} />
 
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "#111010", margin: 0 }}>{r.version}</h2>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)", margin: 0 }}>{r.version}</h2>
                     {r.badge && (
                       <span style={{
                         padding: "2px 8px", borderRadius: 99, fontSize: 10.5, fontWeight: 700,
                         background: `${r.badgeColor}18`, color: r.badgeColor,
                       }}>{r.badge}</span>
                     )}
-                    <span style={{ fontSize: 12, color: "#c8c4be", marginLeft: "auto" }}>{r.date}</span>
+                    <span style={{ fontSize: 12, color: "var(--faint-ink)", marginLeft: "auto" }}>{r.date}</span>
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -285,7 +285,7 @@ export default function ChangelogPage() {
                             flexShrink: 0, marginTop: 1,
                             fontFamily: "ui-monospace, 'Cascadia Code', Menlo, monospace",
                           }}>{t.label}</span>
-                          <p style={{ fontSize: 13.5, color: "#3a3835", margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+                          <p style={{ fontSize: 13.5, color: "var(--ink)", margin: 0, lineHeight: 1.5 }}>{item.text}</p>
                         </div>
                       );
                     })}

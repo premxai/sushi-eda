@@ -23,9 +23,9 @@ const BTN_BASE =
 const BTN_VARIANT: Record<ButtonVariant, string> = {
   // Ink-black primary — the confident default (Notion/Linear energy)
   primary: "bg-ink text-paper hover:opacity-90 active:opacity-100 shadow-soft-sm",
-  // Violet brand — reserved for the single most important AI action
+  // Salmon brand — reserved for the single most important AI action
   brand:
-    "text-white shadow-soft-sm hover:brightness-[1.06] bg-[linear-gradient(135deg,var(--brand),#8B6FF0)]",
+    "text-white shadow-soft-sm hover:brightness-[1.06] bg-[linear-gradient(135deg,var(--brand),#FF9466)]",
   secondary:
     "bg-surface text-ink border border-line-2 hover:bg-surface-2 shadow-soft-sm",
   ghost: "bg-transparent text-muted-ink hover:bg-[rgba(26,25,23,0.05)] hover:text-ink",
@@ -110,11 +110,11 @@ export function Eyebrow({ children, className }: { children: React.ReactNode; cl
 type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger";
 
 const BADGE_TONE: Record<BadgeTone, string> = {
-  neutral: "bg-[rgba(26,25,23,0.05)] text-muted-ink border-line",
+  neutral: "bg-ink/5 text-muted-ink border-line",
   brand: "bg-brand-weak text-brand border-[color:var(--brand-weak-2)]",
-  success: "bg-[rgba(47,158,110,0.10)] text-success border-[rgba(47,158,110,0.22)]",
-  warning: "bg-[rgba(194,137,28,0.10)] text-warning border-[rgba(194,137,28,0.22)]",
-  danger: "bg-[rgba(207,84,57,0.10)] text-danger border-[rgba(207,84,57,0.22)]",
+  success: "bg-success/10 text-success border-success/25",
+  warning: "bg-warning/10 text-warning border-warning/25",
+  danger: "bg-danger/10 text-danger border-danger/25",
 };
 
 export function Badge({

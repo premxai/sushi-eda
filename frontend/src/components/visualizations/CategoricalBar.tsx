@@ -30,12 +30,12 @@ export function CategoricalBar({ topValues, totalRows }: CategoricalBarProps) {
           type: "bar",
           orientation: "h",
           marker: {
-            color: "rgba(79, 70, 229, 0.6)",
-            line: { color: "rgba(79, 70, 229, 0.8)", width: 1 },
+            color: "rgba(242, 112, 74, 0.6)",
+            line: { color: "rgba(242, 112, 74, 0.8)", width: 1 },
           },
           text: pcts.map((p) => `${p}%`),
           textposition: "outside",
-          textfont: { size: 10, color: "#64748b" },
+          textfont: { size: 10, color: "var(--muted-ink)" },
           hovertemplate: sorted.map(
             (v, i) =>
               `<b>${v.value}</b><br>Count: ${v.count.toLocaleString()}<br>` +
@@ -49,9 +49,9 @@ export function CategoricalBar({ topValues, totalRows }: CategoricalBarProps) {
         height: Math.max(180, sorted.length * 28 + 60),
         margin: { t: 10, r: 60, b: 30, l: Math.min(140, Math.max(60, sorted.reduce((m, v) => Math.max(m, v.value.length), 0) * 7)) },
         xaxis: {
-          title: { text: "Count", font: { size: 11, color: "#94a3b8" } },
-          gridcolor: "#f1f5f9",
-          zerolinecolor: "#e2e8f0",
+          title: { text: "Count", font: { size: 11, color: "var(--faint-ink)" } },
+          gridcolor: "var(--line)",
+          zerolinecolor: "var(--line-2)",
         },
         yaxis: {
           automargin: true,

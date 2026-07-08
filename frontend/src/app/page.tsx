@@ -3,8 +3,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useUser } from "@/lib/auth";
 import { useJobStream } from "@/hooks/useJobStream";
-import { Button } from "@/components/ui/button";
 import { Sidebar, NavSection } from "@/components/dashboard/Sidebar";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { AISummarySection } from "@/components/dashboard/AISummarySection";
 import AIChatPanel from "@/components/AIChatPanel";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
@@ -17,12 +17,11 @@ import { StatisticsSection } from "@/components/dashboard/StatisticsSection";
 import { ReportSection } from "@/components/dashboard/ReportSection";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { SQLQuerySection } from "@/components/dashboard/SQLQuerySection";
-import { ExportButton } from "@/components/ExportButton";
+import { NewFileModal } from "@/components/dashboard/NewFileModal";
 import { DashboardSkeleton } from "@/components/LoadingSkeleton";
-import { uploadFileAsync, loadSampleData, fetchExampleDataset, fetchDatasetVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, listDatasets, DatasetSummary, getApiErrorMessage } from "@/lib/api";
+import { uploadFileAsync, loadSampleData, fetchExampleDataset, fetchDatasetVisualizations, prewarmBackend, archiveDataset, fetchAnalysis, fetchDatasetAnalysis, getApiErrorMessage } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { GitCompare, Lock, Star, ArrowRight, FileSpreadsheet } from "lucide-react";
-import { useDropzone } from "react-dropzone";
+import { Lock } from "lucide-react";
 import Link from "next/link";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -38,209 +37,29 @@ const NARRATIVE_KEY = "eda_narrative";
 
 function LockedPreview({ feature }: { feature: string }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center rounded-2xl"
-      style={{
-        minHeight: 360,
-        background: "rgba(240,238,233,0.6)",
-        border: "1px dashed rgba(0,0,0,0.12)",
-        gap: 16,
-      }}
-    >
-      <div
-        style={{
-          width: 56, height: 56, borderRadius: 16,
-          background: "linear-gradient(135deg, rgba(144,96,248,0.15), rgba(232,64,200,0.15))",
-          border: "1px solid rgba(144,96,248,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >
-        <Lock style={{ width: 24, height: 24, color: "#9060f8" }} />
+    <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-line-2 bg-paper-2/60">
+      <div className="grid h-14 w-14 place-items-center rounded-2xl border border-brand/20 bg-brand-weak">
+        <Lock className="h-6 w-6 text-brand" />
       </div>
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: 17, fontWeight: 600, color: "#111010", marginBottom: 6 }}>
-          {feature} requires an account
-        </p>
-        <p style={{ fontSize: 13, color: "#6b6860", maxWidth: 320 }}>
+      <div className="text-center">
+        <p className="mb-1.5 text-[17px] font-semibold text-ink">{feature} requires an account</p>
+        <p className="max-w-[320px] text-[13px] text-muted-ink">
           Sign up for free to save datasets, reopen your work later, and unlock {feature}.
         </p>
       </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+      <div className="mt-1 flex gap-2.5">
         <Link
           href="/sign-up"
-          style={{
-            padding: "9px 22px", borderRadius: 9, fontSize: 13.5, fontWeight: 500,
-            background: "linear-gradient(135deg, #9060f8, #e840c8)",
-            color: "#fff", textDecoration: "none",
-            boxShadow: "0 2px 12px rgba(144,96,248,0.35)",
-          }}
+          className="rounded-lg bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] px-5 py-2 text-[13.5px] font-medium text-white no-underline shadow-[0_2px_12px_rgba(242,112,74,0.35)]"
         >
           Get started free →
         </Link>
         <Link
           href="/sign-in"
-          style={{
-            padding: "9px 22px", borderRadius: 9, fontSize: 13.5,
-            border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860", textDecoration: "none",
-          }}
+          className="rounded-lg border border-line-2 px-5 py-2 text-[13.5px] text-muted-ink no-underline"
         >
           Sign in
         </Link>
-      </div>
-    </div>
-  );
-}
-
-const FILE_EXTS: Record<string, { bg: string; color: string }> = {
-  csv:     { bg: "rgba(144,96,248,0.12)", color: "#7a40e8" },
-  xlsx:    { bg: "rgba(64,128,255,0.12)", color: "#3060e0" },
-  xls:     { bg: "rgba(64,128,255,0.12)", color: "#3060e0" },
-  json:    { bg: "rgba(232,160,32,0.12)", color: "#c88010" },
-  parquet: { bg: "rgba(232,64,200,0.12)", color: "#c030a8" },
-  tsv:     { bg: "rgba(0,212,232,0.12)",  color: "#00a0b8" },
-  sqlite:  { bg: "rgba(32,192,96,0.12)",  color: "#189050" },
-  db:      { bg: "rgba(32,192,96,0.12)",  color: "#189050" },
-};
-
-function NewFileModal({
-  onClose, onFileAccepted, onDatasetPick, isUploading,
-}: {
-  onClose: () => void;
-  onFileAccepted: (file: File) => void;
-  onDatasetPick: (id: string, filename: string) => void;
-  isUploading: boolean;
-}) {
-  const [tab, setTab] = React.useState<"upload" | "datasets">("upload");
-  const [datasets, setDatasets] = React.useState<DatasetSummary[]>([]);
-  const [dsLoading, setDsLoading] = React.useState(false);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (accepted) => {
-      if (accepted.length > 0) { onFileAccepted(accepted[0]); onClose(); }
-    },
-    accept: {
-      "text/csv": [".csv"],
-      "text/tab-separated-values": [".tsv"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-      "application/vnd.ms-excel": [".xls"],
-      "application/json": [".json"],
-      "application/vnd.apache.parquet": [".parquet"],
-      "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
-    },
-    maxFiles: 1,
-    disabled: isUploading,
-    maxSize: 100 * 1024 * 1024,
-  });
-
-  React.useEffect(() => {
-    if (tab === "datasets") {
-      setDsLoading(true);
-      listDatasets("default", { archived: false })
-        .then(setDatasets)
-        .catch(() => {})
-        .finally(() => setDsLoading(false));
-    }
-  }, [tab]);
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      <div style={{
-        position: "relative", zIndex: 1, width: 480, maxWidth: "calc(100vw - 48px)",
-        background: "#fff", borderRadius: 18, border: "1px solid rgba(0,0,0,0.08)",
-        boxShadow: "0 24px 80px rgba(0,0,0,0.22)", overflow: "hidden",
-      }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "18px 20px 14px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111010", margin: 0 }}>New Workspace</h3>
-            <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>Upload a dataset or reopen a saved workspace</p>
-          </div>
-          <button onClick={onClose} style={{ background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#6b6860", flexShrink: 0 }}>×</button>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", padding: "10px 20px 0", gap: 2, background: "#f9f8f6", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-          {(["upload", "datasets"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: "8px 16px", borderRadius: "8px 8px 0 0", fontSize: 13,
-              fontWeight: tab === t ? 600 : 400,
-              background: tab === t ? "#fff" : "transparent",
-              border: tab === t ? "1px solid rgba(0,0,0,0.07)" : "none",
-              borderBottom: tab === t ? "1px solid #fff" : "none",
-              color: tab === t ? "#111010" : "#9a9690",
-              cursor: "pointer", position: "relative", top: "1px",
-            }}>
-              {t === "upload" ? "Upload Dataset" : "My Datasets"}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div style={{ padding: 20 }}>
-          {tab === "upload" && (
-            <div {...getRootProps()} style={{
-              background: isDragActive ? "rgba(144,96,248,0.07)" : "#f9f8f6",
-              border: isDragActive ? "2px dashed rgba(144,96,248,0.55)" : "1.5px dashed rgba(0,0,0,0.13)",
-              borderRadius: 14, padding: "40px 24px",
-              textAlign: "center", cursor: "pointer",
-              transition: "all 0.2s ease",
-              display: "flex", flexDirection: "column", alignItems: "center",
-            }}>
-              <input {...getInputProps()} />
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {[["CSV","#9060f8"],["XLS","#4080ff"],["JSON","#e8a020"],["PARQ","#e840c8"]].map(([l, c]) => (
-                  <span key={l} style={{ padding: "4px 9px", borderRadius: 6, fontSize: 10, fontWeight: 700, color: "#fff", background: c }}>{l}</span>
-                ))}
-              </div>
-              <p style={{ fontSize: 14, color: "#111010" }}>Drop a dataset or <span style={{ color: "#9060f8", fontWeight: 600 }}>browse</span></p>
-              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 4 }}>Saved automatically to My Datasets. CSV, JSON, Excel, Parquet, SQLite up to 25 MB.</p>
-            </div>
-          )}
-
-          {tab === "datasets" && (
-            <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              {dsLoading ? (
-                <div style={{ padding: "48px 0", textAlign: "center" }}>
-                  <div style={{ width: 20, height: 20, border: "2px solid rgba(144,96,248,0.2)", borderTopColor: "#9060f8", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto" }} />
-                </div>
-              ) : datasets.length === 0 ? (
-                <div style={{ padding: "48px 24px", textAlign: "center" }}>
-                  <FileSpreadsheet style={{ width: 28, height: 28, color: "#c8c4be", margin: "0 auto 10px" }} />
-                  <p style={{ fontSize: 13, color: "#9a9690" }}>No saved datasets yet. Upload your first file to start a workspace.</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {datasets.map((ds) => {
-                    const ext = ds.original_filename.split(".").pop()?.toLowerCase() || "csv";
-                    const s = FILE_EXTS[ext] || FILE_EXTS.csv;
-                    return (
-                      <button key={ds.id}
-                        onClick={() => { onDatasetPick(ds.id, ds.original_filename); onClose(); }}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: "transparent", border: "1px solid transparent", textAlign: "left", cursor: "pointer", transition: "all 0.13s", width: "100%" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(144,96,248,0.05)"; e.currentTarget.style.borderColor = "rgba(144,96,248,0.18)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
-                      >
-                        <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: s.color, textTransform: "uppercase" }}>{ext}</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 500, color: "#111010", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ds.original_filename}</p>
-                          <p style={{ fontSize: 11, color: "#9a9690" }}>
-                            {ds.row_count != null ? `${ds.row_count.toLocaleString()} rows · ` : ""}
-                            {new Date(ds.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {ds.is_starred && <Star style={{ width: 12, height: 12, color: "#e8a020", fill: "#e8a020", flexShrink: 0 }} />}
-                        <ArrowRight style={{ width: 13, height: 13, color: "#c8c4be", flexShrink: 0 }} />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -475,7 +294,7 @@ export default function Home() {
 
     return (
       <>
-      <div className="flex h-screen" style={{ background: "#f0eee9", display: "flex", flexDirection: "row", height: "100vh", overflow: "hidden" }}>
+      <div className="flex h-screen flex-row overflow-hidden bg-paper">
         <Sidebar
           fileName={fileName}
           activeSection={activeSection}
@@ -487,51 +306,15 @@ export default function Home() {
           onArchive={handleArchive}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header style={{
-            position: "relative", display: "flex", flexShrink: 0,
-            alignItems: "center", justifyContent: "space-between",
-            padding: "14px 32px",
-            background: "rgba(240,238,233,0.88)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(0,0,0,0.07)",
-          }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(144,96,248,0.5), rgba(232,64,200,0.5), transparent)" }} />
-            <div>
-              <h1 className="font-display" style={{ fontSize: 22, color: "#111010", letterSpacing: "-0.3px" }}>{sectionTitles[activeSection]}</h1>
-              <p style={{ fontSize: 12, color: "#9a9690", marginTop: 2 }}>
-                {fileName} · {basic_info.rows.toLocaleString()} rows · {basic_info.columns} columns
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/compare">
-                <Button variant="outline" size="sm" className="gap-2 text-xs">
-                  <GitCompare className="h-3.5 w-3.5" />Compare
-                </Button>
-              </Link>
-              <ExportButton report={report} fileName={fileName} aiNarrative={aiNarrative} />
-            </div>
-          </header>
-
-          {/* Preview mode banner */}
-          {isPreviewMode && (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "9px 32px", gap: 12, flexShrink: 0,
-              background: "linear-gradient(90deg, rgba(144,96,248,0.07), rgba(232,64,200,0.07))",
-              borderBottom: "1px solid rgba(144,96,248,0.13)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Lock style={{ width: 13, height: 13, color: "#9060f8" }} />
-                <span style={{ fontSize: 12.5, color: "#6b6860" }}>
-                  <strong style={{ color: "#111010" }}>Preview mode</strong> — save datasets, compare groups, and unlock advanced tools by creating an account.
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                <Link href="/sign-up" style={{ padding: "5px 14px", borderRadius: 7, fontSize: 12.5, fontWeight: 500, background: "linear-gradient(135deg, #9060f8, #e840c8)", color: "#fff", textDecoration: "none" }}>Get started free</Link>
-                <Link href="/sign-in" style={{ padding: "5px 12px", borderRadius: 7, fontSize: 12.5, border: "1px solid rgba(0,0,0,0.12)", color: "#6b6860", textDecoration: "none" }}>Sign in</Link>
-              </div>
-            </div>
-          )}
+          <DashboardHeader
+            sectionTitle={sectionTitles[activeSection]}
+            fileName={fileName}
+            rows={basic_info.rows}
+            columns={basic_info.columns}
+            report={report}
+            aiNarrative={aiNarrative}
+            isPreviewMode={isPreviewMode}
+          />
 
           <main className="flex-1 overflow-y-auto p-6">
             <ErrorBoundary>
@@ -555,7 +338,7 @@ export default function Home() {
                     <AIChatPanel datasetId={openDatasetId} report={report} />
                   </div>
                 ) : (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320, color: "#9a9690", fontSize: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 320, color: "var(--muted-ink)", fontSize: 14 }}>
                     Upload a dataset to start asking questions.
                   </div>
                 )

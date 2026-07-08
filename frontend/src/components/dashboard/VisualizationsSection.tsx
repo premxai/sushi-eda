@@ -23,7 +23,7 @@ const Plot = dynamic(() => import("react-plotly.js"), {
   ssr: false,
   loading: () => (
     <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Loader2 style={{ width: 18, height: 18, color: "#9060f8", animation: "spin 1s linear infinite" }} />
+      <Loader2 style={{ width: 18, height: 18, color: "var(--salmon)", animation: "spin 1s linear infinite" }} />
     </div>
   ),
 });
@@ -79,7 +79,7 @@ function PlotlyChart({ spec, title, height = 280 }: { spec: any; title?: string;
       <div style={{
         height: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
         borderRadius: 10, background: "rgba(0,0,0,0.03)",
-        fontSize: 12, color: "#9a9690",
+        fontSize: 12, color: "var(--muted-ink)",
       }}>
         <AlertCircle style={{ width: 13, height: 13 }} />
         {spec?.error ?? "Chart unavailable"}
@@ -91,14 +91,14 @@ function PlotlyChart({ spec, title, height = 280 }: { spec: any; title?: string;
     ...(spec.layout ?? {}),
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(248,246,243,0.5)",
-    font: { family: "Geist, system-ui, sans-serif", size: 11, color: "#6b6860" },
+    font: { family: "Geist, system-ui, sans-serif", size: 11, color: "var(--muted-ink)" },
     autosize: true,
     margin: { l: 44, r: 16, t: title ? 32 : 16, b: 40 },
-    colorway: ["#9060f8", "#e840c8", "#00d4e8", "#f8d030", "#ff7040", "#00e8a0"],
+    colorway: ["#F2704A", "#C23B2E", "#6E8F2E", "#B48A3C", "#6D5AE6", "#3C8FA0"],
     xaxis: { ...(spec.layout?.xaxis ?? {}), gridcolor: "rgba(0,0,0,0.06)", linecolor: "rgba(0,0,0,0.1)", zerolinecolor: "rgba(0,0,0,0.1)" },
     yaxis: { ...(spec.layout?.yaxis ?? {}), gridcolor: "rgba(0,0,0,0.06)", linecolor: "rgba(0,0,0,0.1)", zerolinecolor: "rgba(0,0,0,0.1)" },
   };
-  if (title) layout.title = { text: title, font: { size: 12, color: "#111010" } };
+  if (title) layout.title = { text: title, font: { size: 12, color: "var(--ink)" } };
 
   return (
     <Plot
@@ -141,15 +141,15 @@ function ChartCard({ title, spec, dtype }: { title: string; spec: any; dtype?: s
           borderBottom: expanded ? "1px solid rgba(0,0,0,0.06)" : "none",
         }}
       >
-        <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "#111010", flex: 1, textAlign: "left" }}>
+        <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "var(--ink)", flex: 1, textAlign: "left" }}>
           {title}
         </span>
         {dtype && (
-          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(144,96,248,0.1)", color: "#9060f8", fontFamily: "ui-monospace, Menlo, monospace" }}>
+          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(242,112,74,0.1)", color: "var(--salmon)", fontFamily: "ui-monospace, Menlo, monospace" }}>
             {dtype}
           </span>
         )}
-        <ChevronDown style={{ width: 13, height: 13, color: "#9a9690", transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+        <ChevronDown style={{ width: 13, height: 13, color: "var(--muted-ink)", transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
       </button>
       {expanded && (
         <div style={{ padding: "0 8px 8px" }}>
@@ -274,7 +274,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           type: "bar",
           x: grouped.map((g) => g.label),
           y: grouped.map((g) => g.value),
-          marker: { color: "#9060f8", opacity: 0.85 },
+          marker: { color: "var(--salmon)", opacity: 0.85 },
         }];
       } else {
         const grouped = aggregateSingle(xVals);
@@ -282,7 +282,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           type: "bar",
           x: grouped.map((g) => g.label),
           y: grouped.map((g) => g.value),
-          marker: { color: "#9060f8", opacity: 0.85 },
+          marker: { color: "var(--salmon)", opacity: 0.85 },
         }];
       }
     } else if (ct === "line") {
@@ -292,7 +292,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
         mode: "lines+markers",
         x: xVals,
         y: yVals,
-        line: { color: "#9060f8", width: 2 },
+        line: { color: "var(--salmon)", width: 2 },
       }];
     } else if (ct === "scatter") {
       if (!yCol) return { error: "Scatter chart requires a Y axis column." };
@@ -301,13 +301,13 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
         mode: "markers",
         x: xVals,
         y: yVals,
-        marker: { color: colorVals ?? "#9060f8", opacity: 0.7, size: 6 },
+        marker: { color: colorVals ?? "var(--salmon)", opacity: 0.7, size: 6 },
       }];
     } else if (ct === "histogram") {
-      data = [{ type: "histogram", x: xVals, marker: { color: "#9060f8", opacity: 0.85 } }];
+      data = [{ type: "histogram", x: xVals, marker: { color: "var(--salmon)", opacity: 0.85 } }];
     } else if (ct === "box") {
       if (!yCol) return { error: "Box plot requires a Y axis column." };
-      data = [{ type: "box", y: yVals, x: colorVals ?? xVals, marker: { color: "#9060f8" }, boxmean: true }];
+      data = [{ type: "box", y: yVals, x: colorVals ?? xVals, marker: { color: "var(--salmon)" }, boxmean: true }];
     } else if (ct === "violin") {
       if (!yCol) return { error: "Violin chart requires a Y axis column." };
       data = [{
@@ -316,8 +316,8 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
         x: colorVals ?? xVals,
         box: { visible: true },
         meanline: { visible: true },
-        fillcolor: "rgba(144,96,248,0.3)",
-        line: { color: "#9060f8" },
+        fillcolor: "rgba(242,112,74,0.3)",
+        line: { color: "var(--salmon)" },
       }];
     } else if (ct === "treemap") {
       if (colorVals) {
@@ -447,7 +447,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           y: points.map((p) => p.y),
           text: labels,
           textposition: "top center",
-          marker: { size: 10, color: "#9060f8", line: { width: 1, color: "#ffffff" } },
+          marker: { size: 10, color: "var(--salmon)", line: { width: 1, color: "#ffffff" } },
           hovertemplate: "%{text}<extra></extra>",
         },
       ];
@@ -496,7 +496,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
     padding: "7px 10px", borderRadius: 8, fontSize: 13,
     border: "1px solid rgba(0,0,0,0.1)",
     background: "rgba(255,255,255,0.8)",
-    color: "#111010", cursor: "pointer", width: "100%",
+    color: "var(--ink)", cursor: "pointer", width: "100%",
   };
 
   return (
@@ -510,7 +510,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
         boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
         padding: 16,
       }}>
-        <p style={{ fontSize: 9, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: "2px", textTransform: "uppercase", color: "#9a9690", marginBottom: 14 }}>
+        <p style={{ fontSize: 9, fontFamily: "ui-monospace, Menlo, monospace", letterSpacing: "2px", textTransform: "uppercase", color: "var(--muted-ink)", marginBottom: 14 }}>
           Chart Builder
         </p>
 
@@ -523,10 +523,10 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 padding: "8px 6px", borderRadius: 8,
-                border: chartType === type ? "1.5px solid rgba(144,96,248,0.4)" : "1px solid rgba(0,0,0,0.08)",
-                background: chartType === type ? "rgba(144,96,248,0.08)" : "rgba(255,255,255,0.5)",
+                border: chartType === type ? "1.5px solid rgba(242,112,74,0.4)" : "1px solid rgba(0,0,0,0.08)",
+                background: chartType === type ? "rgba(242,112,74,0.08)" : "rgba(255,255,255,0.5)",
                 cursor: "pointer",
-                color: chartType === type ? "#9060f8" : "#6b6860",
+                color: chartType === type ? "var(--salmon)" : "var(--muted-ink)",
               }}
             >
               <Icon style={{ width: 14, height: 14 }} />
@@ -538,7 +538,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
         {/* Axis selectors */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
-            <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 10, color: "var(--muted-ink)", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
               X axis
             </label>
             <select style={selectStyle} value={xCol} onChange={(e) => setXCol(e.target.value)}>
@@ -547,7 +547,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           </div>
           {supportsYAxis && (
             <div>
-              <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 10, color: "var(--muted-ink)", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
                 Y axis
               </label>
               <select style={selectStyle} value={yCol} onChange={(e) => setYCol(e.target.value)}>
@@ -558,7 +558,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           )}
           {supportsGroup && (
             <div>
-              <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
+              <label style={{ fontSize: 10, color: "var(--muted-ink)", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
                 Color / Group
               </label>
               <select style={selectStyle} value={colorCol} onChange={(e) => setColorCol(e.target.value)}>
@@ -568,7 +568,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
             </div>
           )}
           <div>
-            <label style={{ fontSize: 10, color: "#9a9690", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 10, color: "var(--muted-ink)", fontFamily: "ui-monospace, Menlo, monospace", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>
               Title (optional)
             </label>
             <input
@@ -580,7 +580,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
           </div>
         </div>
 
-        <p style={{ fontSize: 10, color: "#c0bdb8", marginTop: 12, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 10, color: "var(--faint-ink)", marginTop: 12, lineHeight: 1.5 }}>
           {rowsLoading && !fullRows
             ? "Loading full dataset…"
             : rowsMeta
@@ -590,7 +590,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
               : `Using first ${Math.min(preview.length, 5000)} rows of preview data`}
         </p>
         {chartType === "auto" && (
-          <p style={{ fontSize: 10, color: "#9060f8", marginTop: 8 }}>
+          <p style={{ fontSize: 10, color: "var(--salmon)", marginTop: 8 }}>
             Suggested chart type: <strong>{resolvedChartType}</strong>
           </p>
         )}
@@ -611,7 +611,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
               borderBottom: "1px solid rgba(0,0,0,0.06)",
               background: "rgba(255,255,255,0.4)",
             }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: "#111010", flex: 1 }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink)", flex: 1 }}>
                 {builtSpec.layout?.title || "Chart Preview"}
               </span>
               <button
@@ -621,7 +621,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
                   padding: "5px 10px", borderRadius: 7, fontSize: 11,
                   border: "1px solid rgba(0,0,0,0.1)",
                   background: "rgba(255,255,255,0.8)",
-                  color: "#6b6860", cursor: "pointer",
+                  color: "var(--muted-ink)", cursor: "pointer",
                 }}
               >
                 <Download style={{ width: 11, height: 11 }} />
@@ -634,7 +634,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
                   padding: "5px 10px", borderRadius: 7, fontSize: 11,
                   border: "1px solid rgba(0,0,0,0.1)",
                   background: "rgba(255,255,255,0.8)",
-                  color: "#6b6860", cursor: "pointer",
+                  color: "var(--muted-ink)", cursor: "pointer",
                   marginLeft: 6,
                 }}
               >
@@ -648,7 +648,7 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
                   padding: "5px 10px", borderRadius: 7, fontSize: 11,
                   border: "1px solid rgba(0,0,0,0.1)",
                   background: "rgba(255,255,255,0.8)",
-                  color: embedCopied ? "#10b981" : "#6b6860",
+                  color: embedCopied ? "var(--success)" : "var(--muted-ink)",
                   cursor: "pointer",
                   marginLeft: 6,
                 }}
@@ -668,8 +668,8 @@ function ChartBuilder({ report, datasetId, orgId = "default" }: { report: EDARep
             border: "1.5px dashed rgba(0,0,0,0.1)",
             borderRadius: 16,
           }}>
-            <BarChart3 style={{ width: 28, height: 28, color: "rgba(144,96,248,0.3)", marginBottom: 10 }} />
-            <p style={{ fontSize: 13, color: "#9a9690" }}>Select columns to build a chart</p>
+            <BarChart3 style={{ width: 28, height: 28, color: "rgba(242,112,74,0.3)", marginBottom: 10 }} />
+            <p style={{ fontSize: 13, color: "var(--muted-ink)" }}>Select columns to build a chart</p>
           </div>
         )}
       </div>
@@ -685,8 +685,8 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
   if (isLoading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 0" }}>
-        <Loader2 style={{ width: 24, height: 24, color: "#9060f8", animation: "spin 1s linear infinite" }} />
-        <p style={{ fontSize: 13, color: "#9a9690" }}>Generating visualizations…</p>
+        <Loader2 style={{ width: 24, height: 24, color: "var(--salmon)", animation: "spin 1s linear infinite" }} />
+        <p style={{ fontSize: 13, color: "var(--muted-ink)" }}>Generating visualizations…</p>
       </div>
     );
   }
@@ -717,7 +717,7 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
               display: "flex", alignItems: "center", gap: 6,
               padding: "7px 16px", borderRadius: 9, fontSize: 13,
               fontWeight: activeTab === t.key ? 500 : 400,
-              color: activeTab === t.key ? "#111010" : "#6b6860",
+              color: activeTab === t.key ? "var(--ink)" : "var(--muted-ink)",
               background: activeTab === t.key ? "white" : "transparent",
               boxShadow: activeTab === t.key ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
               border: "none", cursor: "pointer", transition: "all 0.15s",
@@ -728,8 +728,8 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
             {t.count != null && (
               <span style={{
                 padding: "1px 6px", borderRadius: 99, fontSize: 10, fontWeight: 600,
-                background: activeTab === t.key ? "rgba(144,96,248,0.15)" : "rgba(0,0,0,0.08)",
-                color: activeTab === t.key ? "#7c3aed" : "#9a9690",
+                background: activeTab === t.key ? "rgba(242,112,74,0.15)" : "rgba(0,0,0,0.08)",
+                color: activeTab === t.key ? "var(--brand)" : "var(--muted-ink)",
               }}>
                 {t.count}
               </span>
@@ -743,9 +743,9 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {!visualizations ? (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
-              <BarChart3 style={{ width: 32, height: 32, color: "rgba(144,96,248,0.3)", margin: "0 auto 12px" }} />
-              <p style={{ fontSize: 13.5, color: "#9a9690", marginBottom: 6 }}>Visualizations are loading…</p>
-              <p style={{ fontSize: 12, color: "#c0bdb8" }}>Navigate away and back to this tab to trigger generation.</p>
+              <BarChart3 style={{ width: 32, height: 32, color: "rgba(242,112,74,0.3)", margin: "0 auto 12px" }} />
+              <p style={{ fontSize: 13.5, color: "var(--muted-ink)", marginBottom: 6 }}>Visualizations are loading…</p>
+              <p style={{ fontSize: 12, color: "var(--faint-ink)" }}>Navigate away and back to this tab to trigger generation.</p>
             </div>
           ) : (
             <>
@@ -778,7 +778,7 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
                 "correlation_heatmap", "scatter_matrix", "missing_data_matrix",
               ].every((key) => !visualizations[key] || visualizations[key].error) && (
                 <div style={{ textAlign: "center", padding: "60px 0" }}>
-                  <p style={{ fontSize: 13, color: "#9a9690" }}>No overview charts available for this dataset.</p>
+                  <p style={{ fontSize: 13, color: "var(--muted-ink)" }}>No overview charts available for this dataset.</p>
                 </div>
               )}
             </>
@@ -790,7 +790,7 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
       {activeTab === "numeric" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 12 }}>
           {numericColumns.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#9a9690" }}>No numeric columns in this dataset.</p>
+            <p style={{ fontSize: 13, color: "var(--muted-ink)" }}>No numeric columns in this dataset.</p>
           ) : numericColumns.map((col) => {
             const charts = columnCharts[col.name] ?? {};
             return (
@@ -802,10 +802,10 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
                 overflow: "hidden",
               }}>
                 <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "#111010", flex: 1 }}>
+                  <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "var(--ink)", flex: 1 }}>
                     {col.name}
                   </span>
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(144,96,248,0.1)", color: "#9060f8", fontFamily: "ui-monospace, Menlo, monospace" }}>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(242,112,74,0.1)", color: "var(--salmon)", fontFamily: "ui-monospace, Menlo, monospace" }}>
                     {col.dtype}
                   </span>
                 </div>
@@ -814,7 +814,7 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
                   {charts.box_plot && <PlotlyChart spec={charts.box_plot} height={180} />}
                   {charts.violin && <PlotlyChart spec={charts.violin} height={220} />}
                   {!charts.distribution && !charts.box_plot && !charts.violin && (
-                    <p style={{ fontSize: 12, color: "#c0bdb8", padding: "20px 8px", textAlign: "center" }}>No charts generated</p>
+                    <p style={{ fontSize: 12, color: "var(--faint-ink)", padding: "20px 8px", textAlign: "center" }}>No charts generated</p>
                   )}
                 </div>
               </div>
@@ -827,7 +827,7 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
       {activeTab === "categorical" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 12 }}>
           {categoricalColumns.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#9a9690" }}>No categorical columns in this dataset.</p>
+            <p style={{ fontSize: 13, color: "var(--muted-ink)" }}>No categorical columns in this dataset.</p>
           ) : categoricalColumns.map((col) => {
             const charts = columnCharts[col.name] ?? {};
             return (
@@ -839,17 +839,17 @@ export function VisualizationsSection({ visualizations, isLoading, report, datas
                 overflow: "hidden",
               }}>
                 <div style={{ padding: "12px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "#111010", flex: 1 }}>
+                  <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 500, color: "var(--ink)", flex: 1 }}>
                     {col.name}
                   </span>
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(232,64,200,0.1)", color: "#e840c8", fontFamily: "ui-monospace, Menlo, monospace" }}>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(194,59,46,0.1)", color: "var(--tuna)", fontFamily: "ui-monospace, Menlo, monospace" }}>
                     {col.dtype}
                   </span>
                 </div>
                 <div style={{ padding: "0 8px 8px" }}>
                   {charts.categorical_bar
                     ? <PlotlyChart spec={charts.categorical_bar} />
-                    : <p style={{ fontSize: 12, color: "#c0bdb8", padding: "20px 8px", textAlign: "center" }}>No chart generated</p>}
+                    : <p style={{ fontSize: 12, color: "var(--faint-ink)", padding: "20px 8px", textAlign: "center" }}>No chart generated</p>}
                 </div>
               </div>
             );

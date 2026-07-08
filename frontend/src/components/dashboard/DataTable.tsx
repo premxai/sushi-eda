@@ -66,7 +66,7 @@ export function DataTable({ preview }: DataTableProps) {
         <span className="text-xs text-slate-500">
           Showing {rows.length} of {preview.length} rows
           {sortCol && (
-            <span className="ml-2 text-indigo-600">
+            <span className="ml-2 text-brand">
               sorted by {sortCol} ({sortDir})
             </span>
           )}
@@ -88,7 +88,7 @@ export function DataTable({ preview }: DataTableProps) {
                     onClick={() => handleSort(col)}
                     className={cn(
                       "cursor-pointer select-none whitespace-nowrap px-4 py-3 text-xs font-medium transition-colors hover:bg-slate-50",
-                      isActive ? "text-indigo-600" : "text-slate-500"
+                      isActive ? "text-brand" : "text-slate-500"
                     )}
                   >
                     <div className="flex items-center gap-1">
@@ -113,7 +113,7 @@ export function DataTable({ preview }: DataTableProps) {
               <tr
                 key={idx}
                 className={cn(
-                  "border-b border-slate-100 transition-colors hover:bg-indigo-50/30",
+                  "border-b border-slate-100 transition-colors hover:bg-brand-weak",
                   idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"
                 )}
               >
@@ -130,7 +130,7 @@ export function DataTable({ preview }: DataTableProps) {
                       className={cn(
                         "max-w-[200px] truncate px-4 py-2.5 text-xs tabular-nums",
                         isEmpty ? "text-slate-300" : "text-slate-700",
-                        sortCol === col && "bg-indigo-50/40"
+                        sortCol === col && "bg-brand-weak"
                       )}
                     >
                       {display}

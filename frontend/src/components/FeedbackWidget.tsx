@@ -47,13 +47,13 @@ export default function FeedbackWidget() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#111010" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
               Tell us what&apos;s missing
             </span>
             <button
               onClick={() => setOpen(false)}
               aria-label="Close feedback"
-              style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9a9690" }}
+              style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--muted-ink)" }}
             >
               <X size={14} />
             </button>
@@ -73,7 +73,7 @@ export default function FeedbackWidget() {
                 style={{
                   width: "100%", boxSizing: "border-box", resize: "vertical",
                   borderRadius: 8, border: "1px solid rgba(0,0,0,0.12)",
-                  padding: "8px 10px", fontSize: 13, color: "#111010",
+                  padding: "8px 10px", fontSize: 13, color: "var(--ink)",
                   outline: "none", background: "#fff",
                 }}
               />
@@ -85,7 +85,7 @@ export default function FeedbackWidget() {
                 style={{
                   width: "100%", boxSizing: "border-box", marginTop: 6,
                   borderRadius: 8, border: "1px solid rgba(0,0,0,0.12)",
-                  padding: "7px 10px", fontSize: 12.5, color: "#111010",
+                  padding: "7px 10px", fontSize: 12.5, color: "var(--ink)",
                   outline: "none", background: "#fff",
                 }}
               />
@@ -97,7 +97,7 @@ export default function FeedbackWidget() {
                   marginTop: 8, width: "100%", display: "flex", alignItems: "center",
                   justifyContent: "center", gap: 6, padding: "8px 0",
                   borderRadius: 8, border: "none", cursor: "pointer",
-                  background: "linear-gradient(135deg, #9060f8, #e840c8)",
+                  background: "linear-gradient(135deg, var(--salmon), var(--tuna))",
                   color: "#fff", fontSize: 12.5, fontWeight: 600,
                   opacity: message.trim().length < 3 || sending ? 0.55 : 1,
                 }}
@@ -118,10 +118,10 @@ export default function FeedbackWidget() {
           padding: "9px 14px", borderRadius: 99, border: "1px solid rgba(0,0,0,0.08)",
           background: "rgba(255,255,255,0.92)", backdropFilter: "blur(10px)",
           boxShadow: "0 4px 18px rgba(0,0,0,0.12)", cursor: "pointer",
-          fontSize: 12.5, fontWeight: 600, color: "#6b6860", marginLeft: "auto",
+          fontSize: 12.5, fontWeight: 600, color: "var(--muted-ink)", marginLeft: "auto",
         }}
       >
-        <MessageSquarePlus size={14} style={{ color: "#9060f8" }} />
+        <MessageSquarePlus size={14} style={{ color: "var(--salmon)" }} />
         Feedback
       </button>
     </div>

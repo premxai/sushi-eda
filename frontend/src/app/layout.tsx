@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "next-themes";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import "./globals.css";
 
@@ -68,10 +69,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const tree = (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
-        {children}
-        <FeedbackWidget />
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          {children}
+          <FeedbackWidget />
+        </ThemeProvider>
       </body>
     </html>
   );

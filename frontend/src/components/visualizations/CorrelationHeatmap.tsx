@@ -35,7 +35,7 @@ export function CorrelationHeatmap({ data }: CorrelationHeatmapProps) {
           showarrow: false,
           font: {
             size: Math.min(10, Math.max(7, 120 / data.columns.length)),
-            color: Math.abs(val) > 0.5 ? "#1e293b" : "#94a3b8",
+            color: Math.abs(val) > 0.5 ? "var(--ink)" : "var(--muted-ink)",
           },
         });
       }
@@ -51,11 +51,11 @@ export function CorrelationHeatmap({ data }: CorrelationHeatmapProps) {
           y: data.columns,
           type: "heatmap",
           colorscale: [
-            [0, "#ef4444"],
-            [0.25, "#fca5a5"],
-            [0.5, "#ffffff"],
-            [0.75, "#a5b4fc"],
-            [1, "#4f46e5"],
+            [0, "#6E8F2E"],
+            [0.25, "#C3D49B"],
+            [0.5, "#FBF7EE"],
+            [0.75, "#F7B79F"],
+            [1, "#F2704A"],
           ],
           zmin: -1,
           zmax: 1,
@@ -66,7 +66,7 @@ export function CorrelationHeatmap({ data }: CorrelationHeatmapProps) {
             thickness: 14,
             outlinewidth: 0,
             tickvals: [-1, -0.5, 0, 0.5, 1],
-            tickfont: { size: 10, color: "#64748b" },
+            tickfont: { size: 10, color: "var(--muted-ink)" },
           },
         },
       ]}

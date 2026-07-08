@@ -63,21 +63,21 @@ export default function ComparePage() {
     const { file1: left, file2: right, comparison } = result;
 
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <div className="min-h-screen bg-paper p-6">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <Link
                 href="/datasets"
-                className="mb-2 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+                className="mb-2 inline-flex items-center gap-2 text-sm text-muted-ink hover:text-ink"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to datasets
               </Link>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="font-display text-2xl tracking-tight text-ink">
                 Dataset Comparison
               </h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-muted-ink">
                 Compare structure, row counts, and quality at a glance.
               </p>
             </div>
@@ -86,28 +86,28 @@ export default function ComparePage() {
             </Button>
           </div>
 
-          <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-slate-900">
+          <div className="mb-6 rounded-card border border-line bg-surface p-6 shadow-soft-sm">
+            <h2 className="text-lg font-semibold text-ink">
               Comparison Summary
             </h2>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <div className="rounded-md bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Row Difference</p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">
+              <div className="rounded-card bg-surface-2 p-3">
+                <p className="text-xs text-faint-ink">Row Difference</p>
+                <p className="mt-1 text-xl font-semibold text-ink">
                   {comparison.row_count_diff > 0 ? "+" : ""}
                   {comparison.row_count_diff.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-md bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Column Difference</p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">
+              <div className="rounded-card bg-surface-2 p-3">
+                <p className="text-xs text-faint-ink">Column Difference</p>
+                <p className="mt-1 text-xl font-semibold text-ink">
                   {comparison.column_count_diff > 0 ? "+" : ""}
                   {comparison.column_count_diff.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-md bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Common Columns</p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">
+              <div className="rounded-card bg-surface-2 p-3">
+                <p className="text-xs text-faint-ink">Common Columns</p>
+                <p className="mt-1 text-xl font-semibold text-ink">
                   {comparison.schema_diff.common.length.toLocaleString()}
                 </p>
               </div>
@@ -116,21 +116,21 @@ export default function ComparePage() {
             {(comparison.schema_diff.file1_only.length > 0 ||
               comparison.schema_diff.file2_only.length > 0) && (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-md bg-rose-50 p-3">
-                  <p className="text-xs font-medium text-rose-700">
+                <div className="rounded-card bg-danger/10 p-3">
+                  <p className="text-xs font-medium text-danger">
                     Only in {left.name}
                   </p>
-                  <p className="mt-1 text-xs text-rose-600">
+                  <p className="mt-1 text-xs text-danger/80">
                     {comparison.schema_diff.file1_only.length > 0
                       ? comparison.schema_diff.file1_only.join(", ")
                       : "No exclusive columns"}
                   </p>
                 </div>
-                <div className="rounded-md bg-indigo-50 p-3">
-                  <p className="text-xs font-medium text-indigo-700">
+                <div className="rounded-card bg-brand-weak p-3">
+                  <p className="text-xs font-medium text-brand">
                     Only in {right.name}
                   </p>
-                  <p className="mt-1 text-xs text-indigo-600">
+                  <p className="mt-1 text-xs text-brand/80">
                     {comparison.schema_diff.file2_only.length > 0
                       ? comparison.schema_diff.file2_only.join(", ")
                       : "No exclusive columns"}
@@ -142,7 +142,7 @@ export default function ComparePage() {
 
           <div className="grid gap-6 xl:grid-cols-2">
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-700">
+              <h3 className="mb-3 text-sm font-semibold text-muted-ink">
                 {left.name}
               </h3>
               <OverviewSection
@@ -151,7 +151,7 @@ export default function ComparePage() {
               />
             </div>
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-slate-700">
+              <h3 className="mb-3 text-sm font-semibold text-muted-ink">
                 {right.name}
               </h3>
               <OverviewSection
@@ -166,20 +166,20 @@ export default function ComparePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-paper p-6">
       <div className="mx-auto w-full max-w-5xl">
         <div className="mb-8 text-center">
           <Link
             href="/datasets"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-ink hover:text-ink"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to datasets
           </Link>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="font-display text-3xl tracking-tight text-ink">
             Compare Datasets
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 text-muted-ink">
             Upload two files to compare schema differences, row counts, and
             quality summaries.
           </p>
@@ -187,7 +187,7 @@ export default function ComparePage() {
 
         <div className="grid gap-6 xl:grid-cols-2">
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">File 1</h3>
+            <h3 className="mb-3 text-sm font-semibold text-muted-ink">File 1</h3>
             <FileUpload
               onFileAccepted={(file) => {
                 setFile1(file);
@@ -200,14 +200,14 @@ export default function ComparePage() {
               savesData={false}
             />
             {file1 && (
-              <p className="mt-2 text-xs text-slate-600">
+              <p className="mt-2 text-xs text-muted-ink">
                 Selected: {formatFileLabel(file1)}
               </p>
             )}
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">File 2</h3>
+            <h3 className="mb-3 text-sm font-semibold text-muted-ink">File 2</h3>
             <FileUpload
               onFileAccepted={(file) => {
                 setFile2(file);
@@ -220,7 +220,7 @@ export default function ComparePage() {
               savesData={false}
             />
             {file2 && (
-              <p className="mt-2 text-xs text-slate-600">
+              <p className="mt-2 text-xs text-muted-ink">
                 Selected: {formatFileLabel(file2)}
               </p>
             )}
@@ -228,7 +228,7 @@ export default function ComparePage() {
         </div>
 
         {error && (
-          <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-card border border-danger/25 bg-danger/10 p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -238,7 +238,7 @@ export default function ComparePage() {
             onClick={handleCompare}
             disabled={!file1 || !file2 || isComparing}
             size="lg"
-            className="gap-2"
+            className="gap-2 bg-[linear-gradient(135deg,var(--salmon),var(--tuna))] text-white hover:opacity-90"
           >
             {isComparing ? (
               <>
