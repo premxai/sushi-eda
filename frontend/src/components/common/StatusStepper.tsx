@@ -15,7 +15,7 @@ interface StatusStepperProps {
 }
 
 /** A real staged-progress indicator (queued -> parsing -> analyzing ->
- * writing summary) — not a fake spinner. Steps before the active one are
+ * writing summary), not a fake spinner. Steps before the active one are
  * shown complete, the active one animates, later ones are dimmed. */
 export function StatusStepper({ steps, activeKey, failed, className }: StatusStepperProps) {
   const activeIndex = steps.findIndex((s) => s.key === activeKey);

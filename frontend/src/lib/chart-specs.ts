@@ -75,7 +75,7 @@ export const CHART_REGISTRY: ChartSpec[] = [
   {
     key: "pareto",
     label: "Pareto (80/20)",
-    description: "Which categories drive most of the total — sorted bars plus a cumulative-percent line.",
+    description: "Which categories drive most of the total: sorted bars plus a cumulative-percent line.",
     fields: [
       { key: "category", label: "Group by", kind: "column", filter: "categorical" },
       { key: "value", label: "Measure", kind: "column", filter: "numeric", optional: true },

@@ -40,11 +40,11 @@ export function LandingHero({
       <section className="container pb-8 pt-16 text-center sm:pt-24">
         <p className="eyebrow">Data reports for people who aren&apos;t analysts</p>
         <h1 className="mx-auto mt-4 max-w-2xl font-display text-hero text-ink text-balance">
-          A data report you can <em className="italic text-brand">trust</em>, in minutes.
+          Your <em className="italic text-brand">raw</em> data, served perfectly.
         </h1>
         <p className="mx-auto mt-5 max-w-lg text-[16px] leading-relaxed text-ink-secondary">
-          Drop in a CSV, survey export, or usage dump. Get a plain-English report you can show your team — no code,
-          no analyst required.
+          Drop in a CSV, survey export, or usage dump. Get a plain-English report you can show your team. No code, no
+          analyst required.
         </p>
       </section>
 

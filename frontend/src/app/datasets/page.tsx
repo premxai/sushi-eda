@@ -38,7 +38,7 @@ export default function DatasetsPage() {
       await action();
       load(tab);
     } catch (err) {
-      setError(getApiErrorMessage(err, "That action didn't go through — try again."));
+      setError(getApiErrorMessage(err, "That action didn't go through. Try again."));
     } finally {
       setBusyId(null);
     }

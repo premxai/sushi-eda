@@ -17,7 +17,7 @@ export function FieldHealthSection({ columns, typeSuggestions, totalRows, datase
     <div>
       <div className="mb-4">
         <h2 className="text-[15px] font-semibold text-ink">Field Health</h2>
-        <p className="mt-0.5 text-[13px] text-ink-secondary">One card per column — expand for the full picture.</p>
+        <p className="mt-0.5 text-[13px] text-ink-secondary">One card per column. Expand for the full picture.</p>
       </div>
       <div className="flex flex-col gap-2">
         {columns.map((col) => (

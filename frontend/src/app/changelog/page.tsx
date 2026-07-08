@@ -8,7 +8,7 @@ const ENTRIES = [
     tag: "New",
     title: "Advanced Queries, AI Notes, and full report exports",
     items: [
-      "A real SQL editor with schema browser, query history, and EXPLAIN plans — your dataset is queryable as df.",
+      "A real SQL editor with schema browser, query history, and EXPLAIN plans. Your dataset is queryable as df.",
       "AI Notes: automatic, rule-based observations that stay available even when the AI summary can't run.",
       "Export a report as PDF, Markdown, JSON, or Excel, with your own analyst notes included.",
     ],
@@ -20,7 +20,7 @@ const ENTRIES = [
     items: [
       "Upload two files on the Compare page to see schema differences and row/column deltas at a glance.",
       "A dataset library to star, rename, and archive anything you've uploaded.",
-      "Public share links — a read-only report anyone can open, no account required.",
+      "Public share links: a read-only report anyone can open, no account required.",
     ],
   },
   {
@@ -28,7 +28,7 @@ const ENTRIES = [
     tag: "New",
     title: "12 statistical tests, in plain English",
     items: [
-      "T-test, ANOVA, chi-square, correlation, regression, time-series forecasting, cohort analysis, and A/B significance — pick a test, choose your columns, get a plain-English result.",
+      "T-test, ANOVA, chi-square, correlation, regression, time-series forecasting, cohort analysis, and A/B significance. Pick a test, choose your columns, get a plain-English result.",
       "A correlation heatmap and a ranked list of the strongest relationships in your data.",
       "Per-column outlier detection with severity indicators and a box plot.",
     ],
@@ -36,7 +36,7 @@ const ENTRIES = [
   {
     date: "April 2026",
     tag: "Launch",
-    title: "Sushi: a data report you can trust, in minutes",
+    title: "Sushi: your raw data, served perfectly",
     items: [
       "Drop in a file and get a 0–100 quality score, an AI-written summary, and an interactive chart builder.",
       "Ask Your Data: natural-language questions answered with the SQL behind them shown for trust.",

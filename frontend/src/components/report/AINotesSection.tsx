@@ -68,11 +68,11 @@ export function AINotesSection({ datasetId }: AINotesSectionProps) {
         <NotebookPen className="h-4 w-4 text-brand" />
         <h2 className="text-[15px] font-semibold text-ink">AI Notes</h2>
       </div>
-      <p className="text-[13px] text-ink-secondary">Automatic observations about this data — high-missing columns, unusual values, and other things worth a second look.</p>
+      <p className="text-[13px] text-ink-secondary">Automatic observations about this data: high-missing columns, unusual values, and other things worth a second look.</p>
 
       {rateLimited && (
         <Alert tone="warning" title="You've reached today's question limit">
-          The rest of the report is still available — try again tomorrow.
+          The rest of the report is still available. Try again tomorrow.
         </Alert>
       )}
       {error && <Alert tone="danger">{error}</Alert>}

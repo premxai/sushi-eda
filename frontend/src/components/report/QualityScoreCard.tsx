@@ -15,7 +15,7 @@ interface QualityScoreCardProps {
   className?: string;
 }
 
-/** A clean radial score indicator — the "trust gateway" of the report.
+/** A clean radial score indicator, the "trust gateway" of the report.
  * Deliberately plain: one ring, one number, one sentence. No stamps,
  * no glow, no decoration beyond the grade color. */
 export function QualityScoreCard({ score, grade, verdict, className }: QualityScoreCardProps) {

@@ -48,7 +48,7 @@ export default function ExamplesPage() {
     <div className="min-h-screen bg-paper">
       <SiteHeader />
       <div className="container py-8">
-        <PageHeader title="Examples" description="Pre-analyzed sample datasets — open one instantly, no upload needed." />
+        <PageHeader title="Examples" description="Pre-analyzed sample datasets. Open one instantly, no upload needed." />
 
         <div className="mt-6">
           {loading ? (

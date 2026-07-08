@@ -29,7 +29,7 @@ export default function ComparePage() {
       const res = await compareDatasets(file1, file2);
       setResult(res);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Couldn't compare these files — check they're both supported formats and try again."));
+      setError(getApiErrorMessage(err, "Couldn't compare these files. Check they're both supported formats and try again."));
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function ComparePage() {
     <div className="min-h-screen bg-paper">
       <SiteHeader />
       <div className="container py-8">
-        <PageHeader title="Compare" description="Upload two files to see what changed — schema, row counts, and column differences." />
+        <PageHeader title="Compare" description="Upload two files to see what changed: schema, row counts, and column differences." />
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <CompareDropzone label="File A" file={file1} onFileSelected={setFile1} disabled={loading} />
@@ -80,7 +80,7 @@ export default function ComparePage() {
                   {Math.abs(result.comparison.column_count_diff) === 1 ? "" : "s"}.
                   {result.comparison.schema_diff.file1_only.length === 0 && result.comparison.schema_diff.file2_only.length === 0
                     ? " Both files share the exact same columns."
-                    : " The column names don't fully match between the two files — see below."}
+                    : " The column names don't fully match between the two files. See below."}
                 </p>
               </div>
             </Card>

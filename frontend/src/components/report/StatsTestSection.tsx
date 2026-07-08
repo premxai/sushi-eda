@@ -52,7 +52,7 @@ export function StatsTestSection({ datasetId, columns }: StatsTestSectionProps) 
       const r = await test.run(datasetId, merged);
       setResult(r);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Couldn't run this test — check the columns you picked and try again."));
+      setError(getApiErrorMessage(err, "Couldn't run this test. Check the columns you picked and try again."));
     } finally {
       setLoading(false);
     }

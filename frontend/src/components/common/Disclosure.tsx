@@ -11,7 +11,7 @@ interface DisclosureProps {
   defaultOpen?: boolean;
 }
 
-/** Native <details>/<summary> — keyboard accessible and screen-reader
+/** Native <details>/<summary>, keyboard accessible and screen-reader
  * friendly with zero extra JS. Used for "how was this computed?" and any
  * jargon that should stay hidden until asked for. */
 export function Disclosure({ summary, children, className, defaultOpen = false }: DisclosureProps) {

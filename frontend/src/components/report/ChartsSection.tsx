@@ -53,7 +53,7 @@ export function ChartsSection({ datasetId, columns }: ChartsSectionProps) {
       const spec = await chart.run(datasetId, merged);
       setResult(spec);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Couldn't build this chart — check the columns you picked and try again."));
+      setError(getApiErrorMessage(err, "Couldn't build this chart. Check the columns you picked and try again."));
     } finally {
       setLoading(false);
     }

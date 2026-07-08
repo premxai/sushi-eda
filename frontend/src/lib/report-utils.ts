@@ -1,19 +1,19 @@
 import { CorrelationMatrix, OutlierInfo, QualityScore } from "./types";
 
-/** One-line plain-English verdict for a quality grade — matches the exact
+/** One-line plain-English verdict for a quality grade. Matches the exact
  * copy established in the design brief; do not rephrase. */
 export function gradeVerdict(grade: string): string {
   switch (grade) {
     case "A":
-      return "This data looks clean and trustworthy — you can present numbers from it with confidence.";
+      return "This data looks clean and trustworthy. You can present numbers from it with confidence.";
     case "B":
-      return "Broadly trustworthy — skim the notes below before presenting exact totals.";
+      return "Broadly trustworthy. Skim the notes below before presenting exact totals.";
     case "C":
-      return "Usable with care — several issues below could shift totals and averages.";
+      return "Usable with care. Several issues below could shift totals and averages.";
     case "D":
       return "Treat conclusions from this data as rough estimates until the issues below are fixed.";
     default:
-      return "This data has serious quality problems — clean it up before trusting any numbers from it.";
+      return "This data has serious quality problems. Clean it up before trusting any numbers from it.";
   }
 }
 
@@ -120,6 +120,6 @@ export function stageLabel(stage: string): string {
 }
 
 export function qualityScoreSummary(qs: QualityScore | undefined): { score: number; grade: string; verdict: string } {
-  if (!qs) return { score: 0, grade: "—", verdict: "Quality score is not available for this analysis." };
+  if (!qs) return { score: 0, grade: "-", verdict: "Quality score is not available for this analysis." };
   return { score: qs.overall_score, grade: qs.grade, verdict: gradeVerdict(qs.grade) };
 }

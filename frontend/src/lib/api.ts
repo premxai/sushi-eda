@@ -2,9 +2,9 @@
 import axios from "axios";
 import { EDAReport } from "./types";
 
-// Auth is disabled in the backend (demo mode) for this build — no accounts,
-// no login, so the API client carries no auth/token logic. If Clerk (or any
-// auth) is reintroduced later, add a request interceptor here.
+// Auth is disabled in the backend (demo mode) for this build, so there are no
+// accounts and no login, and the API client carries no auth/token logic. If
+// Clerk (or any auth) is reintroduced later, add a request interceptor here.
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" ? "/api" : "http://localhost:8000");
@@ -70,7 +70,7 @@ export async function healthCheck(): Promise<boolean> {
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 export const SUPPORTED_EXTENSIONS = ["csv", "tsv", "xlsx", "xls", "json", "parquet", "db", "sqlite", "sqlite3"];
 
-/** Async upload — returns a dataset_id immediately; use useJobStream to track progress. */
+/** Async upload: returns a dataset_id immediately; use useJobStream to track progress. */
 export async function uploadFileAsync(
   file: File,
   orgId: string = "default",
@@ -105,7 +105,7 @@ export async function loadSampleData(): Promise<File> {
   return new File([blob], "sample_sales.csv", { type: "text/csv" });
 }
 
-/** Pre-analyzed example dataset seeded by the backend — null while it's still preparing. */
+/** Pre-analyzed example dataset seeded by the backend; null while it's still preparing. */
 export async function fetchExampleDataset(): Promise<{ dataset_id: string; filename: string } | null> {
   try {
     const { data } = await client.get<{ dataset_id: string; filename: string }>("/example");
@@ -182,7 +182,7 @@ export interface DatasetRowsResult {
   truncated: boolean;
 }
 
-/** Full (up to 20k) dataset rows for client-side chart building — unlike
+/** Full (up to 20k) dataset rows for client-side chart building, unlike
  * report.preview, which is always just the first 50 rows. */
 export async function fetchDatasetRows(
   datasetId: string,

@@ -58,13 +58,13 @@ export const TEST_REGISTRY: TestSpec[] = [
       verdict(
         r.significant,
         `These two groups look meaningfully different (averages of ${formatNumber(r.mean1, 2)} vs ${formatNumber(r.mean2, 2)}). The gap is unlikely to be random, but check the sample sizes before presenting it.`,
-        `These two groups don't look meaningfully different — the gap between their averages (${formatNumber(r.mean1, 2)} vs ${formatNumber(r.mean2, 2)}) could just be random variation.`,
+        `These two groups don't look meaningfully different. The gap between their averages (${formatNumber(r.mean1, 2)} vs ${formatNumber(r.mean2, 2)}) could just be random variation.`,
       ),
   },
   {
     key: "mann_whitney",
     label: "Mann-Whitney U",
-    description: "A non-parametric alternative to the t-test — compares two numeric columns without assuming a normal distribution.",
+    description: "A non-parametric alternative to the t-test that compares two numeric columns without assuming a normal distribution.",
     fields: [
       { key: "col1", label: "Column A", kind: "column", filter: "numeric" },
       { key: "col2", label: "Column B", kind: "column", filter: "numeric" },
@@ -86,7 +86,7 @@ export const TEST_REGISTRY: TestSpec[] = [
       verdict(
         r.significant,
         `The typical values (medians ${formatNumber(r.median1, 2)} vs ${formatNumber(r.median2, 2)}) are meaningfully different between these two groups.`,
-        `These two groups look similar — no meaningful difference in typical values detected.`,
+        `These two groups look similar. No meaningful difference in typical values detected.`,
       ),
   },
   {
@@ -101,8 +101,8 @@ export const TEST_REGISTRY: TestSpec[] = [
     interpret: (r) =>
       verdict(
         r.significant,
-        `There's a real relationship between these two columns — they don't look independent.`,
-        `These two columns look independent — no meaningful relationship detected between them.`,
+        `There's a real relationship between these two columns. They don't look independent.`,
+        `These two columns look independent. No meaningful relationship detected between them.`,
       ),
   },
   {
@@ -118,7 +118,7 @@ export const TEST_REGISTRY: TestSpec[] = [
       verdict(
         r.significant,
         `At least one of the ${r.n_groups} groups is meaningfully different from the others.`,
-        `The ${r.n_groups} groups look similar — no meaningful difference detected between them.`,
+        `The ${r.n_groups} groups look similar. No meaningful difference detected between them.`,
       ),
   },
   {
@@ -146,7 +146,7 @@ export const TEST_REGISTRY: TestSpec[] = [
       const abs = Math.abs(r.coefficient);
       const strength = abs >= 0.8 ? "very strongly" : abs >= 0.6 ? "strongly" : abs >= 0.4 ? "moderately" : abs >= 0.2 ? "weakly" : "barely";
       const direction = r.coefficient >= 0 ? "move together" : "move in opposite directions";
-      return `These columns ${direction} ${strength} (r = ${formatNumber(r.coefficient, 3)}).${r.significant ? "" : " This relationship isn't statistically significant, though — treat it as a hint, not a conclusion."}`;
+      return `These columns ${direction} ${strength} (r = ${formatNumber(r.coefficient, 3)}).${r.significant ? "" : " This relationship isn't statistically significant, though, so treat it as a hint, not a conclusion."}`;
     },
   },
   {
@@ -159,7 +159,7 @@ export const TEST_REGISTRY: TestSpec[] = [
     ],
     run: (id, v) => runRegression(id, v.x_col, v.y_col),
     interpret: (r) =>
-      `For every 1-unit increase in the predictor, the outcome changes by about ${formatNumber(r.slope, 3)}. This relationship explains ${formatPercent((r.r_squared ?? 0) * 100, 0)} of the variation — ${
+      `For every 1-unit increase in the predictor, the outcome changes by about ${formatNumber(r.slope, 3)}. This relationship explains ${formatPercent((r.r_squared ?? 0) * 100, 0)} of the variation, ${
         r.r_squared > 0.6 ? "a fairly strong fit." : r.r_squared > 0.3 ? "a moderate fit." : "a weak fit, so predictions from it should be treated with caution."
       }`,
   },
@@ -245,7 +245,7 @@ export const TEST_REGISTRY: TestSpec[] = [
     run: (id, v) => runABTestSignificance(id, Number(v.control_conversions), Number(v.control_total), Number(v.variant_conversions), Number(v.variant_total)),
     interpret: (r) => {
       if (r.winner === "tie" || r.winner === "inconclusive") {
-        return "This difference is not statistically significant yet — it could just be noise. Consider running the test longer or with more traffic.";
+        return "This difference is not statistically significant yet. It could just be noise. Consider running the test longer or with more traffic.";
       }
       return `The ${r.winner} variant performed better, a ${formatPercent(Math.abs(r.lift_relative_percent ?? 0), 1)} relative lift. This result looks statistically real, not just noise.`;
     },

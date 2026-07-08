@@ -71,7 +71,7 @@ export default function SharePage({ params }: { params: { token: string } }) {
             <p className="mt-0.5 text-[12px] text-ink-secondary">Shared report · Analyzed {formatDateTime(shared.analysis.created_at)}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-tertiary">
-            <ShieldCheck className="h-3.5 w-3.5" /> Read-only — anyone with this link can view it
+            <ShieldCheck className="h-3.5 w-3.5" /> Read-only, anyone with this link can view it
           </span>
         </div>
 

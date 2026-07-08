@@ -23,12 +23,12 @@ interface AskDataSectionProps {
   columns: ColumnAnalysis[];
 }
 
-/** Maps raw backend error strings to calm, user-facing copy — never show
+/** Maps raw backend error strings to calm, user-facing copy. Never show
  * a bare technical message like "AI not configured" in the chat. */
 function friendlyChatError(raw: string): string {
   const normalized = raw.toLowerCase();
   if (normalized.includes("not configured") || normalized.includes("api key") || normalized.includes("unavailable")) {
-    return "Ask Your Data isn't set up in this environment yet — the rest of the report is still fully available.";
+    return "Ask Your Data isn't set up in this environment yet. The rest of the report is still fully available.";
   }
   return "Couldn't turn that into an answer. Try rephrasing the question, or ask something simpler to start.";
 }
@@ -97,7 +97,7 @@ export function AskDataSection({ datasetId, columns }: AskDataSectionProps) {
 
       {rateLimited && (
         <Alert tone="warning" title="You've reached today's question limit">
-          The rest of the report is still available — try again tomorrow, or explore Charts &amp; Trends and Field Health in the meantime.
+          The rest of the report is still available. Try again tomorrow, or explore Charts &amp; Trends and Field Health in the meantime.
         </Alert>
       )}
       {error && <Alert tone="danger">{error}</Alert>}
@@ -152,7 +152,7 @@ export function AskDataSection({ datasetId, columns }: AskDataSectionProps) {
                               <tr key={ri}>
                                 {row.map((cell, ci) => (
                                   <td key={ci} className="border-b border-border/60 px-2 py-1 text-ink-secondary">
-                                    {cell ?? "—"}
+                                    {cell ?? "-"}
                                   </td>
                                 ))}
                               </tr>

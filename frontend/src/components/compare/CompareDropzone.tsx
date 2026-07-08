@@ -35,7 +35,7 @@ export function CompareDropzone({ label, file, onFileSelected, disabled }: Compa
         const isTooLarge = errors.some((e) => e.code === "file-too-large");
         setRejection(
           isTooLarge
-            ? `"${rejectedFile.name}" is ${formatBytes(rejectedFile.size)} — that's over the 25 MB limit. Try a smaller export, or split it into parts.`
+            ? `"${rejectedFile.name}" is ${formatBytes(rejectedFile.size)}, that's over the 25 MB limit. Try a smaller export, or split it into parts.`
             : `"${rejectedFile.name}" isn't a format Sushi can read yet. Use CSV, TSV, XLSX, JSON, Parquet, or SQLite.`,
         );
         return;

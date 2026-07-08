@@ -47,7 +47,7 @@ export function ReportsSection({ report, fileName, datasetId, narrative, notes, 
     } catch (err) {
       setError(
         err instanceof Error && err.message === "no-dataset"
-          ? "This export needs a saved dataset — try the PDF or JSON export instead."
+          ? "This export needs a saved dataset. Try the PDF or JSON export instead."
           : getApiErrorMessage(err, "Couldn't generate that export right now."),
       );
     } finally {
@@ -61,7 +61,7 @@ export function ReportsSection({ report, fileName, datasetId, narrative, notes, 
         <NotebookText className="h-4 w-4 text-brand" />
         <h2 className="text-[15px] font-semibold text-ink">Reports</h2>
       </div>
-      <p className="text-[13px] text-ink-secondary">A shareable summary of this analysis — export it, or add your own notes below first.</p>
+      <p className="text-[13px] text-ink-secondary">A shareable summary of this analysis. Export it, or add your own notes below first.</p>
 
       {error && <Alert tone="danger">{error}</Alert>}
 
@@ -73,8 +73,8 @@ export function ReportsSection({ report, fileName, datasetId, narrative, notes, 
           <p>
             <span className="font-semibold text-ink">
               {formatNumber(score)}/100 (Grade {grade})
-            </span>{" "}
-            — {verdict}
+            </span>
+            <span>: {verdict}</span>
           </p>
           <p>
             {formatNumber(report.basic_info.rows)} rows · {formatNumber(report.basic_info.columns)} columns · {formatNumber(report.basic_info.duplicate_rows)} duplicate rows ·{" "}

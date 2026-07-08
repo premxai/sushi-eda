@@ -59,7 +59,7 @@ export function SqlEditorSection({ datasetId }: SqlEditorSectionProps) {
         setHistory((prev) => [sqlText, ...prev.filter((q) => q !== sqlText)].slice(0, HISTORY_LIMIT));
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, "That query didn't run — check the syntax and try again."));
+      setError(getApiErrorMessage(err, "That query didn't run. Check the syntax and try again."));
       setResult(null);
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ export function SqlEditorSection({ datasetId }: SqlEditorSectionProps) {
 
       <Alert tone="info">
         <span className="inline-flex items-center gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5" /> Safe to experiment — read-only <code className="font-mono">SELECT</code> queries only, capped at 10,000 rows, and cancelled after 20
+          <ShieldCheck className="h-3.5 w-3.5" /> Safe to experiment: read-only <code className="font-mono">SELECT</code> queries only, capped at 10,000 rows, and cancelled after 20
           seconds. Your dataset is available as a table named <code className="font-mono">df</code>.
         </span>
       </Alert>
@@ -186,7 +186,7 @@ export function SqlEditorSection({ datasetId }: SqlEditorSectionProps) {
                           <tr key={ri} className="border-b border-border/60 last:border-0">
                             {row.map((cell, ci) => (
                               <td key={ci} className="whitespace-nowrap px-3 py-1.5 text-ink-secondary">
-                                {cell === null || cell === undefined ? <span className="text-ink-tertiary">—</span> : String(cell)}
+                                {cell === null || cell === undefined ? <span className="text-ink-tertiary">-</span> : String(cell)}
                               </td>
                             ))}
                           </tr>

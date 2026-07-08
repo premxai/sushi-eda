@@ -1,10 +1,10 @@
 export function formatNumber(value: number, decimals = 0): string {
-  if (!Number.isFinite(value)) return "—";
+  if (!Number.isFinite(value)) return "-";
   return value.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: 0 });
 }
 
 export function formatPercent(value: number, decimals = 1): string {
-  if (!Number.isFinite(value)) return "—";
+  if (!Number.isFinite(value)) return "-";
   return `${value.toFixed(decimals)}%`;
 }
 
@@ -21,24 +21,24 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 /** "Expires in 3 days" / "Expires today" / "Expired 2 days ago" */
 export function formatExpiry(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const expires = new Date(iso).getTime();
-  if (Number.isNaN(expires)) return "—";
+  if (Number.isNaN(expires)) return "-";
   const days = Math.ceil((expires - Date.now()) / (1000 * 60 * 60 * 24));
   if (days < 0) return `Expired ${pluralize(Math.abs(days), "day")} ago`;
   if (days === 0) return "Expires today";

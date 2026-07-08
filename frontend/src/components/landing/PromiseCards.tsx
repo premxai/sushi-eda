@@ -9,7 +9,7 @@ const PROMISES = [
   {
     icon: Sparkles,
     title: "Plain-English AI summary",
-    body: "Not a wall of charts — a short executive summary of what the data says, what changed, and what to watch out for.",
+    body: "Not a wall of charts. A short executive summary of what the data says, what changed, and what to watch out for.",
   },
   {
     icon: MessageSquareText,

@@ -4,71 +4,72 @@
 
 /* ════════════════════════════════════════════════════════════════
    DESIGN TOKENS
-   A calm, warm-neutral analytics workspace: off-white paper, near-black
-   ink, ONE restrained accent (a muted clay/terracotta). Red/green/amber
-   are reserved for data-quality signals only — never decoration.
+   A premium, sushi-inspired workspace: nori-black ink, warm rice-paper
+   background, and ONE restrained accent, a deep antique brass/gold
+   (like gold leaf on black lacquerware). Red/green/amber are reserved
+   for data-quality signals only, never decoration.
    ════════════════════════════════════════════════════════════════ */
 :root {
-  --paper: #faf8f4;
+  --paper: #faf8f2;
   --surface: #ffffff;
-  --surface-2: #f2efe9;
+  --surface-2: #f1ede3;
 
-  --border: #e5e1d8;
-  --border-strong: #d3cdc0;
+  --border: #e6e0d2;
+  --border-strong: #d3cab3;
 
-  --ink: #1b1a17;
-  --ink-secondary: #5b584f;
-  --ink-tertiary: #8d8879;
+  --ink: #16150f;
+  --ink-secondary: #5c594c;
+  --ink-tertiary: #8e8a78;
 
-  --brand: #a8552e;
-  --brand-hover: #8b4424;
-  --brand-weak: rgba(168, 85, 46, 0.08);
-  --brand-weak-2: rgba(168, 85, 46, 0.14);
+  --brand: #8b6b2e;
+  --brand-hover: #6f5424;
+  --brand-weak: rgba(139, 107, 46, 0.08);
+  --brand-weak-2: rgba(139, 107, 46, 0.14);
 
-  --success: #4b7a52;
-  --success-weak: rgba(75, 122, 82, 0.1);
+  --success: #3f6b47;
+  --success-weak: rgba(63, 107, 71, 0.1);
 
-  --warning: #b8873a;
-  --warning-weak: rgba(184, 135, 58, 0.1);
+  --warning: #c08a28;
+  --warning-weak: rgba(192, 138, 40, 0.1);
 
-  --danger: #b23a2e;
-  --danger-weak: rgba(178, 58, 46, 0.1);
+  --danger: #8c2f26;
+  --danger-weak: rgba(140, 47, 38, 0.1);
 
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 16px;
 
-  --shadow-xs: 0 1px 2px rgba(23, 22, 20, 0.04);
-  --shadow-sm: 0 1px 3px rgba(23, 22, 20, 0.06), 0 1px 2px rgba(23, 22, 20, 0.04);
-  --shadow-md: 0 4px 12px rgba(23, 22, 20, 0.07), 0 2px 4px rgba(23, 22, 20, 0.04);
-  --shadow-lg: 0 16px 40px rgba(23, 22, 20, 0.1), 0 4px 10px rgba(23, 22, 20, 0.05);
+  --shadow-xs: 0 1px 2px rgba(20, 19, 15, 0.04);
+  --shadow-sm: 0 1px 3px rgba(20, 19, 15, 0.06), 0 1px 2px rgba(20, 19, 15, 0.04);
+  --shadow-md: 0 4px 12px rgba(20, 19, 15, 0.07), 0 2px 4px rgba(20, 19, 15, 0.04);
+  --shadow-lg: 0 16px 40px rgba(20, 19, 15, 0.1), 0 4px 10px rgba(20, 19, 15, 0.05);
 }
 
 .dark {
-  --paper: #16150f;
-  --surface: #1d1b15;
-  --surface-2: #24221a;
+  --paper: #14130f;
+  --surface: #1e1c16;
+  --surface-2: #262319;
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
 
-  --ink: #f1eee6;
-  --ink-secondary: #b7b2a3;
-  --ink-tertiary: #837d6d;
+  --ink: #f2eee2;
+  --ink-secondary: #c7c2ae;
+  --ink-tertiary: #948e77;
 
-  --brand: #d9814f;
-  --brand-hover: #e8a06e;
-  --brand-weak: rgba(217, 129, 79, 0.15);
-  --brand-weak-2: rgba(217, 129, 79, 0.24);
+  --brand: #d4af6a;
+  --brand-hover: #e4c588;
+  --brand-weak: rgba(212, 175, 106, 0.15);
+  --brand-weak-2: rgba(212, 175, 106, 0.24);
 
-  --success: #74a97c;
-  --success-weak: rgba(116, 169, 124, 0.15);
+  --success: #6fa378;
+  --success-weak: rgba(111, 163, 120, 0.15);
 
-  --warning: #d3a25c;
-  --warning-weak: rgba(211, 162, 92, 0.15);
+  --warning: #d9a94a;
+  --warning-weak: rgba(217, 169, 74, 0.15);
 
-  --danger: #d97767;
-  --danger-weak: rgba(217, 119, 103, 0.15);
+  --danger: #c4574a;
+  --danger-weak: rgba(196, 87, 74, 0.15);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -95,7 +96,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Deliberately scoped transition — never on layout-affecting properties,
+  /* Deliberately scoped transition: never on layout-affecting properties,
      so nothing jitters or feels like a "toy" animation. */
   button, a, input, textarea, select, [role="button"] {
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;

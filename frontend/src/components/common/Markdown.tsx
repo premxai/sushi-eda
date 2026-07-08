@@ -1,6 +1,6 @@
 import React from "react";
 
-/** Minimal markdown renderer for AI-generated narrative text — headings,
+/** Minimal markdown renderer for AI-generated narrative text: headings,
  * bold, and bullet/numbered lists. Deliberately not a full markdown
  * dependency; the AI narrative only ever uses this small subset. */
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {

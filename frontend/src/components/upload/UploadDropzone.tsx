@@ -42,7 +42,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
         setRejection({
           kind: isTooLarge ? "size" : "format",
           message: isTooLarge
-            ? `"${file.name}" is ${formatBytes(file.size)} — that's over the 25 MB limit. Try a smaller export, or split it into parts.`
+            ? `"${file.name}" is ${formatBytes(file.size)}, that's over the 25 MB limit. Try a smaller export, or split it into parts.`
             : `"${file.name}" isn't a format Sushi can read yet. Use CSV, TSV, XLSX, JSON, Parquet, or SQLite.`,
         });
         return;
@@ -51,7 +51,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
       if (!file) return;
       setSelectedFile(file);
       setState("selected");
-      // Brief, real confirmation frame — not a fake delay, just enough for
+      // Brief, real confirmation frame, not a fake delay, just enough for
       // the user to see the file was received before analysis begins.
       window.setTimeout(() => onFileAccepted(file), 450);
     },
