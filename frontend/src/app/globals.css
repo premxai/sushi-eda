@@ -4,10 +4,10 @@
 
 /* ════════════════════════════════════════════════════════════════
    DESIGN TOKENS
-   A premium, sushi-inspired workspace: nori-black ink, warm rice-paper
-   background, and ONE restrained accent, a deep antique brass/gold
-   (like gold leaf on black lacquerware). Red/green/amber are reserved
-   for data-quality signals only, never decoration.
+   A premium, sushi-inspired workspace built around the real Sushi
+   logo's colors: nori-black ink, warm rice-paper background, a deep
+   salmon accent, and wasabi green / tuna red reserved strictly for
+   data-quality signals, never decoration.
    ════════════════════════════════════════════════════════════════ */
 :root {
   --paper: #faf8f2;
@@ -21,19 +21,19 @@
   --ink-secondary: #5c594c;
   --ink-tertiary: #8e8a78;
 
-  --brand: #8b6b2e;
-  --brand-hover: #6f5424;
-  --brand-weak: rgba(139, 107, 46, 0.08);
-  --brand-weak-2: rgba(139, 107, 46, 0.14);
+  --brand: #c15b3f;
+  --brand-hover: #9c4830;
+  --brand-weak: rgba(193, 91, 63, 0.08);
+  --brand-weak-2: rgba(193, 91, 63, 0.14);
 
-  --success: #3f6b47;
-  --success-weak: rgba(63, 107, 71, 0.1);
+  --success: #6b8a3e;
+  --success-weak: rgba(107, 138, 62, 0.1);
 
   --warning: #c08a28;
   --warning-weak: rgba(192, 138, 40, 0.1);
 
-  --danger: #8c2f26;
-  --danger-weak: rgba(140, 47, 38, 0.1);
+  --danger: #b33a2c;
+  --danger-weak: rgba(179, 58, 44, 0.1);
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -57,19 +57,19 @@
   --ink-secondary: #c7c2ae;
   --ink-tertiary: #948e77;
 
-  --brand: #d4af6a;
-  --brand-hover: #e4c588;
-  --brand-weak: rgba(212, 175, 106, 0.15);
-  --brand-weak-2: rgba(212, 175, 106, 0.24);
+  --brand: #e38a67;
+  --brand-hover: #f0a183;
+  --brand-weak: rgba(227, 138, 103, 0.15);
+  --brand-weak-2: rgba(227, 138, 103, 0.24);
 
-  --success: #6fa378;
-  --success-weak: rgba(111, 163, 120, 0.15);
+  --success: #93b563;
+  --success-weak: rgba(147, 181, 99, 0.15);
 
   --warning: #d9a94a;
   --warning-weak: rgba(217, 169, 74, 0.15);
 
-  --danger: #c4574a;
-  --danger-weak: rgba(196, 87, 74, 0.15);
+  --danger: #d9695a;
+  --danger-weak: rgba(217, 105, 90, 0.15);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.2);

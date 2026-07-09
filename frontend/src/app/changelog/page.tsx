@@ -36,7 +36,7 @@ const ENTRIES = [
   {
     date: "April 2026",
     tag: "Launch",
-    title: "Sushi: your raw data, served perfectly",
+    title: "Sushi: Your RAW Data Served Perfectly",
     items: [
       "Drop in a file and get a 0–100 quality score, an AI-written summary, and an interactive chart builder.",
       "Ask Your Data: natural-language questions answered with the SQL behind them shown for trust.",

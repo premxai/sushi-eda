@@ -15,14 +15,14 @@ export const plotlyLayout: Partial<Layout> = {
   hovermode: "closest",
 };
 
-/** The one shared categorical color sequence: brand antique gold first,
- * then a small set of clearly distinct, muted hues. Red/green are placed
- * last since they carry "good/bad" meaning elsewhere in the product and
- * should not be the default color for unrelated categories. */
-export const plotlyColorway = ["#8b6b2e", "#5b7fa6", "#7c6a8a", "#8c8360", "#3f6b47", "#8c2f26"];
+/** The one shared categorical color sequence: brand salmon first, then a
+ * small set of clearly distinct, muted hues. Wasabi green and tuna red
+ * are placed last since they carry "good/bad" meaning elsewhere in the
+ * product and should not be the default color for unrelated categories. */
+export const plotlyColorway = ["#c15b3f", "#5b7fa6", "#7c6a8a", "#c08a28", "#6b8a3e", "#b33a2c"];
 
 export const plotlyDivergingScale: [number, string][] = [
   [0, "#5b7fa6"],
   [0.5, "#faf8f2"],
-  [1, "#8b6b2e"],
+  [1, "#c15b3f"],
 ];

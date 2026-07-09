@@ -30,7 +30,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sushi-eda.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Sushi | Your raw data served perfectly",
+    default: "Sushi | Your RAW Data Served Perfectly",
     template: "%s | Sushi",
   },
   description:
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Sushi" }],
   creator: "Sushi",
   openGraph: {
-    title: "Sushi | Your raw data served perfectly",
+    title: "Sushi | Your RAW Data Served Perfectly",
     description: "Drop in a data file, get a plain-English report you can trust and share. No code required.",
     type: "website",
     url: SITE_URL,
