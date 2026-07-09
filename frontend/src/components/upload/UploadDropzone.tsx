@@ -70,7 +70,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
 
   if (state === "selected" && selectedFile) {
     return (
-      <div className="rounded-lg border border-border-strong bg-surface p-8 text-center">
+      <div className="rounded-2xl border border-border bg-surface p-8 text-center shadow-lg">
         <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-brand-weak">
           <FileIcon className="h-5 w-5 text-brand" />
         </div>
@@ -85,8 +85,8 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
       <div
         {...getRootProps()}
         className={cn(
-          "rounded-lg border-2 border-dashed p-8 text-center transition-colors",
-          isDragActive ? "border-brand bg-brand-weak" : "border-border-strong bg-surface hover:border-border-strong",
+          "rounded-2xl border-2 border-dashed p-8 text-center shadow-lg transition-colors",
+          isDragActive ? "border-brand bg-brand-weak" : "border-brand/25 bg-surface hover:border-brand/40",
         )}
       >
         <input {...getInputProps()} aria-label="Upload a data file" />
@@ -97,17 +97,21 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
         <p className="mt-1 text-[13px] text-ink-secondary">or choose a file from your computer</p>
 
         <div className="mt-5 flex items-center justify-center gap-3">
-          <Button onClick={open} disabled={disabled}>
+          <Button onClick={open} disabled={disabled} className="rounded-full px-6">
             Choose file
           </Button>
-          <button onClick={onSample} disabled={disabled} className="text-[13.5px] font-medium text-brand hover:text-brand-hover disabled:opacity-50">
+          <button
+            onClick={onSample}
+            disabled={disabled}
+            className="text-[13.5px] font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
+          >
             or try a sample dataset
           </button>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
           {FORMAT_BADGES.map((f) => (
-            <span key={f} className="rounded-sm border border-border bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-secondary">
+            <span key={f} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary">
               {f}
             </span>
           ))}
