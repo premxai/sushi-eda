@@ -8,7 +8,7 @@ export const plotlyConfig: Partial<Config> = {
 };
 
 export const plotlyLayout: Partial<Layout> = {
-  font: { family: "var(--font-sans), sans-serif", size: 12, color: "#16150f" },
+  font: { family: "var(--font-sans), sans-serif", size: 12, color: "#17171a" },
   paper_bgcolor: "transparent",
   plot_bgcolor: "transparent",
   margin: { t: 24, r: 20, b: 40, l: 56 },
@@ -23,6 +23,6 @@ export const plotlyColorway = ["#c15b3f", "#5b7fa6", "#7c6a8a", "#c08a28", "#6b8
 
 export const plotlyDivergingScale: [number, string][] = [
   [0, "#5b7fa6"],
-  [0.5, "#faf8f2"],
+  [0.5, "#fafafa"],
   [1, "#c15b3f"],
 ];
