@@ -194,6 +194,15 @@
   text-decoration: none;
 }
 
+.sushi-logo-exact {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  transform: scale(1.065);
+}
+
 .hero-reference-nav {
   position: absolute;
   top: 51%;
@@ -575,11 +584,13 @@
 
 .sushiHeroStage .hero-reference-copy h1 {
   max-width: 720px;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 94px;
-  line-height: 0.94;
+  letter-spacing: -0.052em;
+  line-height: 0.93;
 }
 
-.sushiHeroStage .hero-reference-copy h1 em { margin: 0 0.045em; }
+.sushiHeroStage .hero-reference-copy h1 em { margin: 0 0.065em; }
 
 .sushiHeroStage .hero-reference-subtitle {
   margin: 28px 0 0 4px;
