@@ -443,14 +443,6 @@
   .hero-mobile-shell { display: block; }
 }
 
-@media (min-width: 1100px) and (max-width: 1439px) {
-  /* The 1920px frame scales down on laptop widths; shrink the fixed-pixel
-     internals of the coded cards with their position and width preserved. */
-  .hero-raw-card { width: 21.875% !important; transform: scale(0.8); transform-origin: top left; }
-  .hero-cleaned-card { width: 25% !important; transform: scale(0.8); transform-origin: top left; }
-  .hero-report-card { width: 30.625% !important; transform: scale(0.8); transform-origin: top left; }
-}
-
 @media (max-width: 767px) {
   .hero-mobile-art { max-width: 360px; }
   .hero-mobile-cards { display: grid; grid-template-columns: 1fr; }
@@ -559,10 +551,18 @@
 
 .sushiHeroStage .hero-japanese-right {
   top: 165px;
-  right: 42px;
-  z-index: 3;
+  right: 92px;
+  /* The right mark sits above the chef asset so it remains legible, but below cards and controls. */
+  z-index: 9;
   width: 70px !important;
   height: auto !important;
+}
+
+/* Japanese accents are live/vector components, not raster layers. */
+.sushiHeroStage .hero-japanese-left,
+.sushiHeroStage .hero-japanese-right {
+  display: flex;
+  pointer-events: none;
 }
 
 .sushiHeroStage .hero-reference-copy {
@@ -639,7 +639,8 @@
 }
 
 .sushiHeroStage .hero-chef {
-  top: 0;
+  /* Reserve the header safe area so the CTA never sits on the chef hat. */
+  top: 72px;
   right: -20px;
   z-index: 8;
   width: 650px !important;

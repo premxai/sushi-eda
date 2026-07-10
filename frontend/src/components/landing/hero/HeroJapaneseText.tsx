@@ -1,6 +1,4 @@
-/** Live, coded vertical Japanese decoration (no image). Left variant reads
- * "データを価値に変える" (turn data into value) with a 寿司 seal; right
- * variant is a large "洞察" (insight) with a vertical INSIGHT label and seal. */
+/** Live, coded vertical Japanese decoration (no raster asset). */
 
 function Seal({ children }: { children: string }) {
   return (
@@ -17,9 +15,9 @@ export function HeroJapaneseTextLeft({ className }: { className?: string }) {
   return (
     <div className={`flex flex-col items-center gap-5 ${className ?? ""}`} aria-hidden>
       <span className="font-display text-[26px] leading-[1.35] tracking-[0.15em] text-ink" style={{ writingMode: "vertical-rl" }}>
-        データを価値に変える
+        {"\u30c7\u30fc\u30bf\u3092\u4fa1\u5024\u306b\u5909\u3048\u308b"}
       </span>
-      <Seal>寿司</Seal>
+      <Seal>{"\u5bff\u53f8"}</Seal>
     </div>
   );
 }
@@ -29,13 +27,13 @@ export function HeroJapaneseTextRight({ className }: { className?: string }) {
     <div className={`flex flex-col items-center gap-4 ${className ?? ""}`} aria-hidden>
       <div className="flex items-start gap-2">
         <span className="font-display text-[40px] font-medium leading-[1.1] text-ink" style={{ writingMode: "vertical-rl" }}>
-          洞察
+          {"\u6d1e\u5bdf"}
         </span>
         <span className="mt-2 text-[11px] font-medium uppercase tracking-[0.35em] text-ink-tertiary" style={{ writingMode: "vertical-rl" }}>
           Insight
         </span>
       </div>
-      <Seal>寿司</Seal>
+      <Seal>{"\u5bff\u53f8"}</Seal>
     </div>
   );
 }

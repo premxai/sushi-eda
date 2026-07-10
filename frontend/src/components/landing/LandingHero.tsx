@@ -2,21 +2,18 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useLayoutEffect, useRef } from "react";
-import type { ReactNode } from "react";
-import { BarChart3, Lock, Share2, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { SiteHeader } from "@/components/landing/SiteHeader";
-import { HeroConnectionLines } from "@/components/landing/hero/HeroConnectionLines";
+import { FeatureRow } from "@/components/landing/hero/FeatureRow";
 import { RawCsvCard } from "@/components/landing/hero/RawCsvCard";
 import { CleanedDataCard } from "@/components/landing/hero/CleanedDataCard";
 import { SushiReportCard } from "@/components/landing/hero/SushiReportCard";
+import { SushiHero } from "@/components/landing/hero/SushiHero";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 import { UploadProgress } from "@/components/upload/UploadProgress";
 import { JobStatus } from "@/hooks/useJobStream";
-import { Logo } from "@/components/common/Logo";
-import { cn } from "@/lib/utils";
 
-interface LandingHeroProps {
+export interface LandingHeroProps {
   isUploading: boolean;
   jobStatus: JobStatus;
   jobProgress: number;
@@ -29,21 +26,14 @@ interface LandingHeroProps {
   onRetry: () => void;
 }
 
-const NAV_LINKS = [
-  { href: "/docs", label: "Docs" },
-  { href: "/examples", label: "Examples" },
-  { href: "/docs#pricing", label: "Pricing" },
-  { href: "/privacy", label: "Privacy" },
-];
-
 export function LandingHero(props: LandingHeroProps) {
   return (
     <div className="hero-page bg-paper">
-      <DesktopHero {...props} />
+      <SushiHero {...props} />
       <MobileHero {...props} />
       <footer className="border-t border-border py-8">
         <div className="container flex flex-col items-center justify-between gap-3 text-[12.5px] text-ink-tertiary sm:flex-row">
-          <span>© {new Date().getFullYear()} Sushi</span>
+          <span>{"\u00a9"} {new Date().getFullYear()} Sushi</span>
           <div className="flex gap-4">
             <Link href="/docs" className="text-ink-tertiary no-underline hover:text-ink">Docs</Link>
             <Link href="/privacy" className="text-ink-tertiary no-underline hover:text-ink">Privacy</Link>
@@ -52,96 +42,6 @@ export function LandingHero(props: LandingHeroProps) {
         </div>
       </footer>
     </div>
-  );
-}
-
-function DesktopHero({
-  isUploading,
-  jobStatus,
-  jobProgress,
-  jobStage,
-  jobError,
-  topError,
-  onClearTopError,
-  onFileAccepted,
-  onSample,
-  onRetry,
-}: LandingHeroProps) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const shell = viewport.parentElement;
-
-    const resizeStage = () => {
-      const containerWidth = shell?.clientWidth ?? viewport.clientWidth;
-      const availableHeight = window.innerHeight;
-      const scale = Math.min(containerWidth / 1920, availableHeight / 1080);
-      viewport.style.setProperty("--hero-scale", String(scale));
-      viewport.style.height = `${1080 * scale}px`;
-    };
-
-    const observer = new ResizeObserver(resizeStage);
-    observer.observe(shell ?? viewport);
-    window.addEventListener("resize", resizeStage);
-    resizeStage();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", resizeStage);
-    };
-  }, []);
-
-  return (
-    <section className="sushiHeroShell" aria-label="Sushi data analysis">
-      <div ref={viewportRef} className="sushiHeroViewport">
-      <div className="sushiHeroStage">
-        <Image src="/sushi/hero/background-paper-16x9.png" alt="" fill priority className="hero-background" sizes="100vw" />
-
-        <header className="hero-reference-header">
-          <Link href="/" className="hero-reference-logo" aria-label="Sushi home">
-            <Logo size={58} />
-            <span>Sushi</span>
-          </Link>
-          <nav aria-label="Main" className="hero-reference-nav">
-            {NAV_LINKS.map((link) => <Link key={link.label} href={link.href}>{link.label}</Link>)}
-          </nav>
-          <a href="#upload-desktop" className="hero-reference-cta">Get started free <span aria-hidden>→</span></a>
-        </header>
-
-        <Image src="/sushi/hero/japanese-left.png?v=3" alt="" width={941} height={1672} className="hero-japanese-left" />
-        <Image src="/sushi/hero/japanese-right.png?v=3" alt="" width={887} height={1774} className="hero-japanese-right" />
-
-        <div className="hero-reference-copy">
-          <p className="hero-reference-eyebrow">Data reports for people who aren&apos;t analysts</p>
-          <h1>
-            <span>Your <em>RAW</em> Data</span>
-            <span>Served <em>Perfectly.</em></span>
-          </h1>
-          <p className="hero-reference-subtitle">Upload your CSVs. Sushi turns complex data<br />into clear, plain-English reports in minutes.</p>
-          {topError && <div className="hero-reference-error"><span>{topError}</span><button onClick={onClearTopError} aria-label="Dismiss"><X className="h-4 w-4" /></button></div>}
-        </div>
-
-        <div id="upload-desktop" className="hero-reference-upload">
-          {isUploading ? (
-            <UploadProgress status={jobStatus} progress={jobProgress} stage={jobStage} error={jobError} onRetry={onRetry} />
-          ) : (
-            <UploadDropzone hero onFileAccepted={onFileAccepted} onSample={onSample} />
-          )}
-        </div>
-
-        <RawCsvCard compact className="hero-raw-card" />
-        <CleanedDataCard className="hero-cleaned-card" />
-        <SushiReportCard className="hero-report-card" />
-        <FlowPill className="hero-private-pill" icon={<Lock className="h-4 w-4" />}>Secure &amp; Private</FlowPill>
-        <FlowPill className="hero-action-pill" icon={<Sparkles className="h-4 w-4" />}>Clear. Actionable. Beautiful.</FlowPill>
-        <HeroConnectionLines />
-        <Image src="/sushi/hero/chef-transparent.png?v=1" alt="Sushi chef preparing a data-inspired sushi roll" width={1086} height={1448} className="hero-chef" />
-        <p className="hero-workflow"><span>Raw CSVs in</span><b>→</b><span className="matcha">Cleaned Data out</span><b>→</b><span className="coral">Clear Insights delivered</span></p>
-        <FeatureRow />
-      </div>
-      </div>
-    </section>
   );
 }
 
@@ -181,18 +81,4 @@ function MobileHero({
       </main>
     </div>
   );
-}
-
-function FlowPill({ className, icon, children }: { className: string; icon: ReactNode; children: ReactNode }) {
-  return <div className={cn("hero-flow-pill", className)}>{icon}{children}</div>;
-}
-
-function FeatureRow() {
-  const items = [
-    { icon: ShieldCheck, title: "Privacy by Design", body: "Your data stays yours." },
-    { icon: Sparkles, title: "Plain-English Reports", body: "No jargon. Just insights." },
-    { icon: BarChart3, title: "Charts That Tell the Story", body: "Automated visuals that make sense." },
-    { icon: Share2, title: "Export & Share", body: "PDF, CSV, and more." },
-  ];
-  return <div className="hero-feature-row">{items.map(({ icon: Icon, title, body }, index) => <div key={title} className="hero-feature-item"><span className={index === 2 ? "matcha" : "coral"}><Icon /></span><div><strong>{title}</strong><small>{body}</small></div></div>)}</div>;
 }
