@@ -35,8 +35,6 @@ export function SushiHero({
   onFileAccepted,
   onSample,
   onRetry,
-  requiresSignIn,
-  onSignInRequired,
 }: LandingHeroProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -99,8 +97,6 @@ export function SushiHero({
             onFileAccepted={onFileAccepted}
             onSample={onSample}
             onRetry={onRetry}
-            requiresSignIn={requiresSignIn}
-            onSignInRequired={onSignInRequired}
           />
 
           <RawCsvCard compact className="hero-raw-card" />
