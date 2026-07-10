@@ -523,9 +523,9 @@
 .sushiHeroStage .hero-reference-nav a { font-size: 17px; }
 
 .sushiHeroStage .hero-reference-cta {
-  top: 18px;
-  right: 56px;
-  min-height: 54px;
+  top: 22px;
+  right: 52px;
+  min-height: 52px;
   padding: 0 24px;
   font-size: 16px;
   transform: none;
@@ -639,12 +639,13 @@
 }
 
 .sushiHeroStage .hero-chef {
-  /* Reserve the header safe area so the CTA never sits on the chef hat. */
-  top: 72px;
-  right: -20px;
+  /* Move the visual left/down and enlarge it while preserving CTA headroom. */
+  top: 98px;
+  right: auto;
+  left: 1230px;
   z-index: 8;
-  width: 650px !important;
-  height: 825px !important;
+  width: 662px !important;
+  height: auto !important;
   object-fit: contain;
   object-position: top right;
 }
