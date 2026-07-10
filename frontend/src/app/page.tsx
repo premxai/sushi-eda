@@ -15,6 +15,7 @@ import {
   uploadFileAsync,
 } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
+import { getLocalSession, type AuthIntent } from "@/lib/auth-gate";
 
 const REPORT_KEY = "sushi_report";
 const FILE_KEY = "sushi_filename";
@@ -32,10 +33,15 @@ function HomeContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [requiresSignIn, setRequiresSignIn] = useState(true);
   const sampleRequestedRef = useRef(false);
 
   useEffect(() => {
     prewarmBackend();
+  }, []);
+
+  useEffect(() => {
+    setRequiresSignIn(!getLocalSession());
   }, []);
 
   // Restore the last session's report so a refresh doesn't lose the user's work.
@@ -144,11 +150,23 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
+    if (searchParams.get("auth") === "ready") {
+      router.replace("/");
+      return;
+    }
     if (searchParams.get("sample") !== "1" || sampleRequestedRef.current) return;
+    if (!getLocalSession()) {
+      router.replace("/sign-in?intent=sample");
+      return;
+    }
     sampleRequestedRef.current = true;
     router.replace("/");
     handleSample();
   }, [handleSample, router, searchParams]);
+
+  const handleSignInRequired = useCallback((intent: AuthIntent) => {
+    window.location.assign(`/sign-in?intent=${intent}`);
+  }, []);
 
   // Support /?open=<datasetId>&name=<filename> links from the datasets library.
   useEffect(() => {
@@ -198,6 +216,8 @@ function HomeContent() {
       onFileAccepted={handleFileAccepted}
       onSample={handleSample}
       onRetry={handleNewFile}
+      requiresSignIn={requiresSignIn}
+      onSignInRequired={handleSignInRequired}
     />
   );
 }

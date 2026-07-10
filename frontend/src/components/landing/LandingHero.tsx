@@ -12,6 +12,7 @@ import { SushiHero } from "@/components/landing/hero/SushiHero";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 import { UploadProgress } from "@/components/upload/UploadProgress";
 import { JobStatus } from "@/hooks/useJobStream";
+import type { AuthIntent } from "@/lib/auth-gate";
 
 export interface LandingHeroProps {
   isUploading: boolean;
@@ -24,6 +25,8 @@ export interface LandingHeroProps {
   onFileAccepted: (file: File) => void;
   onSample: () => void;
   onRetry: () => void;
+  requiresSignIn: boolean;
+  onSignInRequired: (intent: AuthIntent) => void;
 }
 
 export function LandingHero(props: LandingHeroProps) {
@@ -46,6 +49,8 @@ function MobileHero({
   onFileAccepted,
   onSample,
   onRetry,
+  requiresSignIn,
+  onSignInRequired,
 }: LandingHeroProps) {
   return (
     <div className="hero-mobile-shell">
@@ -56,7 +61,7 @@ function MobileHero({
         <p className="mx-auto mt-5 max-w-lg text-[16px] leading-relaxed text-ink-secondary">Upload your files. Sushi turns complex data into clear, plain-English reports in minutes.</p>
         <div id="upload" className="mx-auto mt-8 max-w-xl text-left">
           {topError && <div className="mb-4 flex items-start gap-3 rounded-md border border-danger/25 bg-danger-weak px-4 py-3 text-[13px]"><p className="flex-1 text-ink-secondary">{topError}</p><button onClick={onClearTopError} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button></div>}
-          {isUploading ? <UploadProgress status={jobStatus} progress={jobProgress} stage={jobStage} error={jobError} onRetry={onRetry} /> : <UploadDropzone onFileAccepted={onFileAccepted} onSample={onSample} />}
+          {isUploading ? <UploadProgress status={jobStatus} progress={jobProgress} stage={jobStage} error={jobError} onRetry={onRetry} /> : <UploadDropzone onFileAccepted={onFileAccepted} onSample={onSample} requiresSignIn={requiresSignIn} onSignInRequired={onSignInRequired} />}
           <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-tertiary"><ShieldCheck className="h-3.5 w-3.5 text-success" />Your file is deleted after 7 days. <Link href="/privacy" className="underline underline-offset-2">Privacy details</Link></p>
         </div>
         <div className="hero-mobile-art" aria-hidden>

@@ -6,10 +6,7 @@ const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
   { href: "/examples", label: "Examples" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/compare", label: "Compare" },
-  { href: "/datasets", label: "Datasets" },
   { href: "/privacy", label: "Privacy" },
-  { href: "/changelog", label: "Changelog" },
 ];
 
 interface SiteHeaderProps {

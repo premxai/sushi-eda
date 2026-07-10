@@ -71,6 +71,7 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 export const SUPPORTED_EXTENSIONS = ["csv", "tsv", "xlsx", "json", "parquet", "db", "sqlite", "sqlite3"];
 export const SUPPORTED_FORMATS_COPY = "CSV, TSV, XLSX, JSON, Parquet, or SQLite";
 export const SUPPORTED_FORMATS_SUMMARY = "6 file formats · up to 25 MB";
+export const SUPPORTED_FORMATS_LIST = "CSV · TSV · XLSX · JSON · Parquet · SQLite";
 export const SUPPORTED_FILE_ACCEPT: Record<string, string[]> = {
   "text/csv": [".csv"],
   "text/tab-separated-values": [".tsv"],
