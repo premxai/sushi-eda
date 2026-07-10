@@ -591,6 +591,14 @@
   display: block;
   width: 1920px;
   height: 1080px;
+  /* This is a full-stage positioning layer. It must not sit over the upload
+     controls; only its actual navigation children receive pointer input. */
+  pointer-events: none;
+}
+
+.sushiHeroStage .hero-reference-header a,
+.sushiHeroStage .hero-reference-header nav {
+  pointer-events: auto;
 }
 
 .sushiHeroStage .hero-reference-logo {
@@ -762,6 +770,8 @@
   z-index: 7;
   width: 1920px;
   height: 1080px;
+  /* Connector artwork is decorative and should never capture upload clicks. */
+  pointer-events: none;
 }
 
 .sushiHeroStage .hero-flow-pill { z-index: 12; font-size: 14px; }
