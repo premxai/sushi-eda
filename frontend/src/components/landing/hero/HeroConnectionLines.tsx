@@ -1,19 +1,15 @@
-/** Curved coral/matcha "data flow" lines linking the upload handoff to the
- * RAW CSV card, down to the SUSHI REPORT card, and out to the sushi roll.
- * Pure SVG so it stays crisp; routed to avoid the chef's hands and face. */
+/** Fixed design-coordinate flow lines for the supplied 1920x1080 hero frame. */
 export function HeroConnectionLines({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 700 760" fill="none" preserveAspectRatio="none" aria-hidden className={className}>
-      {/* upload handoff -> RAW CSV card */}
-      <path d="M40 350 C 40 250 90 150 200 140" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-      {/* RAW CSV -> SUSHI REPORT */}
-      <path d="M150 300 C 200 340 200 360 175 400" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-      {/* SUSHI REPORT -> sushi roll */}
-      <path d="M300 470 C 380 470 400 430 445 405" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" opacity="0.65" />
-      <circle cx="40" cy="350" r="4" fill="var(--brand)" />
-      <circle cx="200" cy="140" r="4" fill="var(--brand)" />
-      <circle cx="175" cy="400" r="4" fill="var(--success)" />
-      <circle cx="445" cy="405" r="4" fill="var(--brand)" />
+    <svg viewBox="0 0 1920 1080" fill="none" preserveAspectRatio="none" aria-hidden className={className}>
+      <path d="M694 630 C 770 630 790 445 905 315" className="flow-coral" />
+      <path d="M1065 345 C 1115 365 1110 398 1060 430" className="flow-coral-light" />
+      <path d="M1265 520 C 1335 548 1335 598 1300 635" className="flow-matcha" />
+      <path d="M1300 765 C 1415 765 1450 730 1535 710" className="flow-coral" />
+      <circle cx="694" cy="630" r="5" fill="#D86645" />
+      <circle cx="905" cy="315" r="5" fill="#D86645" />
+      <circle cx="1060" cy="430" r="4" fill="#D86645" />
+      <circle cx="1535" cy="710" r="5" fill="#D86645" />
     </svg>
   );
 }

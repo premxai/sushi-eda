@@ -21,11 +21,12 @@ interface UploadDropzoneProps {
   onFileAccepted: (file: File) => void;
   onSample: () => void;
   disabled?: boolean;
+  hero?: boolean;
 }
 
 type LocalState = "idle" | "selected";
 
-export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDropzoneProps) {
+export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = false }: UploadDropzoneProps) {
   const [state, setState] = useState<LocalState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rejection, setRejection] = useState<{ kind: "size" | "format"; message: string } | null>(null);
@@ -74,11 +75,12 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
   }
 
   return (
-    <div>
+    <div className={hero ? "hero-upload-card" : undefined}>
       <div
         {...getRootProps()}
         className={cn(
           "cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center shadow-lg backdrop-blur transition-colors",
+          hero && "hero-dropzone",
           isDragActive ? "border-brand bg-brand-weak" : "border-brand/30 bg-surface/80 hover:border-brand/50",
         )}
       >
@@ -86,19 +88,21 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand/30 bg-brand-weak">
           <UploadCloud className="h-6 w-6 text-brand" />
         </div>
-        <p className="mt-4 text-[20px] font-semibold text-ink">{isDragActive ? "Drop it here" : "Drop your CSV here"}</p>
+        <p className="mt-4 text-[20px] font-semibold text-ink">{isDragActive ? "Drop it here" : hero ? "Drop your CSV here" : "Drop your data here"}</p>
         <p className="mt-1 text-[14px] font-medium text-brand">or click to browse</p>
-        <p className="mt-2 text-[12.5px] text-ink-tertiary">Supports CSV up to 25MB</p>
+        <p className="mt-2 text-[12.5px] text-ink-tertiary">{hero ? "Supports CSV up to 25MB" : "CSV, TSV, Excel, JSON, Parquet, or SQLite · up to 25 MB"}</p>
 
-        <div className="mx-auto my-5 h-px max-w-[16rem] bg-border" />
+        {!hero && <div className="mx-auto my-5 h-px max-w-[16rem] bg-border" />}
 
-        <p className="flex items-center justify-center gap-1.5 text-[12px] text-ink-tertiary">
+        {!hero && <p className="flex items-center justify-center gap-1.5 text-[12px] text-ink-tertiary">
           <Lock className="h-3.5 w-3.5" />
-          Your data is private and never shared.
-        </p>
+          Private by default. You choose whether to create a share link.
+        </p>}
       </div>
 
-      <div className="mt-3 text-center">
+      {hero && <div className="hero-privacy-pill"><Lock className="h-3.5 w-3.5" /> Your data is private and never shared.</div>}
+
+      <div className={cn("mt-3 text-center", hero && "hero-sample-link")}>
         <button
           onClick={onSample}
           disabled={disabled}

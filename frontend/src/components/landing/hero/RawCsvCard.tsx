@@ -1,7 +1,7 @@
 import { HERO_TABLE_COLUMNS, HERO_TABLE_ROWS } from "@/components/landing/hero/heroData";
 
 /** Coded recreation of the "RAW CSV" reference card. */
-export function RawCsvCard({ className }: { className?: string }) {
+export function RawCsvCard({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <div className={`overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
       <div className="px-5 pt-4">
@@ -16,7 +16,7 @@ export function RawCsvCard({ className }: { className?: string }) {
           </div>
         </div>
       </div>
-      <div className="mt-3.5">
+      {!compact && <div className="mt-3.5">
         <table className="w-full text-[11px]">
           <thead>
             <tr className="bg-brand-weak text-ink">
@@ -39,7 +39,7 @@ export function RawCsvCard({ className }: { className?: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -49,7 +49,7 @@ function FileGlyph() {
     <svg width="40" height="46" viewBox="0 0 40 46" fill="none" aria-hidden className="shrink-0">
       <path d="M4 3a3 3 0 0 1 3-3h20l9 9v27a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V3Z" fill="#dfe7dc" />
       <path d="M27 0l9 9h-9V0Z" fill="#c4d2be" />
-      <rect x="0" y="24" width="30" height="17" rx="3" fill="#2f6d3a" />
+      <rect x="0" y="24" width="30" height="17" rx="3" fill="#5f7e4b" />
       <text x="15" y="36" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff" fontFamily="var(--font-sans), sans-serif">
         CSV
       </text>

@@ -14,7 +14,7 @@ export function HeroPreviewCards() {
       <HeroConnectionLines className="absolute inset-0 h-full w-full" />
 
       <div className="absolute right-0 top-0 h-full w-[340px]">
-        <Image src="/sushi/hero/chef-data-sushi.webp" alt="" fill sizes="340px" className="object-contain object-top" priority />
+        <Image src="/sushi/hero/chef-transparent.png?v=1" alt="" fill sizes="340px" className="object-contain object-top" priority />
       </div>
 
       <RawCsvCard className="absolute left-0 top-[24px] w-[290px]" />

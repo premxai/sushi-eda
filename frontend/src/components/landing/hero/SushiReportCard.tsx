@@ -4,14 +4,14 @@ import { HERO_STATS } from "@/components/landing/hero/heroData";
 const DONUT_SEGMENTS = [
   { frac: 0.2, color: "#d86645" },
   { frac: 0.15, color: "#a7bda0" },
-  { frac: 0.4, color: "#2f6d3a" },
+  { frac: 0.4, color: "#5f7e4b" },
   { frac: 0.25, color: "#8fae6a" },
 ];
 
 const BARS = [
   { h: 32, color: "#8fae6a" },
-  { h: 54, color: "#2f6d3a" },
-  { h: 44, color: "#3f6b47" },
+  { h: 54, color: "#5f7e4b" },
+  { h: 44, color: "#35523c" },
   { h: 60, color: "#e08a5a" },
   { h: 80, color: "#d86645" },
   { h: 100, color: "#c9502f" },
