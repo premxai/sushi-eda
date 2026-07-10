@@ -4,7 +4,7 @@ import { HERO_TABLE_COLUMNS, HERO_TABLE_ROWS } from "@/components/landing/hero/h
 /** Coded recreation of the "CLEANED DATA" reference card. */
 export function CleanedDataCard({ className }: { className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
+    <div className={`hero-dashboard-card overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
       <div className="flex items-center gap-2.5 px-5 pt-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-brand/25 bg-brand-weak">
           <Sparkles className="h-4 w-4 text-brand" aria-hidden />

@@ -13,8 +13,8 @@ function Seal({ children }: { children: string }) {
 
 export function HeroJapaneseTextLeft({ className }: { className?: string }) {
   return (
-    <div className={`flex flex-col items-center gap-5 ${className ?? ""}`} aria-hidden>
-      <span className="font-display text-[26px] leading-[1.35] tracking-[0.15em] text-ink" style={{ writingMode: "vertical-rl" }}>
+    <div className={`flex flex-col items-center gap-3 ${className ?? ""}`} aria-hidden>
+      <span className="font-display text-[20px] leading-[1.25] tracking-[0.12em] text-ink" style={{ writingMode: "vertical-rl" }}>
         {"\u30c7\u30fc\u30bf\u3092\u4fa1\u5024\u306b\u5909\u3048\u308b"}
       </span>
       <Seal>{"\u5bff\u53f8"}</Seal>

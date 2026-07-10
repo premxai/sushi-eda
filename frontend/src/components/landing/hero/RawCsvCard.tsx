@@ -3,7 +3,7 @@ import { HERO_TABLE_COLUMNS, HERO_TABLE_ROWS } from "@/components/landing/hero/h
 /** Coded recreation of the "RAW CSV" reference card. */
 export function RawCsvCard({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
+    <div className={`hero-dashboard-card overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
       <div className="px-5 pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">Raw CSV</p>
         <div className="mt-2.5 flex items-center gap-3">

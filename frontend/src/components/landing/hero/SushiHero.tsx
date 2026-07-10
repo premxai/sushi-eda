@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { Lock, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { LandingHeroProps } from "@/components/landing/LandingHero";
 import { HeroConnectionLines } from "@/components/landing/hero/HeroConnectionLines";
 import { HeroJapaneseTextLeft, HeroJapaneseTextRight } from "@/components/landing/hero/HeroJapaneseText";
@@ -75,7 +75,6 @@ export function SushiHero({
             <nav aria-label="Main" className="hero-reference-nav">
               {NAV_LINKS.map((link) => <Link key={link.label} href={link.href}>{link.label}</Link>)}
             </nav>
-            <a href="#upload-desktop" className="hero-reference-cta">Get started free <span aria-hidden>{"\u2192"}</span></a>
           </header>
 
           <div className="hero-reference-copy">
@@ -106,7 +105,6 @@ export function SushiHero({
           <HeroConnectionLines />
           <HeroJapaneseTextLeft className="hero-japanese-left" />
           <HeroJapaneseTextRight className="hero-japanese-right" />
-          <FlowPill className="hero-private-pill" icon={<Lock className="h-4 w-4" />}>Secure &amp; Private</FlowPill>
           <FlowPill className="hero-action-pill" icon={<Sparkles className="h-4 w-4" />}>Clear. Actionable. Beautiful.</FlowPill>
           <p className="hero-workflow"><span>Raw CSVs in</span><b>{"\u2192"}</b><span className="matcha">Cleaned Data out</span><b>{"\u2192"}</b><span className="coral">Clear Insights delivered</span></p>
           <FeatureRow />

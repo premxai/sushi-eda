@@ -24,7 +24,7 @@ export function SushiReportCard({ className }: { className?: string }) {
   let acc = 0;
 
   return (
-    <div className={`rounded-2xl border border-border bg-surface p-5 shadow-lg ${className ?? ""}`}>
+    <div className={`hero-dashboard-card rounded-2xl border border-border bg-surface p-5 shadow-lg ${className ?? ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">Sushi Report</p>

@@ -542,7 +542,7 @@
 }
 
 .sushiHeroStage .hero-japanese-left {
-  top: 165px;
+  top: 159px;
   left: 55px;
   z-index: 3;
   width: 64px !important;
@@ -550,8 +550,9 @@
 }
 
 .sushiHeroStage .hero-japanese-right {
-  top: 165px;
-  right: 92px;
+  top: 70px;
+  right: auto;
+  left: 1360px;
   /* The right mark sits above the chef asset so it remains legible, but below cards and controls. */
   z-index: 9;
   width: 70px !important;
@@ -581,7 +582,7 @@
 .sushiHeroStage .hero-reference-copy h1 em { margin: 0 0.045em; }
 
 .sushiHeroStage .hero-reference-subtitle {
-  margin: 40px 0 0 4px;
+  margin: 28px 0 0 4px;
   width: 560px;
   font-size: 24px;
   line-height: 1.42;
@@ -638,13 +639,24 @@
   height: auto !important;
 }
 
+.sushiHeroStage .hero-dashboard-card {
+  border-color: #e6d7c5 !important;
+  background: rgba(255, 250, 241, 0.95) !important;
+  box-shadow:
+    0 22px 58px rgba(78, 57, 34, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
 .sushiHeroStage .hero-chef {
   /* Move the visual left/down and enlarge it while preserving CTA headroom. */
-  top: 98px;
+  top: -12px;
   right: auto;
-  left: 1230px;
+  left: 1200px;
   z-index: 8;
-  width: 662px !important;
+  width: 730px !important;
   height: auto !important;
   object-fit: contain;
   object-position: top right;
@@ -659,7 +671,6 @@
 }
 
 .sushiHeroStage .hero-flow-pill { z-index: 12; font-size: 14px; }
-.sushiHeroStage .hero-private-pill { top: 500px; left: 970px; }
 .sushiHeroStage .hero-action-pill { top: 842px; left: 958px; }
 
 .sushiHeroStage .hero-workflow {
