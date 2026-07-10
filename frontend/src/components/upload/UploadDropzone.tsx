@@ -5,17 +5,7 @@ import { useDropzone, FileRejection } from "react-dropzone";
 import { AlertCircle, File as FileIcon, Lock, UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/formatters";
-import { MAX_UPLOAD_BYTES } from "@/lib/api";
-
-const ACCEPT: Record<string, string[]> = {
-  "text/csv": [".csv"],
-  "text/tab-separated-values": [".tsv"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.ms-excel": [".xls"],
-  "application/json": [".json"],
-  "application/vnd.apache.parquet": [".parquet"],
-  "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
-};
+import { MAX_UPLOAD_BYTES, SUPPORTED_FILE_ACCEPT, SUPPORTED_FORMATS_COPY, SUPPORTED_FORMATS_SUMMARY } from "@/lib/api";
 
 interface UploadDropzoneProps {
   onFileAccepted: (file: File) => void;
@@ -41,7 +31,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
           kind: isTooLarge ? "size" : "format",
           message: isTooLarge
             ? `"${file.name}" is ${formatBytes(file.size)}, that's over the 25 MB limit. Try a smaller export, or split it into parts.`
-            : `"${file.name}" isn't a format Sushi can read yet. Use CSV, TSV, XLSX, JSON, Parquet, or SQLite.`,
+            : `"${file.name}" isn't a format Sushi can read yet. Use ${SUPPORTED_FORMATS_COPY}.`,
         });
         return;
       }
@@ -56,7 +46,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: ACCEPT,
+    accept: SUPPORTED_FILE_ACCEPT,
     maxSize: MAX_UPLOAD_BYTES,
     multiple: false,
     disabled,
@@ -88,9 +78,9 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand/30 bg-brand-weak">
           <UploadCloud className="h-6 w-6 text-brand" />
         </div>
-        <p className="mt-4 text-[20px] font-semibold text-ink">{isDragActive ? "Drop it here" : hero ? "Drop your CSV here" : "Drop your data here"}</p>
+        <p className="mt-4 text-[20px] font-semibold text-ink">Drop your file here</p>
         <p className="mt-1 text-[14px] font-medium text-brand">or click to browse</p>
-        <p className="mt-2 text-[12.5px] text-ink-tertiary">{hero ? "Supports CSV up to 25MB" : "CSV, TSV, Excel, JSON, Parquet, or SQLite · up to 25 MB"}</p>
+        <p className="mt-2 text-[12.5px] text-ink-tertiary">{hero ? SUPPORTED_FORMATS_SUMMARY : `${SUPPORTED_FORMATS_COPY} · up to 25 MB`}</p>
 
         {!hero && <div className="mx-auto my-5 h-px max-w-[16rem] bg-border" />}
 
@@ -108,7 +98,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
           disabled={disabled}
           className="text-[13px] font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
         >
-          or try a sample dataset
+          Try sample data
         </button>
       </div>
 

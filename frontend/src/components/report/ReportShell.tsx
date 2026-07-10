@@ -33,13 +33,13 @@ export function ReportShell({ report, fileName, datasetId, aiNarrative, onNewFil
   const [notes, setNotes] = useState("");
 
   return (
-    <div className="flex h-screen flex-col bg-paper">
+    <div className="app-workspace-page flex h-screen flex-col">
       <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} onNewFile={onNewFile} />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-56 shrink-0 overflow-y-auto border-r border-border scrollbar-thin">
+      <div className="report-shell-body flex flex-1 overflow-hidden">
+        <aside className="report-shell-nav w-56 shrink-0 overflow-y-auto border-r border-border bg-surface/55 backdrop-blur scrollbar-thin">
           <ReportNav active={active} onChange={setActive} />
         </aside>
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
+        <main className="flex-1 overflow-y-auto bg-paper/45 scrollbar-thin">
           <div className="mx-auto max-w-4xl px-6 py-6">
             {active === "ai-summary" && <AISummarySection narrative={narrative} datasetId={datasetId} onNarrativeChange={setNarrative} />}
             {active === "overview" && <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}

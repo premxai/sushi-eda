@@ -5,17 +5,7 @@ import { useDropzone, FileRejection } from "react-dropzone";
 import { AlertCircle, File as FileIcon, UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/formatters";
-import { MAX_UPLOAD_BYTES } from "@/lib/api";
-
-const ACCEPT: Record<string, string[]> = {
-  "text/csv": [".csv"],
-  "text/tab-separated-values": [".tsv"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.ms-excel": [".xls"],
-  "application/json": [".json"],
-  "application/vnd.apache.parquet": [".parquet"],
-  "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
-};
+import { MAX_UPLOAD_BYTES, SUPPORTED_FILE_ACCEPT, SUPPORTED_FORMATS_COPY } from "@/lib/api";
 
 interface CompareDropzoneProps {
   label: string;
@@ -36,7 +26,7 @@ export function CompareDropzone({ label, file, onFileSelected, disabled }: Compa
         setRejection(
           isTooLarge
             ? `"${rejectedFile.name}" is ${formatBytes(rejectedFile.size)}, that's over the 25 MB limit. Try a smaller export, or split it into parts.`
-            : `"${rejectedFile.name}" isn't a format Sushi can read yet. Use CSV, TSV, XLSX, JSON, Parquet, or SQLite.`,
+            : `"${rejectedFile.name}" isn't a format Sushi can read yet. Use ${SUPPORTED_FORMATS_COPY}.`,
         );
         return;
       }
@@ -47,7 +37,7 @@ export function CompareDropzone({ label, file, onFileSelected, disabled }: Compa
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
-    accept: ACCEPT,
+    accept: SUPPORTED_FILE_ACCEPT,
     maxSize: MAX_UPLOAD_BYTES,
     multiple: false,
     noClick: !!file,
@@ -61,8 +51,8 @@ export function CompareDropzone({ label, file, onFileSelected, disabled }: Compa
       <div
         {...getRootProps()}
         className={cn(
-          "rounded-lg border-2 border-dashed p-6 text-center transition-colors",
-          isDragActive ? "border-brand bg-brand-weak" : "border-border-strong bg-surface",
+          "paper-panel rounded-2xl border-2 border-dashed p-7 text-center transition-colors",
+          isDragActive ? "border-brand bg-brand-weak" : "border-border-strong bg-surface/90",
           file && "border-solid",
         )}
       >

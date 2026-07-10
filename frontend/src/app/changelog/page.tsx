@@ -40,18 +40,18 @@ const ENTRIES = [
     items: [
       "Drop in a file and get a 0–100 quality score, an AI-written summary, and an interactive chart builder.",
       "Ask Your Data: natural-language questions answered with the SQL behind them shown for trust.",
-      "CSV, TSV, Excel, JSON, Parquet, and SQLite support, up to 25 MB per file.",
+      "Six supported file formats—CSV, TSV, XLSX, JSON, Parquet, and SQLite—up to 25 MB per file.",
     ],
   },
 ];
 
 export default function ChangelogPage() {
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-paper-page">
       <SiteHeader />
       <div className="container max-w-2xl py-8">
         <PageHeader title="Changelog" description="What's new in Sushi." />
-        <div className="mt-8 flex flex-col gap-8">
+        <div className="paper-panel mt-8 flex flex-col gap-8 p-6 sm:p-8">
           {ENTRIES.map((entry) => (
             <div key={entry.title} className="flex gap-4">
               <div className="w-24 shrink-0 pt-0.5 text-[12px] text-ink-tertiary">{entry.date}</div>

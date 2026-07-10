@@ -45,7 +45,7 @@ export default function DatasetsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-paper-page">
       <SiteHeader />
       <div className="container py-8">
         <PageHeader title="Datasets" description="Everything you've uploaded in this session. Files and their reports are deleted automatically after 7 days." />

@@ -1,15 +1,15 @@
 import { HERO_TABLE_COLUMNS, HERO_TABLE_ROWS } from "@/components/landing/hero/heroData";
 
-/** Coded recreation of the "RAW CSV" reference card. */
+/** Coded recreation of the raw-file reference card. */
 export function RawCsvCard({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <div className={`hero-dashboard-card overflow-hidden rounded-2xl border border-border bg-surface shadow-lg ${className ?? ""}`}>
       <div className="px-5 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">Raw CSV</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink">Raw File</p>
         <div className="mt-2.5 flex items-center gap-3">
           <FileGlyph />
           <div>
-            <p className="text-[17px] font-bold leading-none text-ink">sales_data.csv</p>
+            <p className="text-[17px] font-bold leading-none text-ink">sales_data.xlsx</p>
             <p className="mt-1.5 text-[12.5px] text-ink-secondary">
               24.8 MB <span className="text-brand">•</span> 15,640 rows
             </p>
@@ -51,7 +51,7 @@ function FileGlyph() {
       <path d="M27 0l9 9h-9V0Z" fill="#c4d2be" />
       <rect x="0" y="24" width="30" height="17" rx="3" fill="#5f7e4b" />
       <text x="15" y="36" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff" fontFamily="var(--font-sans), sans-serif">
-        CSV
+        FILE
       </text>
     </svg>
   );

@@ -36,7 +36,7 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-paper-page">
       <SiteHeader />
       <div className="container py-8">
         <PageHeader title="Compare" description="Upload two files to see what changed: schema, row counts, and column differences." />

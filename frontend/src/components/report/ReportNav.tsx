@@ -56,7 +56,7 @@ interface ReportNavProps {
 
 export function ReportNav({ active, onChange }: ReportNavProps) {
   return (
-    <nav aria-label="Report sections" className="flex flex-col gap-0.5 p-2">
+    <nav aria-label="Report sections" className="report-nav flex flex-col gap-0.5 p-2">
       {NAV_ITEMS.map((item) => {
         const isActive = item.key === active;
         return (

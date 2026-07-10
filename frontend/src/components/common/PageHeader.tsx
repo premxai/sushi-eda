@@ -10,10 +10,11 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5", className)}>
+    <div className={cn("page-masthead flex flex-wrap items-end justify-between gap-6 border-b border-border pb-7", className)}>
       <div>
-        <h1 className="text-[22px] font-semibold tracking-tight text-ink">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-[13.5px] text-ink-secondary">{description}</p>}
+        <p className="section-kicker mb-3">Sushi / {title}</p>
+        <h1 className="font-display text-[44px] font-normal leading-none tracking-[-0.035em] text-ink sm:text-[54px]">{title}</h1>
+        {description && <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-secondary">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

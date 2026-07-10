@@ -45,7 +45,7 @@ export default function SharePage({ params }: { params: { token: string } }) {
 
   if (error || !shared) {
     return (
-      <div className="min-h-screen bg-paper">
+      <div className="app-workspace-page">
         <PublicHeader />
         <div className="container flex justify-center py-20">
           <EmptyState
@@ -62,7 +62,7 @@ export default function SharePage({ params }: { params: { token: string } }) {
   const { report } = shared.analysis;
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-workspace-page">
       <PublicHeader />
       <div className="container max-w-3xl py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/50 px-4 py-3">
@@ -108,7 +108,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function PublicHeader() {
   return (
-    <header className="border-b border-border bg-paper">
+    <header className="site-header relative border-b border-border bg-paper/90 backdrop-blur-xl">
       <div className="container flex h-14 items-center">
         <Link href="/" className="flex items-center gap-2 no-underline">
           <Logo size={24} />

@@ -68,7 +68,17 @@ export async function healthCheck(): Promise<boolean> {
 // ── Upload & analysis ──────────────────────────────────────────────────────
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-export const SUPPORTED_EXTENSIONS = ["csv", "tsv", "xlsx", "xls", "json", "parquet", "db", "sqlite", "sqlite3"];
+export const SUPPORTED_EXTENSIONS = ["csv", "tsv", "xlsx", "json", "parquet", "db", "sqlite", "sqlite3"];
+export const SUPPORTED_FORMATS_COPY = "CSV, TSV, XLSX, JSON, Parquet, or SQLite";
+export const SUPPORTED_FORMATS_SUMMARY = "6 file formats · up to 25 MB";
+export const SUPPORTED_FILE_ACCEPT: Record<string, string[]> = {
+  "text/csv": [".csv"],
+  "text/tab-separated-values": [".tsv"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+  "application/json": [".json"],
+  "application/vnd.apache.parquet": [".parquet"],
+  "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
+};
 
 /** Async upload: returns a dataset_id immediately; use useJobStream to track progress. */
 export async function uploadFileAsync(

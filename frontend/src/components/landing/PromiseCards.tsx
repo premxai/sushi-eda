@@ -19,7 +19,7 @@ const PROMISES = [
   {
     icon: Share2,
     title: "Export & Share",
-    body: "PDF, CSV, and more.",
+    body: "PDF, Excel, Markdown, and more.",
   },
 ];
 

@@ -147,6 +147,74 @@
   background: currentColor;
 }
 
+.site-header::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(216, 102, 69, 0.45), rgba(95, 126, 75, 0.28), transparent);
+}
+
+.app-paper-page {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(95, 126, 75, 0.08), transparent 24rem),
+    radial-gradient(circle at 8% 28%, rgba(216, 102, 69, 0.08), transparent 28rem),
+    var(--paper);
+}
+
+.app-paper-page::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  background-image: url('/sushi/hero/background-paper-16x9.webp');
+  background-position: center top;
+  background-size: cover;
+  opacity: 0.12;
+}
+
+.app-workspace-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(247, 239, 227, 0.92), rgba(247, 239, 227, 0.92)),
+    radial-gradient(circle at 92% 4%, rgba(95, 126, 75, 0.08), transparent 24rem),
+    radial-gradient(circle at 6% 90%, rgba(216, 102, 69, 0.06), transparent 30rem),
+    var(--paper);
+}
+
+.page-masthead {
+  position: relative;
+}
+
+.page-masthead::after {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 7.5rem;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, var(--brand), rgba(216, 102, 69, 0));
+}
+
+.paper-panel {
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: rgba(255, 249, 240, 0.88);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+}
+
+.ink-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(216, 102, 69, 0.42), rgba(230, 215, 197, 0.9), transparent);
+}
+
 /* The landing hero is a reconstruction of the approved 1920x1080 frame.
    Keep desktop elements in this coordinate system; responsive changes happen
    at the stage boundary instead of silently re-composing the artwork. */
@@ -368,7 +436,22 @@
   color: #6f6b63;
   font-size: clamp(9px, 0.7vw, 14px);
 }
-.hero-sample-link { display: none; }
+.hero-sample-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin-top: 0 !important;
+}
+.hero-sample-link button {
+  border: 1px solid rgba(216, 102, 69, 0.32);
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: rgba(255, 250, 241, 0.72);
+  color: #b94f36;
+  text-decoration: none;
+}
+.hero-sample-link button:hover { border-color: #d86645; background: rgba(216, 102, 69, 0.08); }
 
 .hero-raw-card { top: 24.5%; left: 47.5%; z-index: 15; width: 17.5% !important; }
 .hero-cleaned-card { top: 31.8%; left: 46.8%; z-index: 14; width: 20% !important; }
@@ -615,7 +698,7 @@
 .sushiHeroStage .hero-upload-card { padding: 12px; }
 
 .sushiHeroStage .hero-dropzone {
-  height: 256px;
+  height: 220px;
   padding: 14px !important;
 }
 
@@ -624,7 +707,7 @@
 .sushiHeroStage .hero-dropzone p:first-of-type { font-size: 22px; }
 .sushiHeroStage .hero-dropzone p:nth-of-type(2) { font-size: 18px; }
 .sushiHeroStage .hero-dropzone p:nth-of-type(3) { font-size: 14px; }
-.sushiHeroStage .hero-privacy-pill { height: 50px; font-size: 14px; }
+.sushiHeroStage .hero-privacy-pill { height: 36px; font-size: 13px; }
 
 .sushiHeroStage .hero-raw-card {
   top: 245px;
@@ -719,6 +802,17 @@
     width: auto;
     height: auto;
   }
+  .report-shell-body { flex-direction: column; }
+  .report-shell-nav {
+    width: 100%;
+    height: 58px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .report-nav { flex-direction: row; width: max-content; }
+  .report-nav button { flex: 0 0 auto; }
 }
 
 @media (min-width: 1100px) {

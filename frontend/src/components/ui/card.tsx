@@ -16,9 +16,9 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
   return React.createElement(Tag, {
     ref,
     className: cn(
-      "rounded-lg border border-border bg-surface shadow-xs",
+      "rounded-2xl border border-border bg-surface/95 shadow-sm",
       inset && "bg-surface-2 shadow-none",
-      hover && "transition-shadow hover:shadow-sm",
+      hover && "transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md",
       padded && "p-5",
       className,
     ),

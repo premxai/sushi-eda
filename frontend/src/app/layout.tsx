@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     "Drop in a data file and get a trustworthy, plain-English report you can share with your team: quality score, AI summary, charts, and answers to your questions. No code, no analyst required.",
   keywords: [
     "data analysis for product managers",
-    "CSV analysis",
+    "file analysis",
     "data quality score",
     "AI data summary",
     "survey results analysis",

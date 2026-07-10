@@ -1,51 +1,50 @@
+import { BotOff, Clock3, Eye, LockKeyhole, Server, Share2, ShieldCheck } from "lucide-react";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
-const SECTIONS = [
-  {
-    title: "Your file is deleted after 7 days",
-    body: "Uploaded files and their reports are automatically and permanently deleted 7 days after upload. This isn't something you need to remember to do. It happens on its own.",
-  },
-  {
-    title: "We don't train AI models on your data",
-    body: "Your data is sent to our AI provider only to generate the summary, chat answers, and notes you ask for. It is not used to train any AI model, ours or anyone else's.",
-  },
-  {
-    title: "AI features may be unavailable",
-    body: "The AI summary, Ask Your Data, and AI Notes depend on a daily usage budget shared across everyone using Sushi. If that budget is exhausted, or AI isn't configured in a given environment, those features show a clear \"not available\" message instead of guessing. The quality score, columns, charts, statistics, and raw data are never affected.",
-  },
-  {
-    title: "Public share links are accessible to anyone with the link",
-    body: "Creating a share link makes a read-only version of that report viewable by anyone who has the link. It isn't protected by an account or password. Don't share a link for data you wouldn't want a stranger to see, and revoke it from the dataset when you no longer need it shared.",
-  },
-  {
-    title: "No accounts, no hidden tracking",
-    body: "Sushi doesn't currently require an account to use. The \"My Datasets\" library reflects what's been uploaded in your current environment, not a personal, secured account library. We don't sell your data or share it with third parties for advertising.",
-  },
-  {
-    title: "What we store",
-    body: "The file you upload, the report generated from it, and (if you use it) the AI conversation history for that dataset, all deleted after 7 days per the policy above. We also keep basic operational logs (timestamps, error rates) to keep the service running reliably.",
-  },
+const PRINCIPLES = [
+  { title: "Deleted after 7 days", body: "Files and generated reports expire automatically. You do not need to remember to clean them up.", icon: Clock3 },
+  { title: "Never used for training", body: "Uploaded data is not used to train Sushi or third-party AI models.", icon: BotOff },
+  { title: "Private unless you share", body: "A report becomes public only when you deliberately create a share link.", icon: LockKeyhole },
+];
+
+const DETAILS = [
+  { title: "What Sushi stores", icon: Server, body: "The file you upload, the report generated from it, and—if used—the conversation history attached to that report. Basic operational logs such as timestamps and error rates are kept to operate the service reliably." },
+  { title: "How AI features work", icon: ShieldCheck, body: "Data is sent to the configured AI provider only for summaries, questions, and notes you request. If AI is unavailable, Sushi shows a clear unavailable state; deterministic quality, chart, field, and statistics features continue to work." },
+  { title: "Public links", icon: Share2, body: "Anyone with a public report URL can view its read-only contents. Public links are not password protected. Share them only with people you trust and avoid creating them for sensitive material." },
+  { title: "Accounts and tracking", icon: Eye, body: "This build does not require an account and does not sell data for advertising. The dataset library reflects the current environment; it is not a personal secured cloud account." },
 ];
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-paper-page">
       <SiteHeader />
-      <div className="container max-w-2xl py-8">
-        <PageHeader title="Privacy" description="How Sushi handles your data, in plain English." />
-        <div className="mt-6 flex flex-col gap-4">
-          {SECTIONS.map((section) => (
-            <Card key={section.title}>
-              <CardHeader>
-                <CardTitle>{section.title}</CardTitle>
-              </CardHeader>
-              <p className="text-[13.5px] leading-relaxed text-ink-secondary">{section.body}</p>
-            </Card>
+      <main className="container max-w-5xl py-10 sm:py-14">
+        <PageHeader title="Privacy" description="Clear boundaries for what happens to your files, reports, and shared links." />
+
+        <section className="mt-8 grid gap-4 md:grid-cols-3">
+          {PRINCIPLES.map(({ title, body, icon: Icon }) => (
+            <article key={title} className="paper-panel p-6">
+              <span className="grid h-11 w-11 place-items-center rounded-full border border-success/30 bg-success-weak text-success"><Icon className="h-5 w-5" /></span>
+              <h2 className="mt-4 font-display text-[27px] leading-tight tracking-[-0.02em] text-ink">{title}</h2>
+              <p className="mt-3 text-[13px] leading-6 text-ink-secondary">{body}</p>
+            </article>
           ))}
-        </div>
-      </div>
+        </section>
+
+        <section className="mt-10 paper-panel overflow-hidden">
+          <div className="border-b border-border px-6 py-5 sm:px-8"><p className="section-kicker">Plain-English policy</p><h2 className="mt-3 font-display text-[34px] tracking-[-0.03em] text-ink">The details, without the legal fog.</h2></div>
+          <div className="divide-y divide-border">
+            {DETAILS.map(({ title, body, icon: Icon }) => (
+              <article key={title} className="grid gap-4 px-6 py-6 sm:grid-cols-[48px_220px_1fr] sm:items-start sm:px-8">
+                <span className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface-2 text-brand"><Icon className="h-[18px] w-[18px]" /></span>
+                <h3 className="text-[14px] font-semibold text-ink">{title}</h3>
+                <p className="text-[13.5px] leading-7 text-ink-secondary">{body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

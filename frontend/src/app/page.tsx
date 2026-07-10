@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useJobStream } from "@/hooks/useJobStream";
 import { LandingHero } from "@/components/landing/LandingHero";
@@ -32,6 +32,7 @@ function HomeContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const sampleRequestedRef = useRef(false);
 
   useEffect(() => {
     prewarmBackend();
@@ -141,6 +142,13 @@ function HomeContent() {
       setIsUploading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("sample") !== "1" || sampleRequestedRef.current) return;
+    sampleRequestedRef.current = true;
+    router.replace("/");
+    handleSample();
+  }, [handleSample, router, searchParams]);
 
   // Support /?open=<datasetId>&name=<filename> links from the datasets library.
   useEffect(() => {

@@ -37,7 +37,7 @@ export function DatasetCard({ dataset, onOpen, onToggleStar, onArchive, onRestor
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-3.5">
+    <div className="paper-panel flex flex-col items-stretch justify-between gap-4 p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           onClick={() => onToggleStar(dataset)}
@@ -80,7 +80,7 @@ export function DatasetCard({ dataset, onOpen, onToggleStar, onArchive, onRestor
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center justify-end gap-2">
         <Badge tone="neutral">{dataset.file_format.toUpperCase()}</Badge>
         {!isArchived && <Badge tone={new Date(expiresAt).getTime() - Date.now() < 2 * 86400000 ? "warning" : "neutral"}>{formatExpiry(expiresAt)}</Badge>}
         <button

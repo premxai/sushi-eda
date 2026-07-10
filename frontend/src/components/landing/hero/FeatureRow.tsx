@@ -4,7 +4,7 @@ const ITEMS = [
   { icon: ShieldCheck, title: "Privacy by Design", body: "Your data stays yours." },
   { icon: Sparkles, title: "Plain-English Reports", body: "No jargon. Just insights." },
   { icon: BarChart3, title: "Charts That Tell the Story", body: "Automated visuals that make sense." },
-  { icon: Share2, title: "Export & Share", body: "PDF, CSV, and more." },
+  { icon: Share2, title: "Export & Share", body: "PDF, Excel, Markdown, and more." },
 ];
 
 /** Quiet supporting benefits row shared by desktop and responsive hero layouts. */

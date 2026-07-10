@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
   { href: "/examples", label: "Examples" },
-  { href: "/docs#pricing", label: "Pricing" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/privacy", label: "Privacy" },
 ];
 
@@ -82,7 +82,7 @@ export function SushiHero({
               <span>Your <em>RAW</em> Data</span>
               <span>Served <em>Perfectly.</em></span>
             </h1>
-            <p className="hero-reference-subtitle">Upload your CSVs. Sushi turns complex data<br />into clear, plain-English reports in minutes.</p>
+            <p className="hero-reference-subtitle">Upload your files. Sushi turns complex data<br />into clear, plain-English reports in minutes.</p>
             {topError && <div className="hero-reference-error"><span>{topError}</span><button onClick={onClearTopError} aria-label="Dismiss"><span aria-hidden>×</span></button></div>}
           </div>
 
@@ -106,7 +106,7 @@ export function SushiHero({
           <HeroJapaneseTextLeft className="hero-japanese-left" />
           <HeroJapaneseTextRight className="hero-japanese-right" />
           <FlowPill className="hero-action-pill" icon={<Sparkles className="h-4 w-4" />}>Clear. Actionable. Beautiful.</FlowPill>
-          <p className="hero-workflow"><span>Raw CSVs in</span><b>{"\u2192"}</b><span className="matcha">Cleaned Data out</span><b>{"\u2192"}</b><span className="coral">Clear Insights delivered</span></p>
+          <p className="hero-workflow"><span>Raw files in</span><b>{"\u2192"}</b><span className="matcha">Cleaned Data out</span><b>{"\u2192"}</b><span className="coral">Clear Insights delivered</span></p>
           <FeatureRow />
         </div>
       </div>
