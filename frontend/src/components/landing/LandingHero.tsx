@@ -31,16 +31,6 @@ export function LandingHero(props: LandingHeroProps) {
     <div className="hero-page bg-paper">
       <SushiHero {...props} />
       <MobileHero {...props} />
-      <footer className="border-t border-border py-8">
-        <div className="container flex flex-col items-center justify-between gap-3 text-[12.5px] text-ink-tertiary sm:flex-row">
-          <span>{"\u00a9"} {new Date().getFullYear()} Sushi</span>
-          <div className="flex gap-4">
-            <Link href="/docs" className="text-ink-tertiary no-underline hover:text-ink">Docs</Link>
-            <Link href="/privacy" className="text-ink-tertiary no-underline hover:text-ink">Privacy</Link>
-            <Link href="/changelog" className="text-ink-tertiary no-underline hover:text-ink">Changelog</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
