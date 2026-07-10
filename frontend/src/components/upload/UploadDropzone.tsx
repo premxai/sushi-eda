@@ -2,11 +2,10 @@
 
 import React, { useCallback, useState } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
-import { AlertCircle, File as FileIcon, UploadCloud, X } from "lucide-react";
+import { AlertCircle, File as FileIcon, Lock, UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/formatters";
 import { MAX_UPLOAD_BYTES } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 
 const ACCEPT: Record<string, string[]> = {
   "text/csv": [".csv"],
@@ -17,8 +16,6 @@ const ACCEPT: Record<string, string[]> = {
   "application/vnd.apache.parquet": [".parquet"],
   "application/x-sqlite3": [".db", ".sqlite", ".sqlite3"],
 };
-
-const FORMAT_BADGES = ["CSV", "TSV", "XLSX", "JSON", "Parquet", "SQLite"];
 
 interface UploadDropzoneProps {
   onFileAccepted: (file: File) => void;
@@ -51,30 +48,26 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
       if (!file) return;
       setSelectedFile(file);
       setState("selected");
-      // Brief, real confirmation frame, not a fake delay, just enough for
-      // the user to see the file was received before analysis begins.
       window.setTimeout(() => onFileAccepted(file), 450);
     },
     [onFileAccepted],
   );
 
-  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPT,
     maxSize: MAX_UPLOAD_BYTES,
     multiple: false,
-    noClick: true,
-    noKeyboard: true,
     disabled,
   });
 
   if (state === "selected" && selectedFile) {
     return (
-      <div className="rounded-2xl border border-border bg-surface p-8 text-center shadow-lg">
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-brand-weak">
-          <FileIcon className="h-5 w-5 text-brand" />
+      <div className="rounded-2xl border border-border bg-surface p-10 text-center shadow-lg">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand/30 bg-brand-weak">
+          <FileIcon className="h-6 w-6 text-brand" />
         </div>
-        <p className="mt-3 text-[14px] font-medium text-ink">{selectedFile.name}</p>
+        <p className="mt-4 text-[15px] font-medium text-ink">{selectedFile.name}</p>
         <p className="mt-0.5 text-[12.5px] text-ink-secondary">{formatBytes(selectedFile.size)} · starting analysis…</p>
       </div>
     );
@@ -85,38 +78,34 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled }: UploadDro
       <div
         {...getRootProps()}
         className={cn(
-          "rounded-2xl border-2 border-dashed p-8 text-center shadow-lg transition-colors",
-          isDragActive ? "border-brand bg-brand-weak" : "border-brand/25 bg-surface hover:border-brand/40",
+          "cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center shadow-lg backdrop-blur transition-colors",
+          isDragActive ? "border-brand bg-brand-weak" : "border-brand/30 bg-surface/80 hover:border-brand/50",
         )}
       >
         <input {...getInputProps()} aria-label="Upload a data file" />
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-brand-weak">
-          <UploadCloud className="h-5 w-5 text-brand" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand/30 bg-brand-weak">
+          <UploadCloud className="h-6 w-6 text-brand" />
         </div>
-        <p className="mt-3 text-[15px] font-medium text-ink">{isDragActive ? "Drop it here" : "Drag a data file here"}</p>
-        <p className="mt-1 text-[13px] text-ink-secondary">or choose a file from your computer</p>
+        <p className="mt-4 text-[20px] font-semibold text-ink">{isDragActive ? "Drop it here" : "Drop your CSV here"}</p>
+        <p className="mt-1 text-[14px] font-medium text-brand">or click to browse</p>
+        <p className="mt-2 text-[12.5px] text-ink-tertiary">Supports CSV up to 25MB</p>
 
-        <div className="mt-5 flex items-center justify-center gap-3">
-          <Button onClick={open} disabled={disabled} className="rounded-full px-6">
-            Choose file
-          </Button>
-          <button
-            onClick={onSample}
-            disabled={disabled}
-            className="text-[13.5px] font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
-          >
-            or try a sample dataset
-          </button>
-        </div>
+        <div className="mx-auto my-5 h-px max-w-[16rem] bg-border" />
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
-          {FORMAT_BADGES.map((f) => (
-            <span key={f} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary">
-              {f}
-            </span>
-          ))}
-        </div>
-        <p className="mt-3 text-[12px] text-ink-tertiary">Up to 25 MB per file.</p>
+        <p className="flex items-center justify-center gap-1.5 text-[12px] text-ink-tertiary">
+          <Lock className="h-3.5 w-3.5" />
+          Your data is private and never shared.
+        </p>
+      </div>
+
+      <div className="mt-3 text-center">
+        <button
+          onClick={onSample}
+          disabled={disabled}
+          className="text-[13px] font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
+        >
+          or try a sample dataset
+        </button>
       </div>
 
       {rejection && (

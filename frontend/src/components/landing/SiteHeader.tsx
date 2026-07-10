@@ -39,7 +39,7 @@ export function SiteHeader({ showCta = false }: SiteHeaderProps) {
             href="#upload"
             className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-paper no-underline transition-opacity hover:opacity-90"
           >
-            Get started
+            Get started free
             <ArrowRight className="h-3.5 w-3.5" />
           </a>
         )}

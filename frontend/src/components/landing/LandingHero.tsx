@@ -6,6 +6,7 @@ import { ShieldCheck, X } from "lucide-react";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { PromiseCards } from "@/components/landing/PromiseCards";
 import { HeroPreviewCards } from "@/components/landing/HeroPreviewCards";
+import { HeroJapaneseTextLeft, HeroJapaneseTextRight } from "@/components/landing/hero/HeroJapaneseText";
 import { UploadDropzone } from "@/components/upload/UploadDropzone";
 import { UploadProgress } from "@/components/upload/UploadProgress";
 import { JobStatus } from "@/hooks/useJobStream";
@@ -41,22 +42,21 @@ export function LandingHero({
 
       <section className="relative overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <Image src="/hero/inkwash-bg.png" alt="" fill priority className="object-cover opacity-90" sizes="100vw" />
+          <Image src="/sushi/hero/background-paper-16x9.webp" alt="" fill priority className="object-cover opacity-90" sizes="100vw" />
         </div>
+
+        <HeroJapaneseTextRight className="absolute right-6 top-28 z-10 hidden 2xl:flex" />
 
         <div className="container relative grid grid-cols-1 gap-10 pb-8 pt-16 sm:pt-24 2xl:grid-cols-[minmax(0,600px)_1fr] 2xl:items-start 2xl:gap-4">
           <div className="relative text-center 2xl:text-left">
-            <div className="pointer-events-none absolute -left-16 top-1/2 hidden h-[380px] w-[52px] -translate-y-1/2 2xl:block">
-              <Image src="/hero/vertical-text-value.png" alt="" fill sizes="52px" className="object-contain" />
-            </div>
+            <HeroJapaneseTextLeft className="pointer-events-none absolute -left-20 top-1/2 hidden -translate-y-1/2 2xl:flex" />
 
             <p className="eyebrow">Data reports for people who aren&apos;t analysts</p>
             <h1 className="mx-auto mt-4 max-w-2xl font-display text-hero text-ink text-balance 2xl:mx-0">
               Your <em className="mx-1 font-display italic text-brand">RAW</em> Data Served Perfectly.
             </h1>
             <p className="mx-auto mt-5 max-w-lg text-[16px] leading-relaxed text-ink-secondary 2xl:mx-0">
-              Drop in a CSV, survey export, or usage dump. Get a plain-English report you can show your team. No code,
-              no analyst required.
+              Upload your CSVs. Sushi turns complex data into clear, plain-English reports in minutes.
             </p>
 
             <div id="upload" className="mx-auto mt-8 max-w-xl 2xl:mx-0">
