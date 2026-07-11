@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Disclosure } from "@/components/common/Disclosure";
 import { EmptyState } from "@/components/common/EmptyState";
 import { cn } from "@/lib/utils";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface SqlEditorSectionProps {
   datasetId: string | null;
@@ -86,10 +87,7 @@ export function SqlEditorSection({ datasetId }: SqlEditorSectionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Terminal className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Advanced Queries</h2>
-      </div>
+      <ReportSectionHeading icon={Terminal} eyebrow="Data workbench" title="Query with precision." description="Use read-only SQL to explore the dataset directly, with schema guidance and a safe execution limit." />
 
       <Alert tone="info">
         <span className="inline-flex items-center gap-1.5">

@@ -9,6 +9,7 @@ import { formatNumber } from "@/lib/formatters";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PlotlyChart, PlotlySpec } from "@/components/common/PlotlyChart";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface CorrelationsSectionProps {
   matrix: CorrelationMatrix;
@@ -51,10 +52,7 @@ export function CorrelationsSection({ matrix, datasetId }: CorrelationsSectionPr
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Network className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">What Moves Together</h2>
-      </div>
+      <ReportSectionHeading icon={Network} eyebrow="Relationships" title="See what moves together." description="Surface the numeric fields that change in tandem and focus on relationships worth investigating." />
 
       <Card>
         <CardHeader>

@@ -1,6 +1,8 @@
 import React from "react";
 import { ColumnAnalysis, flattenTypeSuggestions, TypeSuggestions } from "@/lib/types";
 import { ColumnHealthCard } from "@/components/report/ColumnHealthCard";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
+import { Columns3 } from "lucide-react";
 
 interface FieldHealthSectionProps {
   columns: ColumnAnalysis[];
@@ -15,10 +17,7 @@ export function FieldHealthSection({ columns, typeSuggestions, totalRows, datase
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-[15px] font-semibold text-ink">Field Health</h2>
-        <p className="mt-0.5 text-[13px] text-ink-secondary">One card per column. Expand for the full picture.</p>
-      </div>
+      <ReportSectionHeading icon={Columns3} eyebrow="Column audit" title="Know every field." description="Review completeness, types, distributions, and practical cleanup suggestions column by column." />
       <div className="flex flex-col gap-2">
         {columns.map((col) => (
           <ColumnHealthCard key={col.name} column={col} totalRows={totalRows} datasetId={datasetId} typeSuggestion={suggestionByColumn.get(col.name)} />

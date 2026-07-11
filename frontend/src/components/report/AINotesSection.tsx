@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface AINotesSectionProps {
   datasetId: string | null;
@@ -64,11 +65,7 @@ export function AINotesSection({ datasetId }: AINotesSectionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <NotebookPen className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">AI Notes</h2>
-      </div>
-      <p className="text-[13px] text-ink-secondary">Automatic observations about this data: high-missing columns, unusual values, and other things worth a second look.</p>
+      <ReportSectionHeading icon={NotebookPen} eyebrow="Guided review" title="Keep the useful notes." description="Automatic observations about missing fields, unusual values, and details that deserve a second look." />
 
       {rateLimited && (
         <Alert tone="warning" title="You've reached today's question limit">

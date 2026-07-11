@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { PlotlyChart, PlotlySpec } from "@/components/common/PlotlyChart";
 import { cn } from "@/lib/utils";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface ChartsSectionProps {
   datasetId: string | null;
@@ -68,10 +69,7 @@ export function ChartsSection({ datasetId, columns }: ChartsSectionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <BarChart3 className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Charts & Trends</h2>
-      </div>
+      <ReportSectionHeading icon={BarChart3} eyebrow="Visual analysis" title="Build the right view." description="Choose a chart, set the fields, and turn this dataset into a clear visual answer." />
 
       <div className="flex flex-wrap gap-1.5">
         {CHART_REGISTRY.map((c) => (

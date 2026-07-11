@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { MetricCard } from "@/components/common/MetricCard";
 import { PlotlyChart, PlotlySpec } from "@/components/common/PlotlyChart";
 import { cn } from "@/lib/utils";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface OutliersSectionProps {
   outliers: OutlierInfo[];
@@ -111,10 +112,7 @@ export function OutliersSection({ outliers, datasetId }: OutliersSectionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <SearchX className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Unusual Values</h2>
-      </div>
+      <ReportSectionHeading icon={SearchX} eyebrow="Data quality" title="Inspect unusual values." description="Review values that sit outside the expected range, then open a field for the evidence behind each flag." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
         <MetricCard label="Unusual values found" value={formatNumber(total)} tone={total > 0 ? "warning" : "neutral"} />

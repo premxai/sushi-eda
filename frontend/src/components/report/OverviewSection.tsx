@@ -4,9 +4,10 @@ import { formatBytes, formatNumber, formatPercent } from "@/lib/formatters";
 import { dimensionLabel, qualityScoreSummary } from "@/lib/report-utils";
 import { QualityScoreCard } from "@/components/report/QualityScoreCard";
 import { QualityDimensionCard } from "@/components/report/QualityDimensionCard";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 import { MetricCard } from "@/components/common/MetricCard";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lightbulb } from "lucide-react";
+import { BarChart3, Lightbulb } from "lucide-react";
 
 interface OverviewSectionProps {
   info: BasicInfo;
@@ -20,6 +21,7 @@ export function OverviewSection({ info, qualityScore }: OverviewSectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <ReportSectionHeading icon={BarChart3} eyebrow="Dataset profile" title="See the whole table." description="A quick health check on structure, completeness, and the issues that deserve attention first." />
       <QualityScoreCard score={score} grade={grade} verdict={verdict} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

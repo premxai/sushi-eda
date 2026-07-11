@@ -293,6 +293,20 @@
 
 .report-content { width: min(100%, 1180px); padding: 52px 56px 70px; }
 
+.report-section-heading { margin-bottom: 30px; }
+.report-section-heading .section-kicker { margin-bottom: 11px; }
+.report-section-heading-title { display: flex; align-items: center; gap: 12px; }
+.report-section-heading-title > span { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgba(216, 102, 69, 0.28); border-radius: 10px; color: var(--brand); background: var(--brand-weak); }
+.report-section-heading-title svg { width: 17px; height: 17px; }
+.report-section-heading h2 { margin: 0; font-family: var(--font-instrument-serif), Georgia, serif; font-size: 38px; font-weight: 400; line-height: 0.95; letter-spacing: -0.035em; color: var(--ink); }
+.report-section-heading > p:last-child { max-width: 610px; margin: 11px 0 0; color: var(--ink-secondary); font-size: 14px; line-height: 1.6; }
+
+.report-content > div:not(.ai-summary-page) > .rounded-lg,
+.report-content > div:not(.ai-summary-page) > .flex > .rounded-lg { border-radius: 16px; box-shadow: var(--shadow-xs); }
+.report-content .rounded-lg.border-border.bg-surface { background: rgba(255, 250, 242, 0.88); }
+.report-content table thead { background: rgba(251, 244, 232, 0.78); }
+.report-content table tbody tr:hover { background: rgba(216, 102, 69, 0.035); }
+
 .ai-summary-page { display: flex; flex-direction: column; gap: 28px; }
 .ai-summary-intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
 .ai-summary-intro .section-kicker { margin-bottom: 13px; }

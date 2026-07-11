@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface ReportsSectionProps {
   report: EDAReport;
@@ -57,11 +58,7 @@ export function ReportsSection({ report, fileName, datasetId, narrative, notes, 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <NotebookText className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Reports</h2>
-      </div>
-      <p className="text-[13px] text-ink-secondary">A shareable summary of this analysis. Export it, or add your own notes below first.</p>
+      <ReportSectionHeading icon={NotebookText} eyebrow="Share & export" title="Package the story." description="Create a shareable summary of this analysis, add context for your team, then export in the format you need." />
 
       {error && <Alert tone="danger">{error}</Alert>}
 

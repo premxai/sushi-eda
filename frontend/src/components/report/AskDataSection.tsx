@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Disclosure } from "@/components/common/Disclosure";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface Turn {
   role: "user" | "assistant";
@@ -90,10 +91,7 @@ export function AskDataSection({ datasetId, columns }: AskDataSectionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <MessageSquareText className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Ask a question in plain English</h2>
-      </div>
+      <ReportSectionHeading icon={MessageSquareText} eyebrow="Conversational analysis" title="Ask your data anything." description="Use plain English to explore the table. Sushi will return an answer and show how it was computed." />
 
       {rateLimited && (
         <Alert tone="warning" title="You've reached today's question limit">

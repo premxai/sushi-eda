@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Disclosure } from "@/components/common/Disclosure";
 import { cn } from "@/lib/utils";
+import { ReportSectionHeading } from "@/components/report/ReportSectionHeading";
 
 interface StatsTestSectionProps {
   datasetId: string | null;
@@ -67,10 +68,7 @@ export function StatsTestSection({ datasetId, columns }: StatsTestSectionProps) 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Sigma className="h-4 w-4 text-brand" />
-        <h2 className="text-[15px] font-semibold text-ink">Compare & Validate</h2>
-      </div>
+      <ReportSectionHeading icon={Sigma} eyebrow="Statistical checks" title="Test with confidence." description="Choose a validation method, select the right fields, and read the result in plain language." />
 
       <div className="flex flex-wrap gap-1.5">
         {TEST_REGISTRY.map((t) => (
