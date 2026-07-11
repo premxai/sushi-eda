@@ -9,6 +9,11 @@ export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" ? "/api" : "http://localhost:8000");
 
+// Uploads may bypass a hosting proxy when it has multipart body limits. Keep
+// ordinary reads on /api, while a configured direct backend is used as a
+// resilient fallback for file transfer.
+const UPLOAD_API_BASE = process.env.NEXT_PUBLIC_UPLOAD_API_URL?.replace(/\/$/, "");
+
 const client = axios.create({
   baseURL: API_BASE,
   timeout: 60_000,
@@ -50,6 +55,12 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
               : JSON.stringify(item),
         )
         .join(", ");
+    }
+    if (error.code === "ECONNABORTED") {
+      return "The upload took too long to reach Sushi. Please retry; your file was not saved twice.";
+    }
+    if (!error.response) {
+      return "Sushi’s upload service could not be reached. Check your connection and retry.";
     }
   }
   if (error instanceof Error && error.message.trim()) {
@@ -99,22 +110,37 @@ export async function uploadFileAsync(
   orgId: string = "default",
   onProgress?: (percent: number) => void,
 ): Promise<{ dataset_id: string; status: string }> {
+  const accessToken = await getSupabaseAccessToken();
+  if (!accessToken) {
+    throw new Error("Your sign-in session is missing or expired. Please sign in again before uploading.");
+  }
   const formData = new FormData();
   formData.append("file", file);
-  const { data } = await client.post<{ dataset_id: string; status: string }>(
-    `/datasets/upload?org_id=${orgId}`,
+  const postUpload = (baseURL: string) => axios.post<{ dataset_id: string; status: string }>(
+    `${baseURL.replace(/\/$/, "")}/datasets/upload?org_id=${encodeURIComponent(orgId)}`,
     formData,
     {
-      headers: { "Content-Type": "multipart/form-data" },
+      // Let the browser set the multipart boundary. Supplying Content-Type
+      // manually can strip that boundary in some adapters.
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 120_000,
       onUploadProgress: (e) => {
-        if (e.total) {
-          // Upload transfer = 0-50%; analysis phase = 50-99% (driven by SSE)
-          onProgress?.(Math.round((e.loaded / e.total) * 50));
-        }
+        if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 50));
       },
     },
   );
-  return data;
+
+  const primary = UPLOAD_API_BASE || API_BASE;
+  try {
+    return (await postUpload(primary)).data;
+  } catch (error) {
+    // If a same-origin proxy drops a multipart request, retry once directly
+    // against the explicitly configured CORS-enabled Render API.
+    if (UPLOAD_API_BASE && primary !== API_BASE && axios.isAxiosError(error) && !error.response) {
+      return (await postUpload(API_BASE)).data;
+    }
+    throw error;
+  }
 }
 
 export async function fetchAnalysis(analysisId: string): Promise<{ report: EDAReport; ai_narrative?: string | null }> {
