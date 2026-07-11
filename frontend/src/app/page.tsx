@@ -15,6 +15,7 @@ import {
   uploadFileAsync,
 } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
+import { getLocalSession } from "@/lib/auth-gate";
 
 const REPORT_KEY = "sushi_report";
 const FILE_KEY = "sushi_filename";
@@ -32,10 +33,12 @@ function HomeContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const sampleRequestedRef = useRef(false);
 
   useEffect(() => {
     prewarmBackend();
+    setIsAuthenticated(Boolean(getLocalSession()));
   }, []);
 
   // Restore the last session's report so a refresh doesn't lose the user's work.
@@ -80,6 +83,10 @@ function HomeContent() {
   }, [jobStream.status, jobStream.analysisId, pendingDatasetId, fileName]);
 
   const handleFileAccepted = useCallback(async (file: File) => {
+    if (!getLocalSession()) {
+      router.push("/sign-in?intent=upload");
+      return;
+    }
     setReport(null);
     setIsUploading(true);
     setUploadProgress(0);
@@ -95,7 +102,11 @@ function HomeContent() {
       setError(getApiErrorMessage(err, "Upload failed. Please try again."));
       setIsUploading(false);
     }
-  }, []);
+  }, [router]);
+
+  const handleAuthenticationRequired = useCallback(() => {
+    router.push("/sign-in?intent=upload");
+  }, [router]);
 
   const handleSample = useCallback(async () => {
     try {
@@ -196,6 +207,8 @@ function HomeContent() {
       topError={error}
       onClearTopError={() => setError(null)}
       onFileAccepted={handleFileAccepted}
+      uploadRequiresAuthentication={!isAuthenticated}
+      onAuthenticationRequired={handleAuthenticationRequired}
       onSample={handleSample}
       onRetry={handleNewFile}
     />

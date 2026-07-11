@@ -530,7 +530,7 @@
 .hero-mobile-cards { display: flex; gap: 1rem; max-width: 100%; margin: 1rem auto 0; overflow-x: auto; padding: 0.5rem 0.25rem 1rem; }
 .hero-mobile-card-item { flex: 0 0 270px; width: 270px; }
 
-@media (max-width: 1099px) {
+@media (max-width: 639px) {
   .hero-reconstruction { display: none; }
   .hero-mobile-shell { display: block; }
 }
@@ -550,7 +550,9 @@
   width: 100%;
   min-height: 100vh;
   overflow: hidden;
-  background: #fff7ea;
+  /* Extend the approved paper asset behind a taller viewport so the 16:9
+     stage never ends in a pale seam below the feature row. */
+  background: #fff7ea url('/sushi/hero/background-paper-16x9.png') center top / cover no-repeat;
 }
 
 .sushiHeroViewport {
@@ -623,12 +625,15 @@
 .sushiHeroStage .hero-reference-nav a { font-size: 17px; }
 
 .sushiHeroStage .hero-reference-cta {
-  top: 22px;
-  right: 52px;
-  min-height: 52px;
+  /* Occupy the intentionally open header space, clear of the chef hat. */
+  top: 34px;
+  right: auto;
+  left: 1158px;
+  min-height: 50px;
   padding: 0 24px;
   font-size: 16px;
   transform: none;
+  background: #0b351c;
 }
 
 .sushiHeroStage .hero-japanese-left,
@@ -650,9 +655,9 @@
 }
 
 .sushiHeroStage .hero-japanese-right {
-  top: 70px;
+  top: 100px;
   right: auto;
-  left: 1360px;
+  left: 1298px;
   /* The right mark sits above the chef asset so it remains legible, but below cards and controls. */
   z-index: 9;
   width: 70px !important;
@@ -801,9 +806,12 @@
 .sushiHeroStage .hero-feature-item strong { font-size: 16px; }
 .sushiHeroStage .hero-feature-item small { font-size: 14px; }
 
-@media (max-width: 1099px) {
+@media (max-width: 639px) {
   .sushiHeroShell { display: none; }
   .hero-mobile-shell { display: block; }
+}
+
+@media (max-width: 1099px) {
   .hero-mobile-shell .hero-feature-row {
     position: static;
     right: auto;
@@ -825,7 +833,7 @@
   .report-nav button { flex: 0 0 auto; }
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 640px) {
   .hero-mobile-shell { display: none; }
 }
 

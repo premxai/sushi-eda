@@ -11,6 +11,8 @@ export interface HeroUploadCardProps {
   jobStage: string;
   jobError: string | null;
   onFileAccepted: (file: File) => void;
+  uploadRequiresAuthentication: boolean;
+  onAuthenticationRequired: () => void;
   onSample: () => void;
   onRetry: () => void;
 }
@@ -23,6 +25,8 @@ export function HeroUploadCard({
   jobStage,
   jobError,
   onFileAccepted,
+  uploadRequiresAuthentication,
+  onAuthenticationRequired,
   onSample,
   onRetry,
 }: HeroUploadCardProps) {
@@ -31,7 +35,7 @@ export function HeroUploadCard({
       {isUploading ? (
         <UploadProgress status={jobStatus} progress={jobProgress} stage={jobStage} error={jobError} onRetry={onRetry} />
       ) : (
-        <UploadDropzone hero onFileAccepted={onFileAccepted} onSample={onSample} />
+        <UploadDropzone hero onFileAccepted={onFileAccepted} onSample={onSample} uploadRequiresAuthentication={uploadRequiresAuthentication} onAuthenticationRequired={onAuthenticationRequired} />
       )}
     </div>
   );

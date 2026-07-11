@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import type { LandingHeroProps } from "@/components/landing/LandingHero";
 import { HeroConnectionLines } from "@/components/landing/hero/HeroConnectionLines";
 import { HeroJapaneseTextLeft, HeroJapaneseTextRight } from "@/components/landing/hero/HeroJapaneseText";
@@ -33,6 +33,8 @@ export function SushiHero({
   topError,
   onClearTopError,
   onFileAccepted,
+  uploadRequiresAuthentication,
+  onAuthenticationRequired,
   onSample,
   onRetry,
 }: LandingHeroProps) {
@@ -75,6 +77,7 @@ export function SushiHero({
             <nav aria-label="Main" className="hero-reference-nav">
               {NAV_LINKS.map((link) => <Link key={link.label} href={link.href}>{link.label}</Link>)}
             </nav>
+            <Link href="/sign-up" className="hero-reference-cta">Get started free <ArrowRight className="h-4 w-4" /></Link>
           </header>
 
           <div className="hero-reference-copy">
@@ -95,6 +98,8 @@ export function SushiHero({
             jobStage={jobStage}
             jobError={jobError}
             onFileAccepted={onFileAccepted}
+            uploadRequiresAuthentication={uploadRequiresAuthentication}
+            onAuthenticationRequired={onAuthenticationRequired}
             onSample={onSample}
             onRetry={onRetry}
           />

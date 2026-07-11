@@ -10,19 +10,32 @@ import { MAX_UPLOAD_BYTES, SUPPORTED_FILE_ACCEPT, SUPPORTED_FORMATS_COPY, SUPPOR
 interface UploadDropzoneProps {
   onFileAccepted: (file: File) => void;
   onSample: () => void;
+  uploadRequiresAuthentication?: boolean;
+  onAuthenticationRequired?: () => void;
   disabled?: boolean;
   hero?: boolean;
 }
 
 type LocalState = "idle" | "selected";
 
-export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = false }: UploadDropzoneProps) {
+export function UploadDropzone({
+  onFileAccepted,
+  onSample,
+  uploadRequiresAuthentication = false,
+  onAuthenticationRequired,
+  disabled,
+  hero = false,
+}: UploadDropzoneProps) {
   const [state, setState] = useState<LocalState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rejection, setRejection] = useState<{ kind: "size" | "format"; message: string } | null>(null);
 
   const onDrop = useCallback(
     (accepted: File[], rejections: FileRejection[]) => {
+      if (uploadRequiresAuthentication) {
+        onAuthenticationRequired?.();
+        return;
+      }
       setRejection(null);
       if (rejections.length > 0) {
         const [{ file, errors }] = rejections;
@@ -41,7 +54,7 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
       setState("selected");
       window.setTimeout(() => onFileAccepted(file), 450);
     },
-    [onFileAccepted],
+    [onAuthenticationRequired, onFileAccepted, uploadRequiresAuthentication],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -49,9 +62,17 @@ export function UploadDropzone({ onFileAccepted, onSample, disabled, hero = fals
     accept: SUPPORTED_FILE_ACCEPT,
     maxSize: MAX_UPLOAD_BYTES,
     multiple: false,
+    noClick: uploadRequiresAuthentication,
     disabled,
   });
-  const rootProps = getRootProps();
+  const rootProps = getRootProps({
+    onClick: (event) => {
+      if (!uploadRequiresAuthentication) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onAuthenticationRequired?.();
+    },
+  });
 
   if (state === "selected" && selectedFile) {
     return (
