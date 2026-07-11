@@ -248,6 +248,9 @@ class Analysis(Base):
     )  # Claude-generated narrative
     job_id: Mapped[str | None] = mapped_column(Text, nullable=True)  # file hash
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Durable JSON mirror in R2. The database remains the fast query source;
+    # R2 retains an exportable copy alongside the original uploaded file.
+    report_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -256,6 +259,28 @@ class Analysis(Base):
 
     def __repr__(self) -> str:
         return f"<Analysis dataset={self.dataset_id} v{self.version}>"
+
+
+class DashboardSave(Base):
+    """A user-selected dashboard item; uploads remain unlimited.
+
+    ``kind`` is either ``dataset`` or ``report``. The API limits each kind to
+    three rows per user, without deleting the underlying dataset or analysis.
+    """
+
+    __tablename__ = "dashboard_saves"
+    __table_args__ = (
+        UniqueConstraint("user_id", "dataset_id", "kind", name="uq_dashboard_saves_dataset"),
+        UniqueConstraint("user_id", "analysis_id", "kind", name="uq_dashboard_saves_analysis"),
+        Index("ix_dashboard_saves_user_kind", "user_id", "kind"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    dataset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=True)
+    analysis_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("analyses.id", ondelete="CASCADE"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # ─── Feedback ─────────────────────────────────────────────────────────────────

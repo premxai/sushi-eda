@@ -294,6 +294,44 @@ export interface DatasetSummary {
   created_at: string;
 }
 
+export interface SavedReportSummary {
+  analysis_id: string;
+  dataset_id: string;
+  name: string;
+  created_at: string;
+  rows: number | null;
+  columns: number | null;
+  quality_score: number | null;
+}
+
+export interface PersonalDashboard {
+  profile: { name: string | null; email: string };
+  limits: { datasets: number; reports: number };
+  saved_datasets: DatasetSummary[];
+  saved_reports: SavedReportSummary[];
+}
+
+export async function getPersonalDashboard(): Promise<PersonalDashboard> {
+  const { data } = await client.get<PersonalDashboard>("/dashboard");
+  return data;
+}
+
+export async function saveDashboardDataset(datasetId: string): Promise<void> {
+  await client.post(`/dashboard/datasets/${datasetId}`);
+}
+
+export async function removeDashboardDataset(datasetId: string): Promise<void> {
+  await client.delete(`/dashboard/datasets/${datasetId}`);
+}
+
+export async function saveDashboardReport(datasetId: string): Promise<void> {
+  await client.post(`/dashboard/reports/dataset/${datasetId}`);
+}
+
+export async function removeDashboardReport(analysisId: string): Promise<void> {
+  await client.delete(`/dashboard/reports/${analysisId}`);
+}
+
 export async function listDatasets(orgId: string = "default", opts: { archived?: boolean; starred?: boolean } = {}): Promise<DatasetSummary[]> {
   const params = new URLSearchParams({ org_id: orgId });
   if (opts.archived) params.set("archived", "true");

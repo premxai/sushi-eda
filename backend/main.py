@@ -58,6 +58,7 @@ from polars_loader import parse_to_polars
 from routers import jobs as jobs_router
 from routers.datasets import analyses_router
 from routers.datasets import router as datasets_router
+from routers.dashboard import router as dashboard_router
 from routers.shares import router as shares_router
 from storage import storage
 
@@ -117,6 +118,7 @@ app.include_router(jobs_router.router)
 app.include_router(shares_router)
 app.include_router(datasets_router)
 app.include_router(analyses_router)
+app.include_router(dashboard_router)
 
 
 # ── Startup: schema + default org/system user ─────────────────────────────────

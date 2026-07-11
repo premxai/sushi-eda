@@ -358,6 +358,7 @@ async def delete_dataset(
 
     try:
         storage.delete_prefix(f"uploads/{effective_org}/{dataset_id}/")
+        storage.delete_prefix(f"reports/{effective_org}/{dataset_id}/")
     except Exception as e:
         logger.warning(f"R2 delete failed for {dataset_id}: {e}")
 
@@ -442,6 +443,17 @@ async def regenerate_narrative(
         .values(ai_narrative=narrative)
     )
     await db.commit()
+    try:
+        await asyncio.to_thread(
+            storage.upload_report,
+            str(dataset.org_id),
+            str(dataset.id),
+            str(analysis.id),
+            analysis.report,
+            narrative,
+        )
+    except Exception as exc:
+        logger.warning(f"Could not refresh stored report {analysis.id}: {exc}")
     return {"analysis_id": str(analysis.id), "ai_narrative": narrative}
 
 

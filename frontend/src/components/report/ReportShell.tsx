@@ -34,7 +34,7 @@ export function ReportShell({ report, fileName, datasetId, aiNarrative, isSample
 
   return (
     <div className="app-workspace-page flex h-screen flex-col">
-      <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} isSampleMode={isSampleMode} />
+      <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} isSampleMode={isSampleMode} datasetId={datasetId} />
       <div className="report-shell-body flex flex-1 overflow-hidden">
         <aside className="report-shell-nav shrink-0 overflow-y-auto border-r border-border bg-surface/55 backdrop-blur scrollbar-thin">
           <ReportNav

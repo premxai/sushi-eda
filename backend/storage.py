@@ -15,6 +15,7 @@ Usage:
     await storage.delete(key)
 """
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -132,6 +133,20 @@ class R2Storage:
         except ClientError as e:
             logger.error(f"R2 upload failed for {key}: {e}")
             raise
+
+    def upload_report(self, org_id: str, dataset_id: str, analysis_id: str, report: dict, narrative: str | None = None) -> str:
+        """Store the finished report as durable JSON next to the source file."""
+        key = f"reports/{org_id}/{dataset_id}/{analysis_id}.json"
+        payload = json.dumps({"report": report, "ai_narrative": narrative}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if self.use_local_storage:
+            path = self._local_path(key)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(payload)
+            return key
+        self.client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=payload, ContentType="application/json")
+        logger.info(f"Uploaded report to R2: {key}")
+        return key
 
     # ── Download ───────────────────────────────────────────────────────────────
 

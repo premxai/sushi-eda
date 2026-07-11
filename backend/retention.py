@@ -1,9 +1,9 @@
 """
 Data retention sweep — the "your file is deleted after N days" promise.
 
-Deletes datasets (rows + stored files + analyses via ORM cascade) older
-than RETENTION_DAYS. The seeded example dataset is exempt. RETENTION_DAYS=0
-disables the sweep entirely (e.g. self-hosted installs that keep everything).
+Deletes unsaved datasets (rows + stored files + analyses via ORM cascade)
+older than RETENTION_DAYS. The seeded example and any user-saved dashboard
+dataset/report are exempt. RETENTION_DAYS=0 disables the sweep entirely.
 
 Started from main.py as a background asyncio loop; `sweep_expired_datasets`
 is a plain coroutine so tests can call it directly.
@@ -33,7 +33,7 @@ async def sweep_expired_datasets(retention_days: int | None = None) -> int:
         return 0
 
     from db.connection import AsyncSessionLocal
-    from db.models import Dataset
+    from db.models import Analysis, DashboardSave, Dataset
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     deleted = 0
@@ -47,8 +47,20 @@ async def sweep_expired_datasets(retention_days: int | None = None) -> int:
                 defaults.EXAMPLE_DATASET_ID
             ):
                 continue
+            saved = (await db.execute(
+                select(DashboardSave.id)
+                .outerjoin(Analysis, DashboardSave.analysis_id == Analysis.id)
+                .where(
+                    (DashboardSave.dataset_id == dataset.id)
+                    | (Analysis.dataset_id == dataset.id)
+                )
+                .limit(1)
+            )).scalar_one_or_none()
+            if saved is not None:
+                continue
             try:
                 storage.delete_prefix(f"uploads/{dataset.org_id}/{dataset.id}/")
+                storage.delete_prefix(f"reports/{dataset.org_id}/{dataset.id}/")
             except Exception as e:
                 logger.warning(f"Retention: file cleanup failed for {dataset.id}: {e}")
             await db.delete(dataset)  # analyses cascade

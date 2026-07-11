@@ -4,7 +4,7 @@ services:
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
@@ -36,6 +36,8 @@ services:
         sync: false
       - key: R2_BUCKET_NAME
         sync: false
+      - key: R2_PUBLIC_URL
+        sync: false # optional; keep blank for private buckets and signed access only
       - key: AI_DAILY_LIMIT_PER_IP
         sync: false # default 20 AI calls/day/IP
       - key: AI_DAILY_BUDGET_CALLS

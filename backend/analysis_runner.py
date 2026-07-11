@@ -89,6 +89,16 @@ async def _save_analysis(
             duration_seconds=duration,
         )
         db.add(analysis)
+        await db.flush()
+
+        try:
+            analysis.report_key = await asyncio.to_thread(
+                storage.upload_report, org_id, dataset_id, str(analysis.id), report, narrative
+            )
+        except Exception as exc:
+            # A report is still available from Postgres if object storage is
+            # temporarily unavailable; don't discard a completed analysis.
+            logger.warning(f"Could not mirror report {analysis.id} to storage: {exc}")
 
         ds_result = await db.execute(
             select(Dataset).where(Dataset.id == uuid.UUID(dataset_id))
