@@ -8,7 +8,7 @@ Upload lifecycle:
   GET  /analyses/{id}    → the finished report (+ AI narrative)
 
 Everything external is optional: without DATABASE_URL a SQLite fallback is
-used, without R2_* files go to the local filesystem, without CLERK_SECRET_KEY
+used, without R2_* files go to the local filesystem, without Supabase settings
 every request acts as a shared demo user, without ANTHROPIC_API_KEY the AI
 narrative/chat features are disabled.
 """
@@ -130,7 +130,7 @@ async def _ensure_default_org() -> None:
 
     if os.getenv("ENVIRONMENT", "development") == "production" and not AUTH_ENABLED:
         logger.error(
-            "ENVIRONMENT=production but CLERK_SECRET_KEY is not set — "
+            "ENVIRONMENT=production but Supabase auth is not configured — "
             "the API is running in OPEN demo mode with no authentication."
         )
 

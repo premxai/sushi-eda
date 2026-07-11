@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { EDAReport } from "./types";
+import { getSupabaseAccessToken } from "@/lib/supabase/client";
 
-// Auth is disabled in the backend (demo mode) for this build, so there are no
-// accounts and no login, and the API client carries no auth/token logic. If
-// Clerk (or any auth) is reintroduced later, add a request interceptor here.
+// Supabase sessions are forwarded as bearer tokens. With no Supabase variables
+// configured, local development intentionally falls back to the backend demo mode.
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" ? "/api" : "http://localhost:8000");
@@ -12,6 +12,15 @@ export const API_BASE =
 const client = axios.create({
   baseURL: API_BASE,
   timeout: 60_000,
+});
+
+client.interceptors.request.use(async (config) => {
+  const accessToken = await getSupabaseAccessToken();
+  if (accessToken) {
+    config.headers = config.headers ?? {};
+    (config.headers as Record<string, string>).Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
 });
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {

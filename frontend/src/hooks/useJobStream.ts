@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "@/lib/api";
+import { getSupabaseAccessToken } from "@/lib/supabase/client";
 
 export type JobStatus = "idle" | "pending" | "processing" | "done" | "failed";
 
@@ -38,8 +39,11 @@ export function useJobStream(datasetId: string | null, orgId: string = "default"
 
     setState({ ...INITIAL_STATE, status: "pending" });
 
-    if (typeof EventSource !== "undefined") {
+    const start = async () => {
+      const token = await getSupabaseAccessToken();
+      if (typeof EventSource !== "undefined") {
       const params = new URLSearchParams({ org_id: orgId });
+      if (token) params.set("token", token);
       const es = new EventSource(`${API_BASE}/jobs/${datasetId}/stream?${params.toString()}`);
       esRef.current = es;
 
@@ -97,11 +101,13 @@ export function useJobStream(datasetId: string | null, orgId: string = "default"
 
       es.onerror = () => {
         es.close();
-        startPolling(datasetId, orgId, setState, pollRef);
+        startPolling(datasetId, orgId, token, setState, pollRef);
       };
-    } else {
-      startPolling(datasetId, orgId, setState, pollRef);
-    }
+      } else {
+        startPolling(datasetId, orgId, token, setState, pollRef);
+      }
+    };
+    start();
 
     return () => {
       esRef.current?.close();
@@ -116,13 +122,16 @@ export function useJobStream(datasetId: string | null, orgId: string = "default"
 function startPolling(
   datasetId: string,
   orgId: string,
+  token: string | null,
   setState: React.Dispatch<React.SetStateAction<JobStreamState>>,
   pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
 ) {
   clearPolling(pollRef);
   pollRef.current = setInterval(async () => {
     try {
-      const response = await fetch(`${API_BASE}/jobs/${datasetId}?org_id=${orgId}`);
+      const response = await fetch(`${API_BASE}/jobs/${datasetId}?org_id=${orgId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!response.ok) return;
       const payload = await response.json();
       const status: JobStatus = payload.status ?? "pending";

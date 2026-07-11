@@ -18,8 +18,10 @@ services:
         sync: false # set to "production"
       - key: ALLOWED_ORIGINS
         sync: false # REQUIRED in production, e.g. https://your-frontend.vercel.app
-      - key: CLERK_SECRET_KEY
-        sync: false # enables authentication (Phase 4 — leave unset until then)
+      - key: SUPABASE_URL
+        sync: false # enables Supabase JWT authentication
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
       - key: DATABASE_URL
         sync: false # Neon/Supabase Postgres; omit to use the SQLite fallback (ephemeral on Render!)
       - key: REDIS_URL

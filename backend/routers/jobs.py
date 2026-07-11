@@ -23,7 +23,7 @@ import time
 import uuid
 from typing import AsyncGenerator
 
-from auth import AUTH_ENABLED, _decode_clerk_token, _get_demo_user, get_optional_user, validate_org_access
+from auth import AUTH_ENABLED, _decode_supabase_token, _get_demo_user, get_optional_user, validate_org_access
 from cache import cache
 from db import get_db
 from db.models import Dataset, User
@@ -55,7 +55,7 @@ async def _resolve_stream_user(
     # ownership check below only runs when current_user is not None. This
     # function previously always returned None when the query-string token
     # was absent (the normal case here — EventSource can't send an
-    # Authorization header, and demo mode has no Clerk session to draw a
+    # Authorization header, and demo mode has no authenticated session to draw a
     # token from), silently skipping that check and letting anyone stream
     # job status — including the analysis_id — for any dataset_id in the
     # shared default org, bypassing per-user dataset privacy entirely.
@@ -64,12 +64,12 @@ async def _resolve_stream_user(
     if not token:
         return None
 
-    payload = _decode_clerk_token(token)
-    clerk_id = payload.get("sub")
-    if not clerk_id:
+    payload = _decode_supabase_token(token)
+    auth_user_id = payload.get("sub")
+    if not auth_user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    result = await db.execute(select(User).where(User.clerk_id == clerk_id))
+    result = await db.execute(select(User).where(User.clerk_id == auth_user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=401, detail="Unknown user")

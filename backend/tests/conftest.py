@@ -13,7 +13,9 @@ os.environ["LOCAL_STORAGE_DIR"] = os.path.join(_TEST_DIR, "storage")
 os.environ["ENVIRONMENT"] = "development"
 os.environ.pop("ANTHROPIC_API_KEY", None)  # AI disabled by default in tests
 os.environ.pop("R2_ACCOUNT_ID", None)      # force local storage
-os.environ.pop("CLERK_SECRET_KEY", None)   # force demo mode
+os.environ.pop("CLERK_SECRET_KEY", None)   # compatibility with old local envs
+os.environ.pop("SUPABASE_URL", None)       # force demo mode
+os.environ.pop("SUPABASE_PUBLISHABLE_KEY", None)
 
 import sys
 

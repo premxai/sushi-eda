@@ -3,13 +3,13 @@
 import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Input } from "@/components/ui/input";
-import { authReturnPath, saveLocalSession, type AuthIntent } from "@/lib/auth-gate";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
-function getIntent(value: string | null): AuthIntent {
-  return value === "sample" ? "sample" : "upload";
+function safeNext(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
 export default function SignUpPage() {
@@ -19,19 +19,41 @@ export default function SignUpPage() {
 function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const intent = getIntent(searchParams.get("intent"));
+  const next = safeNext(searchParams.get("next"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (name.trim().length < 2) return setError("Enter your name.");
     if (!email.includes("@")) return setError("Enter a valid email address.");
     if (password.length < 8) return setError("Choose a password with at least 8 characters.");
-    saveLocalSession({ name: name.trim(), email: email.trim().toLowerCase() });
-    router.push(authReturnPath(intent));
+    if (!isSupabaseConfigured) return setError("Authentication is not configured yet. Please try again shortly.");
+    setSubmitting(true);
+    setError(null);
+    setNotice(null);
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    const { data, error: signUpError } = await getSupabaseBrowserClient().auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { full_name: name.trim() }, emailRedirectTo: redirectTo },
+    });
+    if (signUpError) {
+      setError(signUpError.message);
+      setSubmitting(false);
+      return;
+    }
+    if (data.session) {
+      router.replace(next);
+      router.refresh();
+      return;
+    }
+    setNotice("Check your inbox to confirm your email, then return here to continue.");
+    setSubmitting(false);
   };
 
   return (
@@ -41,16 +63,16 @@ function SignUpForm() {
         <span className="mt-7 grid h-12 w-12 place-items-center rounded-full border border-success/30 bg-success-weak text-success"><Sparkles className="h-5 w-5" /></span>
         <p className="section-kicker mt-5">Create your account</p>
         <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.035em] text-ink">Start with a clearer view.</h1>
-        <p className="mt-3 text-[13.5px] leading-6 text-ink-secondary">Create your account, then {intent === "sample" ? "open the sample report" : "bring in your first file"}.</p>
-
+        <p className="mt-3 text-[13.5px] leading-6 text-ink-secondary">Create your account, then bring in your first file.</p>
         <form className="mt-7 space-y-4" onSubmit={submit} noValidate>
           <label className="block"><span className="mb-1.5 block text-[12px] font-semibold text-ink">Name</span><Input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" /></label>
           <label className="block"><span className="mb-1.5 block text-[12px] font-semibold text-ink">Email address</span><Input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" /></label>
           <label className="block"><span className="mb-1.5 block text-[12px] font-semibold text-ink">Password</span><Input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" /></label>
           {error && <p role="alert" className="rounded-lg border border-danger/25 bg-danger-weak px-3 py-2 text-[12.5px] text-danger">{error}</p>}
-          <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-[13px] font-semibold text-paper hover:opacity-90">Create account <ArrowRight className="h-4 w-4" /></button>
+          {notice && <p role="status" className="rounded-lg border border-success/25 bg-success-weak px-3 py-2 text-[12.5px] text-success">{notice}</p>}
+          <button type="submit" disabled={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-[13px] font-semibold text-paper hover:opacity-90 disabled:opacity-60">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{submitting ? "Creating account…" : "Create account"}</button>
         </form>
-        <p className="mt-6 text-center text-[13px] text-ink-secondary">Already have an account? <Link href={`/sign-in?intent=${intent}`} className="font-semibold text-brand">Sign in</Link></p>
+        <p className="mt-6 text-center text-[13px] text-ink-secondary">Already have an account? <Link href={`/sign-in?next=${encodeURIComponent(next)}`} className="font-semibold text-brand">Sign in</Link></p>
       </section>
     </main>
   );

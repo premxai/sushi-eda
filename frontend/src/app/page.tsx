@@ -15,7 +15,7 @@ import {
   uploadFileAsync,
 } from "@/lib/api";
 import { EDAReport } from "@/lib/types";
-import { getLocalSession } from "@/lib/auth-gate";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const REPORT_KEY = "sushi_report";
 const FILE_KEY = "sushi_filename";
@@ -38,7 +38,11 @@ function HomeContent() {
 
   useEffect(() => {
     prewarmBackend();
-    setIsAuthenticated(Boolean(getLocalSession()));
+    if (!isSupabaseConfigured) return;
+    const supabase = getSupabaseBrowserClient();
+    supabase.auth.getSession().then(({ data }) => setIsAuthenticated(Boolean(data.session)));
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => setIsAuthenticated(Boolean(session)));
+    return () => subscription.subscription.unsubscribe();
   }, []);
 
   // Restore the last session's report so a refresh doesn't lose the user's work.
@@ -82,9 +86,9 @@ function HomeContent() {
     }
   }, [jobStream.status, jobStream.analysisId, pendingDatasetId, fileName]);
 
-  const handleFileAccepted = useCallback(async (file: File) => {
-    if (!getLocalSession()) {
-      router.push("/sign-in?intent=upload");
+  const handleFileAccepted = useCallback(async (file: File, allowGuestUpload = false) => {
+    if (!allowGuestUpload && !isAuthenticated) {
+      router.push("/sign-in?next=/");
       return;
     }
     setReport(null);
@@ -102,10 +106,10 @@ function HomeContent() {
       setError(getApiErrorMessage(err, "Upload failed. Please try again."));
       setIsUploading(false);
     }
-  }, [router]);
+  }, [router, isAuthenticated]);
 
   const handleAuthenticationRequired = useCallback(() => {
-    router.push("/sign-in?intent=upload");
+    router.push("/sign-in?next=/");
   }, [router]);
 
   const handleSample = useCallback(async () => {
@@ -131,8 +135,14 @@ function HomeContent() {
     } catch {
       // fall through to uploading the sample file fresh
     }
-    const file = await loadSampleData();
-    handleFileAccepted(file);
+    try {
+      const file = await loadSampleData();
+      // Sample data is intentionally available without an account. It uses
+      // the exact same upload/analysis pipeline as a user's authenticated file.
+      await handleFileAccepted(file, true);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Couldn't load the sample data. Please try again."));
+    }
   }, [handleFileAccepted]);
 
   const handleOpenDataset = useCallback(async (datasetId: string, filename?: string) => {
