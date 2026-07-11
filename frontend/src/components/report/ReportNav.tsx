@@ -3,16 +3,18 @@
 import React from "react";
 import {
   AlertTriangle,
+  BarChart3,
   ChartNoAxesCombined,
   Columns3,
+  FileSpreadsheet,
   FileText,
   GitCompareArrows,
   Lightbulb,
   MessageSquareText,
+  ShieldCheck,
   Sigma,
   Sparkles,
   TerminalSquare,
-  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -52,28 +54,60 @@ export const NAV_ITEMS: NavItem[] = [
 interface ReportNavProps {
   active: NavSection;
   onChange: (section: NavSection) => void;
+  fileName: string;
+  rows: number;
+  columns: number;
+  qualityScore: number;
 }
 
-export function ReportNav({ active, onChange }: ReportNavProps) {
+const NAV_GROUPS = [
+  { label: "Explore", keys: ["ai-summary", "overview", "ask"] as NavSection[] },
+  { label: "Inspect", keys: ["fields", "stats", "correlations", "outliers", "charts"] as NavSection[] },
+  { label: "Create", keys: ["notes", "sql", "reports"] as NavSection[] },
+];
+
+export function ReportNav({ active, onChange, fileName, rows, columns, qualityScore }: ReportNavProps) {
   return (
-    <nav aria-label="Report sections" className="report-nav flex flex-col gap-0.5 p-2">
-      {NAV_ITEMS.map((item) => {
-        const isActive = item.key === active;
-        return (
-          <button
-            key={item.key}
-            onClick={() => onChange(item.key)}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-md border-l-2 px-2.5 py-2 text-left text-[13px] transition-colors",
-              isActive ? "border-brand bg-brand-weak font-medium text-brand" : "border-transparent text-ink-secondary hover:bg-surface-2 hover:text-ink",
-            )}
-          >
-            <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-            {item.label}
-          </button>
-        );
-      })}
+    <nav aria-label="Report sections" className="report-nav">
+      <div className="report-nav-dataset">
+        <span className="report-nav-dataset-icon"><FileSpreadsheet aria-hidden /></span>
+        <div className="min-w-0">
+          <p className="eyebrow">Current dataset</p>
+          <p className="truncate text-[13px] font-semibold text-ink">{fileName}</p>
+          <p className="mt-0.5 text-[11.5px] text-ink-tertiary">{rows.toLocaleString()} rows · {columns} fields</p>
+        </div>
+      </div>
+
+      <div className="report-nav-quality">
+        <ShieldCheck aria-hidden />
+        <div>
+          <p>Data quality</p>
+          <strong>{Math.round(qualityScore)}<small>/100</small></strong>
+        </div>
+      </div>
+
+      <div className="report-nav-sections">
+        {NAV_GROUPS.map((group) => (
+          <div className="report-nav-group" key={group.label}>
+            <p className="report-nav-group-label">{group.label}</p>
+            {group.keys.map((key) => {
+              const item = NAV_ITEMS.find((navItem) => navItem.key === key)!;
+              const isActive = item.key === active;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => onChange(item.key)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn("report-nav-item", isActive && "is-active")}
+                >
+                  <item.icon aria-hidden />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }

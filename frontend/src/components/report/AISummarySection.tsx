@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Database, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { getApiErrorMessage, regenerateNarrative } from "@/lib/api";
+import type { EDAReport } from "@/lib/types";
 import { Markdown } from "@/components/common/Markdown";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -10,10 +11,11 @@ import { Alert } from "@/components/ui/alert";
 interface AISummarySectionProps {
   narrative: string | null;
   datasetId: string | null;
+  report: EDAReport;
   onNarrativeChange?: (narrative: string) => void;
 }
 
-export function AISummarySection({ narrative, datasetId, onNarrativeChange }: AISummarySectionProps) {
+export function AISummarySection({ narrative, datasetId, report, onNarrativeChange }: AISummarySectionProps) {
   const [local, setLocal] = useState(narrative);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,44 +38,58 @@ export function AISummarySection({ narrative, datasetId, onNarrativeChange }: AI
   };
 
   return (
-    <div>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-brand" aria-hidden />
-          <h2 className="text-[15px] font-semibold text-ink">What your data says</h2>
+    <div className="ai-summary-page">
+      <div className="ai-summary-intro">
+        <div>
+          <p className="section-kicker">Sushi analysis</p>
+          <h2>Find the signal<br />in your data.</h2>
+          <p>Your analysis is ready. Start with the executive view, then follow the evidence into each field.</p>
         </div>
         {datasetId && (
-          <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={generating}>
-            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            {local ? "Regenerate" : "Generate summary"}
+          <Button variant="secondary" size="md" className="rounded-full" onClick={handleGenerate} disabled={generating}>
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {local ? "Refresh summary" : "Generate summary"}
           </Button>
         )}
       </div>
 
-      {error && (
-        <Alert tone="warning" className="mb-4">
-          {error}
-        </Alert>
-      )}
+      <div className="ai-summary-metrics" aria-label="Dataset snapshot">
+        <Metric label="Records" value={report.basic_info.rows.toLocaleString()} />
+        <Metric label="Fields" value={String(report.basic_info.columns)} />
+        <Metric label="Missing cells" value={report.basic_info.total_missing.toLocaleString()} tone={report.basic_info.total_missing === 0 ? "good" : "warning"} />
+        <Metric label="Quality score" value={`${Math.round(report.quality_score.overall_score)}/100`} tone="good" />
+      </div>
+
+      {error && <Alert tone="warning" className="mb-5">{error}</Alert>}
 
       {local ? (
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="ai-summary-narrative">
+          <div className="ai-summary-narrative-heading">
+            <Sparkles aria-hidden />
+            <div><p className="eyebrow">Executive readout</p><h3>What your data says</h3></div>
+          </div>
           <Markdown text={local} />
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-border-strong bg-surface-2/40 p-6 text-center">
-          <p className="text-[13.5px] text-ink-secondary">
-            No AI summary is available for this analysis. The quality score, columns, charts, statistics, and raw data are still fully
-            available.
-          </p>
+        <div className="ai-summary-empty">
+          <div className="ai-summary-empty-icon"><Database aria-hidden /></div>
+          <div>
+            <p className="eyebrow">Executive readout</p>
+            <h3>Your data is mapped. Ready for interpretation.</h3>
+            <p>No AI summary exists yet. Generate one for a concise narrative, or explore the health, relationships, and charts in the workspace.</p>
+          </div>
           {datasetId && (
-            <Button size="sm" className="mt-3" onClick={handleGenerate} disabled={generating}>
-              {generating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {generating ? "Writing summary…" : "Generate a summary"}
+            <Button size="md" className="rounded-full" onClick={handleGenerate} disabled={generating}>
+              {generating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {generating ? "Writing summary…" : <>Generate summary <ArrowUpRight className="h-4 w-4" /></>}
             </Button>
           )}
         </div>
       )}
     </div>
   );
+}
+
+function Metric({ label, value, tone }: { label: string; value: string; tone?: "good" | "warning" }) {
+  return <div className={`ai-summary-metric ${tone ?? ""}`}><p>{label}</p><strong>{value}</strong></div>;
 }

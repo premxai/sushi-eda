@@ -76,7 +76,7 @@ export default function SharePage({ params }: { params: { token: string } }) {
         </div>
 
         <div className="flex flex-col gap-8">
-          <AISummarySection narrative={shared.analysis.ai_narrative} datasetId={null} />
+          <AISummarySection narrative={shared.analysis.ai_narrative} datasetId={null} report={report} />
           <Section title="Overview">
             <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />
           </Section>

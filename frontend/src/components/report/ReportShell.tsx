@@ -25,7 +25,7 @@ interface ReportShellProps {
   onOpenDataset: (datasetId: string, filename?: string) => void;
 }
 
-const SECTION_LABELS: Record<NavSection, string> = Object.fromEntries(NAV_ITEMS.map((i) => [i.key, i.label])) as Record<NavSection, string>;
+const SECTION_LABELS: Record<NavSection, string> = Object.fromEntries(NAV_ITEMS.map((item) => [item.key, item.label])) as Record<NavSection, string>;
 
 export function ReportShell({ report, fileName, datasetId, aiNarrative, onNewFile }: ReportShellProps) {
   const [active, setActive] = useState<NavSection>("ai-summary");
@@ -36,12 +36,19 @@ export function ReportShell({ report, fileName, datasetId, aiNarrative, onNewFil
     <div className="app-workspace-page flex h-screen flex-col">
       <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} onNewFile={onNewFile} />
       <div className="report-shell-body flex flex-1 overflow-hidden">
-        <aside className="report-shell-nav w-56 shrink-0 overflow-y-auto border-r border-border bg-surface/55 backdrop-blur scrollbar-thin">
-          <ReportNav active={active} onChange={setActive} />
+        <aside className="report-shell-nav shrink-0 overflow-y-auto border-r border-border bg-surface/55 backdrop-blur scrollbar-thin">
+          <ReportNav
+            active={active}
+            onChange={setActive}
+            fileName={fileName}
+            rows={report.basic_info.rows}
+            columns={report.basic_info.columns}
+            qualityScore={report.quality_score.overall_score}
+          />
         </aside>
-        <main className="flex-1 overflow-y-auto bg-paper/45 scrollbar-thin">
-          <div className="mx-auto max-w-4xl px-6 py-6">
-            {active === "ai-summary" && <AISummarySection narrative={narrative} datasetId={datasetId} onNarrativeChange={setNarrative} />}
+        <main className="report-main flex-1 overflow-y-auto scrollbar-thin">
+          <div className="report-content mx-auto">
+            {active === "ai-summary" && <AISummarySection narrative={narrative} datasetId={datasetId} report={report} onNarrativeChange={setNarrative} />}
             {active === "overview" && <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}
             {active === "ask" && <AskDataSection datasetId={datasetId} columns={report.column_analysis} />}
             {active === "fields" && (
