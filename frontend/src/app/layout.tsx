@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     template: "%s | Sushi",
   },
   icons: {
-    icon: [{ url: "/sushi/hero/sushi-logo-exact.png", type: "image/png" }],
-    shortcut: "/sushi/hero/sushi-logo-exact.png",
-    apple: "/sushi/hero/sushi-logo-exact.png",
+    icon: [{ url: "/sushi/hero/sushi-logo-favicon-transparent.png", type: "image/png" }],
+    shortcut: "/sushi/hero/sushi-logo-favicon-transparent.png",
+    apple: "/sushi/hero/sushi-logo-favicon-transparent.png",
   },
   description:
     "Drop in a data file and get a trustworthy, plain-English report you can share with your team: quality score, AI summary, charts, and answers to your questions. No code, no analyst required.",
