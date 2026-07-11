@@ -13,7 +13,7 @@ export interface HeroUploadCardProps {
   onFileAccepted: (file: File) => void;
   uploadRequiresAuthentication: boolean;
   onAuthenticationRequired: () => void;
-  onSample: () => void;
+  onSample: () => Promise<void>;
   onRetry: () => void;
 }
 

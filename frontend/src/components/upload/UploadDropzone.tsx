@@ -9,7 +9,7 @@ import { MAX_UPLOAD_BYTES, SUPPORTED_FILE_ACCEPT, SUPPORTED_FORMATS_COPY, SUPPOR
 
 interface UploadDropzoneProps {
   onFileAccepted: (file: File) => void;
-  onSample: () => void;
+  onSample: () => Promise<void>;
   uploadRequiresAuthentication?: boolean;
   onAuthenticationRequired?: () => void;
   disabled?: boolean;
@@ -29,6 +29,17 @@ export function UploadDropzone({
   const [state, setState] = useState<LocalState>("idle");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rejection, setRejection] = useState<{ kind: "size" | "format"; message: string } | null>(null);
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
+
+  const handleSample = useCallback(async () => {
+    if (isLoadingSample || disabled) return;
+    setIsLoadingSample(true);
+    try {
+      await onSample();
+    } finally {
+      setIsLoadingSample(false);
+    }
+  }, [disabled, isLoadingSample, onSample]);
 
   const onDrop = useCallback(
     (accepted: File[], rejections: FileRejection[]) => {
@@ -116,11 +127,12 @@ export function UploadDropzone({
 
       <div className={cn("mt-3 text-center", hero && "hero-sample-link")}>
         <button
-          onClick={onSample}
-          disabled={disabled}
+          onClick={() => void handleSample()}
+          disabled={disabled || isLoadingSample}
+          aria-live="polite"
           className="text-[13px] font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
         >
-          Try sample data
+          {isLoadingSample ? "Opening sample…" : "Try sample data"}
         </button>
       </div>
 
