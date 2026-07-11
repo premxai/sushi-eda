@@ -30,8 +30,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sushi-eda.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Sushi | Your RAW Data Served Perfectly",
+    default: "Sushi",
     template: "%s | Sushi",
+  },
+  icons: {
+    icon: [{ url: "/sushi/hero/sushi-logo-exact.png", type: "image/png" }],
+    shortcut: "/sushi/hero/sushi-logo-exact.png",
+    apple: "/sushi/hero/sushi-logo-exact.png",
   },
   description:
     "Drop in a data file and get a trustworthy, plain-English report you can share with your team: quality score, AI summary, charts, and answers to your questions. No code, no analyst required.",
