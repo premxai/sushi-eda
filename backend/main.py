@@ -255,6 +255,10 @@ async def _seed_example_dataset() -> None:
 async def get_example_dataset(db: AsyncSession = Depends(get_db)):
     """Return the pre-analyzed example dataset id, or 404 while it is still seeding."""
     if not defaults.EXAMPLE_DATASET_ID:
+        # A cold deploy can receive a request before startup's background
+        # seeding has populated the in-memory id. Seed lazily in that case.
+        await _seed_example_dataset()
+    if not defaults.EXAMPLE_DATASET_ID:
         raise HTTPException(status_code=404, detail="No example dataset available")
     result = await db.execute(
         # Only hand out the example once its analysis is finished

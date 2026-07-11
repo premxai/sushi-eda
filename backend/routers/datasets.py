@@ -37,7 +37,7 @@ import pandas as pd
 from advanced_stats import AdvancedStatistics
 from analysis_runner import sanitize_json
 from ai_limits import enforce_ai_limit
-from auth import get_current_user, validate_org_access
+from auth import get_current_user, get_optional_user, validate_org_access
 from db import get_db
 from db.models import Analysis, Dataset, User
 import defaults
@@ -114,6 +114,10 @@ def _ensure_dataset_visible(dataset: "Dataset", current_user: User) -> None:
         and dataset.created_by != current_user.id
     ):
         raise HTTPException(status_code=404, detail="Dataset not found")
+
+
+def _is_public_example(dataset_id: str) -> bool:
+    return bool(defaults.EXAMPLE_DATASET_ID and dataset_id == defaults.EXAMPLE_DATASET_ID)
 
 
 async def _get_dataset_or_404(
@@ -369,12 +373,25 @@ async def delete_dataset(
 async def get_dataset_analysis(
     dataset_id: str,
     org_id: str = Query(default="default"),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the latest analysis report (viewer+)."""
-    await validate_org_access(org_id, current_user, db)
-    await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    """Return the latest analysis report, including the public sample report."""
+    if _is_public_example(dataset_id):
+        result = await db.execute(
+            select(Dataset).where(
+                Dataset.id == dataset_id,
+                Dataset.org_id == resolve_org_id(org_id),
+                Dataset.status == "ready",
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Sample dataset not found")
+    else:
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        await validate_org_access(org_id, current_user, db)
+        await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     analysis = await _get_latest_analysis(dataset_id, db)
     return {
         "analysis_id": str(analysis.id),

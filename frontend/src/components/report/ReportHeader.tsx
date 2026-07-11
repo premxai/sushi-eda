@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { GitCompare, RotateCcw } from "lucide-react";
+import { GitCompare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/common/Logo";
+import { AccountMenu } from "@/components/common/AccountMenu";
 import { formatNumber } from "@/lib/formatters";
 
 interface ReportHeaderProps {
@@ -9,17 +10,16 @@ interface ReportHeaderProps {
   fileName: string;
   rows: number;
   columns: number;
-  onNewFile: () => void;
 }
 
-export function ReportHeader({ sectionTitle, fileName, rows, columns, onNewFile }: ReportHeaderProps) {
+export function ReportHeader({ sectionTitle, fileName, rows, columns }: ReportHeaderProps) {
   return (
     <header className="report-header site-header relative flex shrink-0 items-center justify-between border-b border-border bg-surface/90 px-5 backdrop-blur-xl sm:px-8">
       <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-        <button onClick={onNewFile} className="report-header-brand flex items-center gap-2.5" aria-label="Back to upload">
+        <Link href="/dashboard" className="report-header-brand flex items-center gap-2.5 no-underline" aria-label="Open overview dashboard">
           <Logo size={34} />
           <span className="hidden text-[19px] font-semibold tracking-[-0.03em] text-ink sm:inline">Sushi</span>
-        </button>
+        </Link>
         <span className="hidden h-8 w-px bg-border sm:block" />
         <div className="min-w-0">
           <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-brand sm:block">Analysis workspace</p>
@@ -35,9 +35,8 @@ export function ReportHeader({ sectionTitle, fileName, rows, columns, onNewFile 
             <GitCompare className="h-4 w-4" /> Compare files
           </Button>
         </Link>
-        <Button variant="ghost" size="md" className="rounded-full" onClick={onNewFile}>
-          <RotateCcw className="h-4 w-4" /> <span className="hidden sm:inline">New file</span>
-        </Button>
+        <Link href="/new-file" className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-[13px] font-semibold text-ink no-underline transition-colors hover:bg-surface-2 sm:px-4"><Plus className="h-4 w-4" /> <span className="hidden sm:inline">New file</span></Link>
+        <AccountMenu fallback="sign-in" />
       </div>
     </header>
   );

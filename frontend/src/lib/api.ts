@@ -33,6 +33,9 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   };
 
   if (axios.isAxiosError(error)) {
+    if (error.response?.status === 401) {
+      return "Your sign-in session is missing or expired. Please sign in again, then retry.";
+    }
     const detail = error.response?.data?.detail;
     if (typeof detail === "string" && detail.trim()) {
       return sanitizeDetail(detail);
@@ -127,12 +130,17 @@ export async function loadSampleData(): Promise<File> {
 
 /** Pre-analyzed example dataset seeded by the backend; null while it's still preparing. */
 export async function fetchExampleDataset(): Promise<{ dataset_id: string; filename: string } | null> {
-  try {
-    const { data } = await client.get<{ dataset_id: string; filename: string }>("/example");
-    return data;
-  } catch {
-    return null;
+  // The backend prepares the bundled example after boot. Poll briefly instead
+  // of falling back to a guest upload, which is intentionally unavailable.
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const { data } = await client.get<{ dataset_id: string; filename: string }>("/example");
+      return data;
+    } catch {
+      if (attempt < 7) await new Promise((resolve) => window.setTimeout(resolve, 900));
+    }
   }
+  return null;
 }
 
 // ── Visualizations ──────────────────────────────────────────────────────────

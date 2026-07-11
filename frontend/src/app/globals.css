@@ -823,6 +823,18 @@
   background: #0b351c;
 }
 
+.sushiHeroStage .hero-reference-account {
+  position: absolute;
+  top: 34px;
+  left: 1158px;
+  z-index: 21;
+  pointer-events: auto;
+}
+
+.sushiHeroStage .hero-reference-account .hero-reference-cta {
+  position: static;
+}
+
 .sushiHeroStage .hero-japanese-left,
 .sushiHeroStage .hero-japanese-right,
 .sushiHeroStage .hero-raw-card,

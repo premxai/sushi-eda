@@ -1,6 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
+import { AccountMenu } from "@/components/common/AccountMenu";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
@@ -14,10 +19,21 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ showCta = false }: SiteHeaderProps) {
+  const [homeHref, setHomeHref] = useState("/");
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const supabase = getSupabaseBrowserClient();
+    const sync = () => supabase.auth.getSession().then(({ data }) => setHomeHref(data.session ? "/dashboard" : "/"));
+    void sync();
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => setHomeHref(session ? "/dashboard" : "/"));
+    return () => subscription.subscription.unsubscribe();
+  }, []);
+
   return (
     <header className="site-header sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 no-underline">
+        <Link href={homeHref} className="flex items-center gap-2 no-underline">
           <Logo size={30} />
           <span className="text-[18px] font-semibold tracking-[-0.04em] text-ink">Sushi</span>
         </Link>
@@ -45,15 +61,7 @@ export function SiteHeader({ showCta = false }: SiteHeaderProps) {
             ))}
           </nav>
         </details>
-        {showCta && (
-          <a
-            href="/#upload"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-paper no-underline transition-opacity hover:opacity-90"
-          >
-            Get started free
-            <ArrowRight className="h-3.5 w-3.5" />
-          </a>
-        )}
+        <AccountMenu fallback={showCta ? "cta" : "sign-in"} />
       </div>
     </header>
   );

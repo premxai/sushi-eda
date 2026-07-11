@@ -10,7 +10,6 @@ import {
   fetchDatasetAnalysis,
   fetchExampleDataset,
   getApiErrorMessage,
-  loadSampleData,
   prewarmBackend,
   uploadFileAsync,
 } from "@/lib/api";
@@ -113,37 +112,29 @@ function HomeContent() {
   }, [router]);
 
   const handleSample = useCallback(async () => {
-    try {
-      const example = await fetchExampleDataset();
-      if (example) {
-        setIsUploading(true);
-        try {
-          const data = await fetchDatasetAnalysis(example.dataset_id);
-          setReport(data.report);
-          setFileName(example.filename);
-          setOpenDatasetId(example.dataset_id);
-          setAiNarrative(data.ai_narrative ?? null);
-          sessionStorage.setItem(REPORT_KEY, JSON.stringify(data.report));
-          sessionStorage.setItem(FILE_KEY, example.filename);
-          sessionStorage.setItem(DATASET_KEY, example.dataset_id);
-          setIsUploading(false);
-          return;
-        } catch {
-          setIsUploading(false);
-        }
-      }
-    } catch {
-      // fall through to uploading the sample file fresh
+    setError(null);
+    setIsUploading(true);
+    const example = await fetchExampleDataset();
+    if (!example) {
+      setIsUploading(false);
+      setError("The sample report is preparing. Please try again in a few seconds.");
+      return;
     }
     try {
-      const file = await loadSampleData();
-      // Sample data is intentionally available without an account. It uses
-      // the exact same upload/analysis pipeline as a user's authenticated file.
-      await handleFileAccepted(file, true);
+      const data = await fetchDatasetAnalysis(example.dataset_id);
+      setReport(data.report);
+      setFileName(example.filename);
+      setOpenDatasetId(example.dataset_id);
+      setAiNarrative(data.ai_narrative ?? null);
+      sessionStorage.setItem(REPORT_KEY, JSON.stringify(data.report));
+      sessionStorage.setItem(FILE_KEY, example.filename);
+      sessionStorage.setItem(DATASET_KEY, example.dataset_id);
     } catch (err) {
       setError(getApiErrorMessage(err, "Couldn't load the sample data. Please try again."));
+    } finally {
+      setIsUploading(false);
     }
-  }, [handleFileAccepted]);
+  }, []);
 
   const handleOpenDataset = useCallback(async (datasetId: string, filename?: string) => {
     setError(null);
@@ -170,6 +161,21 @@ function HomeContent() {
     router.replace("/");
     handleSample();
   }, [handleSample, router, searchParams]);
+
+  // The dedicated new-file page starts work, then hands the live job back to
+  // this workspace so report rendering and SSE handling stay in one place.
+  useEffect(() => {
+    const pendingId = searchParams.get("pending");
+    if (!pendingId) return;
+    setReport(null);
+    setFileName(searchParams.get("name") || "dataset");
+    setOpenDatasetId(null);
+    setAiNarrative(null);
+    setPendingDatasetId(pendingId);
+    setIsUploading(true);
+    setError(null);
+    router.replace("/");
+  }, [router, searchParams]);
 
   // Support /?open=<datasetId>&name=<filename> links from the datasets library.
   useEffect(() => {
@@ -201,7 +207,6 @@ function HomeContent() {
         fileName={fileName}
         datasetId={openDatasetId}
         aiNarrative={aiNarrative}
-        onNewFile={handleNewFile}
         onOpenDataset={handleOpenDataset}
       />
     );
