@@ -16,9 +16,10 @@ const NAV_LINKS = [
 
 interface SiteHeaderProps {
   showCta?: boolean;
+  showAccount?: boolean;
 }
 
-export function SiteHeader({ showCta = false }: SiteHeaderProps) {
+export function SiteHeader({ showCta = false, showAccount = true }: SiteHeaderProps) {
   const [homeHref, setHomeHref] = useState("/");
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function SiteHeader({ showCta = false }: SiteHeaderProps) {
             ))}
           </nav>
         </details>
-        <AccountMenu fallback={showCta ? "cta" : "sign-in"} />
+        {showAccount ? <AccountMenu fallback={showCta ? "cta" : "sign-in"} /> : showCta ? <Link href="/sign-up" className="inline-flex items-center rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-paper no-underline hover:opacity-90">Get started free</Link> : null}
       </div>
     </header>
   );

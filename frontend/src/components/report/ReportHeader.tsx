@@ -10,9 +10,10 @@ interface ReportHeaderProps {
   fileName: string;
   rows: number;
   columns: number;
+  isSampleMode: boolean;
 }
 
-export function ReportHeader({ sectionTitle, fileName, rows, columns }: ReportHeaderProps) {
+export function ReportHeader({ sectionTitle, fileName, rows, columns, isSampleMode }: ReportHeaderProps) {
   return (
     <header className="report-header site-header relative flex shrink-0 items-center justify-between border-b border-border bg-surface/90 px-5 backdrop-blur-xl sm:px-8">
       <div className="flex min-w-0 items-center gap-3 sm:gap-5">
@@ -30,12 +31,12 @@ export function ReportHeader({ sectionTitle, fileName, rows, columns }: ReportHe
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <Link href="/compare" className="hidden sm:block">
+        <Link href={isSampleMode ? "/sign-in?next=%2Fcompare" : "/compare"} className="hidden sm:block">
           <Button variant="secondary" size="md" className="rounded-full px-4">
             <GitCompare className="h-4 w-4" /> Compare files
           </Button>
         </Link>
-        <Link href="/new-file" className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-[13px] font-semibold text-ink no-underline transition-colors hover:bg-surface-2 sm:px-4"><Plus className="h-4 w-4" /> <span className="hidden sm:inline">New file</span></Link>
+        <Link href={isSampleMode ? "/sign-in?next=%2Fnew-file" : "/new-file"} className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-[13px] font-semibold text-ink no-underline transition-colors hover:bg-surface-2 sm:px-4"><Plus className="h-4 w-4" /> <span className="hidden sm:inline">New file</span></Link>
         <AccountMenu fallback="sign-in" />
       </div>
     </header>

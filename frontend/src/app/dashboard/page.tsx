@@ -3,20 +3,30 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FilePlus2, ShieldCheck, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      router.replace("/sign-in?next=/dashboard");
+      return;
+    }
     const supabase = getSupabaseBrowserClient();
     supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return router.replace("/sign-in?next=/dashboard");
       const metadata = data.user?.user_metadata as { full_name?: string; name?: string } | undefined;
       setName(metadata?.full_name || metadata?.name || data.user?.email?.split("@")[0] || "there");
+      setCheckingAuth(false);
     });
-  }, []);
+  }, [router]);
+
+  if (checkingAuth) return <main className="app-paper-page grid min-h-screen place-items-center" />;
 
   return (
     <main className="app-paper-page min-h-screen">

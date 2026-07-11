@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { GitCompareArrows, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { compareDatasets, DatasetComparisonResult, getApiErrorMessage } from "@/lib/api";
 import { qualityScoreSummary } from "@/lib/report-utils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
@@ -12,13 +13,27 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/common/Badge";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function ComparePage() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [file1, setFile1] = useState<File | null>(null);
   const [file2, setFile2] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DatasetComparisonResult | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      router.replace("/sign-in?next=/compare");
+      return;
+    }
+    getSupabaseBrowserClient().auth.getSession().then(({ data }) => {
+      if (!data.session) return router.replace("/sign-in?next=/compare");
+      setCheckingAuth(false);
+    });
+  }, [router]);
 
   const handleCompare = async () => {
     if (!file1 || !file2) return;
@@ -34,6 +49,8 @@ export default function ComparePage() {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) return <main className="app-paper-page grid min-h-screen place-items-center"><Loader2 className="h-6 w-6 animate-spin text-brand" /></main>;
 
   return (
     <div className="app-paper-page">

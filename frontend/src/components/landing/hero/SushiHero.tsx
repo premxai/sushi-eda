@@ -12,7 +12,7 @@ import { HeroUploadCard } from "@/components/landing/hero/HeroUploadCard";
 import { RawCsvCard } from "@/components/landing/hero/RawCsvCard";
 import { SushiReportCard } from "@/components/landing/hero/SushiReportCard";
 import { Logo } from "@/components/common/Logo";
-import { AccountMenu } from "@/components/common/AccountMenu";
+import { ArrowRight } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
@@ -68,14 +68,14 @@ export function SushiHero({
           <Image src="/sushi/hero/background-paper-16x9.png" alt="" fill priority className="hero-background" sizes="100vw" />
 
           <header className="hero-reference-header">
-            <Link href={uploadRequiresAuthentication ? "/" : "/dashboard"} className="hero-reference-logo" aria-label="Sushi home">
+            <Link href="/" className="hero-reference-logo" aria-label="Sushi home">
               <Logo size={58} />
               <span>Sushi</span>
             </Link>
             <nav aria-label="Main" className="hero-reference-nav">
               {NAV_LINKS.map((link) => <Link key={link.label} href={link.href}>{link.label}</Link>)}
             </nav>
-            <AccountMenu className="hero-reference-account" fallback="cta" />
+            <Link href="/sign-up" className="hero-reference-cta">Get started free <ArrowRight className="h-4 w-4" /></Link>
           </header>
 
           <div className="hero-reference-copy">

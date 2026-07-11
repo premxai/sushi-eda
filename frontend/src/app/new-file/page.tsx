@@ -9,7 +9,7 @@ import { getApiErrorMessage, uploadFileAsync } from "@/lib/api";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-const REPORT_KEYS = ["sushi_report", "sushi_filename", "sushi_dataset_id", "sushi_narrative"];
+const REPORT_KEYS = ["sushi_report", "sushi_filename", "sushi_dataset_id", "sushi_narrative", "sushi_sample_mode"];
 
 export default function NewFilePage() {
   const router = useRouter();

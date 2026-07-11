@@ -53,7 +53,7 @@ function MobileHero({
 }: LandingHeroProps) {
   return (
     <div className="hero-mobile-shell">
-      <SiteHeader />
+      <SiteHeader showCta showAccount={false} />
       <main className="container py-14 text-center">
         <p className="section-kicker justify-center">Data reports for people who aren&apos;t analysts</p>
         <h1 className="mx-auto mt-4 max-w-2xl font-display text-hero text-ink text-balance">Your <em className="font-display italic text-brand">RAW</em> Data<br />Served <em className="font-display italic text-brand">Perfectly.</em></h1>

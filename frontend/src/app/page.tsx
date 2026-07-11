@@ -20,6 +20,7 @@ const REPORT_KEY = "sushi_report";
 const FILE_KEY = "sushi_filename";
 const DATASET_KEY = "sushi_dataset_id";
 const NARRATIVE_KEY = "sushi_narrative";
+const SAMPLE_MODE_KEY = "sushi_sample_mode";
 
 function HomeContent() {
   const router = useRouter();
@@ -33,14 +34,25 @@ function HomeContent() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
+  const [isSampleMode, setIsSampleMode] = useState(false);
   const sampleRequestedRef = useRef(false);
 
   useEffect(() => {
     prewarmBackend();
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      setAuthResolved(true);
+      return;
+    }
     const supabase = getSupabaseBrowserClient();
-    supabase.auth.getSession().then(({ data }) => setIsAuthenticated(Boolean(data.session)));
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => setIsAuthenticated(Boolean(session)));
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(Boolean(data.session));
+      setAuthResolved(true);
+    });
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session));
+      setAuthResolved(true);
+    });
     return () => subscription.subscription.unsubscribe();
   }, []);
 
@@ -53,6 +65,7 @@ function HomeContent() {
       setFileName(sessionStorage.getItem(FILE_KEY) || "dataset");
       setOpenDatasetId(sessionStorage.getItem(DATASET_KEY));
       setAiNarrative(sessionStorage.getItem(NARRATIVE_KEY) || null);
+      setIsSampleMode(sessionStorage.getItem(SAMPLE_MODE_KEY) === "1");
     } catch {
       sessionStorage.removeItem(REPORT_KEY);
     }
@@ -96,7 +109,9 @@ function HomeContent() {
     setError(null);
     setFileName(file.name);
     setPendingDatasetId(null);
+    setIsSampleMode(false);
     sessionStorage.removeItem(REPORT_KEY);
+    sessionStorage.removeItem(SAMPLE_MODE_KEY);
 
     try {
       const result = await uploadFileAsync(file, "default", setUploadProgress);
@@ -114,6 +129,7 @@ function HomeContent() {
   const handleSample = useCallback(async () => {
     setError(null);
     setIsUploading(true);
+    setIsSampleMode(true);
     const example = await fetchExampleDataset();
     if (!example) {
       setIsUploading(false);
@@ -129,6 +145,7 @@ function HomeContent() {
       sessionStorage.setItem(REPORT_KEY, JSON.stringify(data.report));
       sessionStorage.setItem(FILE_KEY, example.filename);
       sessionStorage.setItem(DATASET_KEY, example.dataset_id);
+      sessionStorage.setItem(SAMPLE_MODE_KEY, "1");
     } catch (err) {
       setError(getApiErrorMessage(err, "Couldn't load the sample data. Please try again."));
     } finally {
@@ -139,6 +156,7 @@ function HomeContent() {
   const handleOpenDataset = useCallback(async (datasetId: string, filename?: string) => {
     setError(null);
     setIsUploading(true);
+    setIsSampleMode(false);
     try {
       const data = await fetchDatasetAnalysis(datasetId);
       setReport(data.report);
@@ -148,6 +166,7 @@ function HomeContent() {
       sessionStorage.setItem(REPORT_KEY, JSON.stringify(data.report));
       sessionStorage.setItem(FILE_KEY, filename || "dataset");
       sessionStorage.setItem(DATASET_KEY, datasetId);
+      sessionStorage.removeItem(SAMPLE_MODE_KEY);
     } catch (err) {
       setError(getApiErrorMessage(err, "Couldn't open that dataset."));
     } finally {
@@ -172,8 +191,10 @@ function HomeContent() {
     setOpenDatasetId(null);
     setAiNarrative(null);
     setPendingDatasetId(pendingId);
+    setIsSampleMode(false);
     setIsUploading(true);
     setError(null);
+    sessionStorage.removeItem(SAMPLE_MODE_KEY);
     router.replace("/");
   }, [router, searchParams]);
 
@@ -198,7 +219,20 @@ function HomeContent() {
     sessionStorage.removeItem(FILE_KEY);
     sessionStorage.removeItem(DATASET_KEY);
     sessionStorage.removeItem(NARRATIVE_KEY);
+    sessionStorage.removeItem(SAMPLE_MODE_KEY);
   }, []);
+
+  const isPublicWorkflow = searchParams.get("sample") === "1" || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || sampleRequestedRef.current || isSampleMode;
+
+  useEffect(() => {
+    if (authResolved && isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
+      router.replace("/dashboard");
+    }
+  }, [authResolved, isAuthenticated, isPublicWorkflow, isUploading, report, router]);
+
+  if (!authResolved || (isAuthenticated && !isPublicWorkflow && !report && !isUploading)) {
+    return null;
+  }
 
   if (report) {
     return (
@@ -207,6 +241,7 @@ function HomeContent() {
         fileName={fileName}
         datasetId={openDatasetId}
         aiNarrative={aiNarrative}
+        isSampleMode={isSampleMode}
         onOpenDataset={handleOpenDataset}
       />
     );

@@ -21,19 +21,20 @@ interface ReportShellProps {
   fileName: string;
   datasetId: string | null;
   aiNarrative: string | null;
+  isSampleMode: boolean;
   onOpenDataset: (datasetId: string, filename?: string) => void;
 }
 
 const SECTION_LABELS: Record<NavSection, string> = Object.fromEntries(NAV_ITEMS.map((item) => [item.key, item.label])) as Record<NavSection, string>;
 
-export function ReportShell({ report, fileName, datasetId, aiNarrative }: ReportShellProps) {
+export function ReportShell({ report, fileName, datasetId, aiNarrative, isSampleMode }: ReportShellProps) {
   const [active, setActive] = useState<NavSection>("ai-summary");
   const [narrative, setNarrative] = useState(aiNarrative);
   const [notes, setNotes] = useState("");
 
   return (
     <div className="app-workspace-page flex h-screen flex-col">
-      <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} />
+      <ReportHeader sectionTitle={SECTION_LABELS[active]} fileName={fileName} rows={report.basic_info.rows} columns={report.basic_info.columns} isSampleMode={isSampleMode} />
       <div className="report-shell-body flex flex-1 overflow-hidden">
         <aside className="report-shell-nav shrink-0 overflow-y-auto border-r border-border bg-surface/55 backdrop-blur scrollbar-thin">
           <ReportNav
