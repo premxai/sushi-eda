@@ -3,18 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useLayoutEffect, useRef } from "react";
-import type { ReactNode } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { LandingHeroProps } from "@/components/landing/LandingHero";
 import { HeroConnectionLines } from "@/components/landing/hero/HeroConnectionLines";
-import { HeroJapaneseTextLeft, HeroJapaneseTextRight } from "@/components/landing/hero/HeroJapaneseText";
+import { HeroJapaneseTextLeft } from "@/components/landing/hero/HeroJapaneseText";
 import { CleanedDataCard } from "@/components/landing/hero/CleanedDataCard";
 import { FeatureRow } from "@/components/landing/hero/FeatureRow";
 import { HeroUploadCard } from "@/components/landing/hero/HeroUploadCard";
 import { RawCsvCard } from "@/components/landing/hero/RawCsvCard";
 import { SushiReportCard } from "@/components/landing/hero/SushiReportCard";
 import { Logo } from "@/components/common/Logo";
-import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
@@ -109,16 +107,10 @@ export function SushiHero({
           <SushiReportCard className="hero-report-card" />
           <HeroConnectionLines />
           <HeroJapaneseTextLeft className="hero-japanese-left" />
-          <HeroJapaneseTextRight className="hero-japanese-right" />
-          <FlowPill className="hero-action-pill" icon={<Sparkles className="h-4 w-4" />}>Clear. Actionable. Beautiful.</FlowPill>
           <p className="hero-workflow"><span>Raw files in</span><b>{"\u2192"}</b><span className="matcha">Cleaned Data out</span><b>{"\u2192"}</b><span className="coral">Clear Insights delivered</span></p>
           <FeatureRow />
         </div>
       </div>
     </section>
   );
-}
-
-function FlowPill({ className, icon, children }: { className: string; icon: ReactNode; children: ReactNode }) {
-  return <div className={cn("hero-flow-pill", className)}>{icon}{children}</div>;
 }
