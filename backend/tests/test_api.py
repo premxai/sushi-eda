@@ -349,6 +349,30 @@ def test_narrative_byok_uses_request_key_without_returning_it(client, viz_datase
     ai_limits._local_counts.clear()
 
 
+def test_narrative_byok_failure_never_echoes_key(client, viz_dataset_id, monkeypatch):
+    """Provider failures must not leak a supplied key through the API response."""
+    import ai_limits
+    import ai_narrative
+
+    supplied_key = "sk-ant-test-key-must-never-be-echoed"
+
+    def generate(report, dataset_name="", api_key=None):
+        raise ai_narrative.NarrativeGenerationError(f"Provider rejected {api_key}")
+
+    monkeypatch.setattr(ai_limits, "AI_DAILY_LIMIT_PER_IP", 1_000)
+    ai_limits._local_counts.clear()
+    monkeypatch.setattr(ai_narrative, "generate_narrative", generate)
+
+    response = client.post(
+        f"/datasets/{viz_dataset_id}/analysis/narrative",
+        headers={"X-Anthropic-API-Key": supplied_key},
+    )
+
+    assert response.status_code == 502, response.text
+    assert supplied_key not in response.text
+    ai_limits._local_counts.clear()
+
+
 def test_visualize_all_includes_new_chart_types(client, viz_dataset_id):
     """sample_sales.csv has date/category/numeric columns, so every new
     auto-generated chart type should show up in the combined /visualize
