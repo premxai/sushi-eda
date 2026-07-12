@@ -2,6 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { useJobStream } from "@/hooks/useJobStream";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { ReportShell } from "@/components/report/ReportShell";
@@ -45,10 +46,12 @@ function HomeContent() {
       return;
     }
     const supabase = getSupabaseBrowserClient();
-    supabase.auth.getSession().then(({ data }) => {
-      setIsAuthenticated(Boolean(data.session));
-      setAuthResolved(true);
-    });
+    supabase.auth.getSession()
+      .then(({ data }) => setIsAuthenticated(Boolean(data.session)))
+      // Never leave an upload workspace blank if the browser has a temporary
+      // auth-network failure. Protected requests still require a valid token.
+      .catch(() => setIsAuthenticated(false))
+      .finally(() => setAuthResolved(true));
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(Boolean(session));
       setAuthResolved(true);
@@ -86,17 +89,22 @@ function HomeContent() {
           if (data.ai_narrative) sessionStorage.setItem(NARRATIVE_KEY, data.ai_narrative);
           setIsUploading(false);
           setPendingDatasetId(null);
+          // Keep the upload identifier in the address bar until the finished
+          // report is mounted. Removing it earlier made a refresh or route
+          // update fall back to the landing flow while analysis was running.
+          router.replace("/");
         })
         .catch(() => {
           setError("Analysis finished but the report failed to load. Please try again.");
           setIsUploading(false);
-          setPendingDatasetId(null);
+          // Preserve the pending identifier so this authenticated workspace
+          // can be resumed after a refresh instead of returning to landing.
         });
     }
     if (jobStream.status === "failed") {
       setIsUploading(false);
     }
-  }, [jobStream.status, jobStream.analysisId, pendingDatasetId, fileName]);
+  }, [jobStream.status, jobStream.analysisId, pendingDatasetId, fileName, router]);
 
   const handleFileAccepted = useCallback(async (file: File, allowGuestUpload = false) => {
     if (!allowGuestUpload && !isAuthenticated) {
@@ -195,8 +203,7 @@ function HomeContent() {
     setIsUploading(true);
     setError(null);
     sessionStorage.removeItem(SAMPLE_MODE_KEY);
-    router.replace("/");
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   // Support /?open=<datasetId>&name=<filename> links from the datasets library.
   useEffect(() => {
@@ -220,9 +227,10 @@ function HomeContent() {
     sessionStorage.removeItem(DATASET_KEY);
     sessionStorage.removeItem(NARRATIVE_KEY);
     sessionStorage.removeItem(SAMPLE_MODE_KEY);
-  }, []);
+    router.replace(isAuthenticated ? "/new-file" : "/");
+  }, [isAuthenticated, router]);
 
-  const isPublicWorkflow = searchParams.get("sample") === "1" || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || sampleRequestedRef.current || isSampleMode;
+  const isPublicWorkflow = searchParams.get("sample") === "1" || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || Boolean(pendingDatasetId) || sampleRequestedRef.current || isSampleMode;
 
   useEffect(() => {
     if (authResolved && isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
@@ -230,7 +238,19 @@ function HomeContent() {
     }
   }, [authResolved, isAuthenticated, isPublicWorkflow, isUploading, report, router]);
 
-  if (!authResolved || (isAuthenticated && !isPublicWorkflow && !report && !isUploading)) {
+  if (!authResolved) {
+    return (
+      <main className="app-paper-page grid min-h-screen place-items-center p-6 text-center">
+        <div>
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-brand" />
+          <p className="mt-4 text-[15px] font-semibold text-ink">Opening your workspace…</p>
+          <p className="mt-1.5 text-[13px] text-ink-secondary">Your analysis will stay here while it finishes.</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
     return null;
   }
 
