@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useJobStream } from "@/hooks/useJobStream";
 import { LandingHero } from "@/components/landing/LandingHero";
+import { SiteHeader } from "@/components/landing/SiteHeader";
 import { ReportShell } from "@/components/report/ReportShell";
+import { UploadProgress } from "@/components/upload/UploadProgress";
 import {
   fetchAnalysis,
   fetchDatasetAnalysis,
@@ -231,6 +233,7 @@ function HomeContent() {
   }, [isAuthenticated, router]);
 
   const isPublicWorkflow = searchParams.get("sample") === "1" || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || Boolean(pendingDatasetId) || sampleRequestedRef.current || isSampleMode;
+  const isRestoringWorkspace = isUploading || Boolean(pendingDatasetId) || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || Boolean(searchParams.get("sample"));
 
   useEffect(() => {
     if (authResolved && isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
@@ -264,6 +267,36 @@ function HomeContent() {
         isSampleMode={isSampleMode}
         onOpenDataset={handleOpenDataset}
       />
+    );
+  }
+
+  // Never show the marketing hero while a user is resuming an upload, sample,
+  // or saved report. This is the dedicated authenticated workspace handoff.
+  if (isRestoringWorkspace) {
+    return (
+      <main className="app-paper-page min-h-screen">
+        <SiteHeader />
+        <section className="container grid min-h-[calc(100vh-4rem)] place-items-center py-12">
+          <div className="w-full max-w-xl text-center">
+            <p className="section-kicker">Analysis workspace</p>
+            <h1 className="mt-4 font-display text-[44px] leading-[0.94] tracking-[-0.045em] text-ink sm:text-[58px]">
+              Preparing your <span className="text-brand">report.</span>
+            </h1>
+            <p className="mx-auto mt-4 max-w-md text-[14px] leading-6 text-ink-secondary">
+              {fileName ? `${fileName} is staying open while Sushi finishes the analysis.` : "Your file is staying open while Sushi finishes the analysis."}
+            </p>
+            <div className="mx-auto mt-8 max-w-md text-left">
+              <UploadProgress
+                status={jobStream.status}
+                progress={Math.max(uploadProgress, jobStream.progress)}
+                stage={jobStream.stage}
+                error={jobStream.error || error}
+                onRetry={handleNewFile}
+              />
+            </div>
+          </div>
+        </section>
+      </main>
     );
   }
 
