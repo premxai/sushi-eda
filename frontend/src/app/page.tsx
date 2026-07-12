@@ -63,6 +63,14 @@ function HomeContent() {
 
   // Restore the last session's report so a refresh doesn't lose the user's work.
   useEffect(() => {
+    if (searchParams.get("signed-out") === "1") {
+      sessionStorage.removeItem(REPORT_KEY);
+      sessionStorage.removeItem(FILE_KEY);
+      sessionStorage.removeItem(DATASET_KEY);
+      sessionStorage.removeItem(NARRATIVE_KEY);
+      sessionStorage.removeItem(SAMPLE_MODE_KEY);
+      return;
+    }
     const stored = sessionStorage.getItem(REPORT_KEY);
     if (!stored) return;
     try {
@@ -74,7 +82,7 @@ function HomeContent() {
     } catch {
       sessionStorage.removeItem(REPORT_KEY);
     }
-  }, []);
+  }, [searchParams]);
 
   const jobStream = useJobStream(pendingDatasetId);
 
@@ -242,7 +250,7 @@ function HomeContent() {
     }
   }, [authResolved, explicitlySignedOut, isAuthenticated, isPublicWorkflow, isUploading, report, router]);
 
-  if (!authResolved) {
+  if (!authResolved && !explicitlySignedOut) {
     return (
       <main className="app-paper-page grid min-h-screen place-items-center p-6 text-center">
         <div>

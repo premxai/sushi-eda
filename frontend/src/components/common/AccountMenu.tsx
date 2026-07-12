@@ -45,6 +45,11 @@ export function AccountMenu({ className, fallback = "sign-in" }: AccountMenuProp
       // server is temporarily unavailable.
       await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
     }
+    // The root route can restore an in-progress report from session storage.
+    // Remove it before navigation so logout always opens the public hero.
+    ["sushi_report", "sushi_filename", "sushi_dataset_id", "sushi_narrative", "sushi_sample_mode"].forEach((key) => {
+      sessionStorage.removeItem(key);
+    });
     // Replace prevents Back from restoring a private workspace after logout.
     window.location.replace("/?signed-out=1");
   };
