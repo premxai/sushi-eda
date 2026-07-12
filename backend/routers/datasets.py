@@ -44,7 +44,7 @@ import defaults
 from defaults import resolve_org_id
 from duckdb_query import explain_query, get_schema, run_query
 from export_utils import DataExporter
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 from fastapi.responses import Response
 from loguru import logger
 from polars_loader import parse_to_polars
@@ -408,6 +408,7 @@ async def get_dataset_analysis(
 async def regenerate_narrative(
     dataset_id: str,
     org_id: str = Query(default="default"),
+    anthropic_api_key: str | None = Header(default=None, alias="X-Anthropic-API-Key"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _ai_limit: None = Depends(enforce_ai_limit),
@@ -425,12 +426,21 @@ async def regenerate_narrative(
 
     import asyncio
 
-    from ai_narrative import generate_narrative
+    from ai_narrative import NarrativeGenerationError, generate_narrative
     from sqlalchemy import update as sa_update
 
-    narrative = await asyncio.to_thread(
-        generate_narrative, analysis.report, dataset.name or str(dataset_id)
-    )
+    byok = (anthropic_api_key or "").strip() or None
+    if byok and len(byok) < 20:
+        raise HTTPException(status_code=400, detail="Enter a valid Anthropic API key.")
+    try:
+        narrative = await asyncio.to_thread(
+            generate_narrative, analysis.report, dataset.name or str(dataset_id), byok
+        )
+    except NarrativeGenerationError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Sushi could not use that Anthropic key. Check it has API access and try again.",
+        ) from exc
     if narrative is None:
         raise HTTPException(
             status_code=503,

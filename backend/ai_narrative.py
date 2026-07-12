@@ -26,8 +26,12 @@ AI_MODEL = os.getenv(
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "1024"))
 
 
+class NarrativeGenerationError(RuntimeError):
+    """A supplied BYOK credential could not produce a narrative."""
+
+
 def generate_narrative(
-    report: dict[str, Any], dataset_name: str = "the dataset"
+    report: dict[str, Any], dataset_name: str = "the dataset", api_key: str | None = None
 ) -> str | None:
     """
     Generate a markdown insight narrative for an EDA report.
@@ -35,14 +39,15 @@ def generate_narrative(
     Returns the narrative string, or None if AI is disabled / key missing.
     Errors are swallowed so analysis still completes without a narrative.
     """
-    if not ANTHROPIC_API_KEY:
+    resolved_api_key = api_key or ANTHROPIC_API_KEY
+    if not resolved_api_key:
         logger.info("ANTHROPIC_API_KEY not set — skipping AI narrative")
         return None
 
     try:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=resolved_api_key)
 
         prompt = _build_prompt(report, dataset_name)
         message = client.messages.create(
@@ -54,8 +59,11 @@ def generate_narrative(
         logger.info(f"AI narrative generated ({len(narrative)} chars)")
         return narrative
 
-    except Exception as e:
-        logger.warning(f"AI narrative generation failed: {e}")
+    except Exception as exc:
+        # Do not log a user-supplied key or a provider response containing it.
+        logger.warning(f"AI narrative generation failed: {type(exc).__name__}")
+        if api_key:
+            raise NarrativeGenerationError("The supplied Anthropic key could not generate a summary.") from exc
         return None
 
 

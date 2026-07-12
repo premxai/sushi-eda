@@ -284,8 +284,13 @@ export async function askDataset(
 }
 
 /** Generate (or regenerate) the plain-English AI summary for the latest analysis. */
-export async function regenerateNarrative(datasetId: string, orgId: string = "default"): Promise<{ analysis_id: string; ai_narrative: string }> {
-  const { data } = await client.post(`/datasets/${datasetId}/analysis/narrative?org_id=${orgId}`, {}, { timeout: 90_000 });
+export async function regenerateNarrative(
+  datasetId: string,
+  orgId: string = "default",
+  anthropicApiKey?: string,
+): Promise<{ analysis_id: string; ai_narrative: string }> {
+  const headers = anthropicApiKey ? { "X-Anthropic-API-Key": anthropicApiKey.trim() } : undefined;
+  const { data } = await client.post(`/datasets/${datasetId}/analysis/narrative?org_id=${orgId}`, {}, { headers, timeout: 90_000 });
   return data;
 }
 

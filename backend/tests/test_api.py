@@ -322,6 +322,33 @@ def viz_dataset_id(client, sample_csv_path) -> str:
     return _upload_sample(client, sample_csv_path)
 
 
+def test_narrative_byok_uses_request_key_without_returning_it(client, viz_dataset_id, monkeypatch):
+    """A BYOK key is forwarded only to the generator and never echoed back."""
+    import ai_limits
+    import ai_narrative
+
+    supplied_key = "sk-ant-test-key-used-for-this-request-only"
+    seen: dict[str, str | None] = {}
+
+    def generate(report, dataset_name="", api_key=None):
+        seen["key"] = api_key
+        return "## Executive Summary\nGenerated with the supplied key."
+
+    monkeypatch.setattr(ai_limits, "AI_DAILY_LIMIT_PER_IP", 1_000)
+    ai_limits._local_counts.clear()
+    monkeypatch.setattr(ai_narrative, "generate_narrative", generate)
+
+    response = client.post(
+        f"/datasets/{viz_dataset_id}/analysis/narrative",
+        headers={"X-Anthropic-API-Key": supplied_key},
+    )
+
+    assert response.status_code == 200, response.text
+    assert seen["key"] == supplied_key
+    assert supplied_key not in response.text
+    ai_limits._local_counts.clear()
+
+
 def test_visualize_all_includes_new_chart_types(client, viz_dataset_id):
     """sample_sales.csv has date/category/numeric columns, so every new
     auto-generated chart type should show up in the combined /visualize
