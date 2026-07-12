@@ -40,8 +40,13 @@ export function AccountMenu({ className, fallback = "sign-in" }: AccountMenuProp
   }, []);
 
   const signOut = async () => {
-    if (isSupabaseConfigured) await getSupabaseBrowserClient().auth.signOut();
-    window.location.assign("/");
+    if (isSupabaseConfigured) {
+      // A local sign-out clears this browser immediately even if the auth
+      // server is temporarily unavailable.
+      await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
+    }
+    // Replace prevents Back from restoring a private workspace after logout.
+    window.location.replace("/?signed-out=1");
   };
 
   if (!account) {

@@ -233,13 +233,14 @@ function HomeContent() {
   }, [isAuthenticated, router]);
 
   const isPublicWorkflow = searchParams.get("sample") === "1" || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || Boolean(pendingDatasetId) || sampleRequestedRef.current || isSampleMode;
+  const explicitlySignedOut = searchParams.get("signed-out") === "1";
   const isRestoringWorkspace = isUploading || Boolean(pendingDatasetId) || Boolean(searchParams.get("pending")) || Boolean(searchParams.get("open")) || Boolean(searchParams.get("sample"));
 
   useEffect(() => {
-    if (authResolved && isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
+    if (authResolved && isAuthenticated && !explicitlySignedOut && !isPublicWorkflow && !report && !isUploading) {
       router.replace("/dashboard");
     }
-  }, [authResolved, isAuthenticated, isPublicWorkflow, isUploading, report, router]);
+  }, [authResolved, explicitlySignedOut, isAuthenticated, isPublicWorkflow, isUploading, report, router]);
 
   if (!authResolved) {
     return (
@@ -253,7 +254,7 @@ function HomeContent() {
     );
   }
 
-  if (isAuthenticated && !isPublicWorkflow && !report && !isUploading) {
+  if (isAuthenticated && !explicitlySignedOut && !isPublicWorkflow && !report && !isUploading) {
     return null;
   }
 
