@@ -778,7 +778,7 @@ async def get_dataset_rows(
     columns: Optional[str] = Query(default=None, description="Comma-separated column names to include"),
     limit: int = Query(default=5000, ge=1, le=_MAX_DATA_ROWS),
     org_id: str = Query(default="default"),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Full-dataset rows (capped) for client-side chart building (viewer+).
@@ -787,8 +787,24 @@ async def get_dataset_rows(
     Custom Chart Builder needs real aggregates (sums, group counts) across
     the actual dataset, so it calls this instead of reading report.preview.
     """
-    await validate_org_access(org_id, current_user, db)
-    dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
+    # The only anonymous raw-data view is the bundled public sample. Every
+    # user upload keeps the normal ownership and organisation checks.
+    if _is_public_example(dataset_id):
+        result = await db.execute(
+            select(Dataset).where(
+                Dataset.id == dataset_id,
+                Dataset.org_id == resolve_org_id(org_id),
+                Dataset.status == "ready",
+            )
+        )
+        dataset = result.scalar_one_or_none()
+        if dataset is None:
+            raise HTTPException(status_code=404, detail="Sample dataset not found")
+    else:
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        await validate_org_access(org_id, current_user, db)
+        dataset = await _get_dataset_or_404(dataset_id, org_id, db, current_user)
     df = _load_df_from_r2(dataset.file_key, dataset.file_format)
 
     if columns:

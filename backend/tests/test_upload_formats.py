@@ -19,12 +19,18 @@ import main
 def client():
     """Run uploads against the app's local, demo-mode test configuration."""
     original = ai_narrative.generate_narrative
+    limiter_enabled = main.limiter.enabled
     ai_narrative.generate_narrative = lambda report, dataset_name="": "Test narrative"
+    # The main integration suite intentionally exercises the production
+    # upload cap. This module needs six additional uploads solely to validate
+    # accepted formats, so keep the tests independent of execution order.
+    main.limiter.enabled = False
     try:
         with TestClient(main.app) as test_client:
             yield test_client
     finally:
         ai_narrative.generate_narrative = original
+        main.limiter.enabled = limiter_enabled
 
 
 def _xlsx() -> bytes:

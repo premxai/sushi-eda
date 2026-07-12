@@ -11,11 +11,15 @@ _TEST_DIR = tempfile.mkdtemp(prefix="sushi_test_")
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{os.path.join(_TEST_DIR, 'test.db')}"
 os.environ["LOCAL_STORAGE_DIR"] = os.path.join(_TEST_DIR, "storage")
 os.environ["ENVIRONMENT"] = "development"
-os.environ.pop("ANTHROPIC_API_KEY", None)  # AI disabled by default in tests
-os.environ.pop("R2_ACCOUNT_ID", None)      # force local storage
-os.environ.pop("CLERK_SECRET_KEY", None)   # compatibility with old local envs
-os.environ.pop("SUPABASE_URL", None)       # force demo mode
-os.environ.pop("SUPABASE_PUBLISHABLE_KEY", None)
+# main.py loads backend/.env during import. Set explicit blank values rather
+# than removing them, so python-dotenv does not reintroduce a developer's
+# production credentials into this isolated demo-mode test process.
+os.environ["ANTHROPIC_API_KEY"] = ""        # AI disabled by default in tests
+os.environ["R2_ACCOUNT_ID"] = ""            # force local storage
+os.environ["REDIS_URL"] = ""                # keep rate/cache state isolated
+os.environ["CLERK_SECRET_KEY"] = ""         # compatibility with old local envs
+os.environ["SUPABASE_URL"] = ""             # force demo mode
+os.environ["SUPABASE_PUBLISHABLE_KEY"] = ""
 
 import sys
 

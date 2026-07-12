@@ -15,6 +15,7 @@ import { ChartsSection } from "@/components/report/ChartsSection";
 import { AINotesSection } from "@/components/report/AINotesSection";
 import { SqlEditorSection } from "@/components/report/SqlEditorSection";
 import { ReportsSection } from "@/components/report/ReportsSection";
+import { RawDataSection } from "@/components/report/RawDataSection";
 
 interface ReportShellProps {
   report: EDAReport;
@@ -50,6 +51,7 @@ export function ReportShell({ report, fileName, datasetId, aiNarrative, isSample
           <div className="report-content mx-auto">
             {active === "ai-summary" && <AISummarySection narrative={narrative} datasetId={datasetId} report={report} onNarrativeChange={setNarrative} />}
             {active === "overview" && <OverviewSection info={report.basic_info} qualityScore={report.quality_score} />}
+            {active === "raw-data" && <RawDataSection datasetId={datasetId} preview={report.preview} />}
             {active === "ask" && <AskDataSection datasetId={datasetId} columns={report.column_analysis} />}
             {active === "fields" && (
               <FieldHealthSection columns={report.column_analysis} typeSuggestions={report.type_suggestions} totalRows={report.basic_info.rows} datasetId={datasetId} />

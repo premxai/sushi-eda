@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Sigma,
   Sparkles,
+  Table2,
   TerminalSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 export type NavSection =
   | "ai-summary"
   | "overview"
+  | "raw-data"
   | "ask"
   | "fields"
   | "stats"
@@ -40,6 +42,7 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { key: "ai-summary", label: "AI Summary", icon: Sparkles },
   { key: "overview", label: "Overview", icon: BarChart3 },
+  { key: "raw-data", label: "Raw Data", icon: Table2 },
   { key: "ask", label: "Ask Your Data", icon: MessageSquareText },
   { key: "fields", label: "Field Health", icon: Columns3 },
   { key: "stats", label: "Compare & Validate", icon: Sigma },
@@ -61,7 +64,7 @@ interface ReportNavProps {
 }
 
 const NAV_GROUPS = [
-  { label: "Explore", keys: ["ai-summary", "overview", "ask"] as NavSection[] },
+  { label: "Explore", keys: ["ai-summary", "overview", "raw-data", "ask"] as NavSection[] },
   { label: "Inspect", keys: ["fields", "stats", "correlations", "outliers", "charts"] as NavSection[] },
   { label: "Create", keys: ["notes", "sql", "reports"] as NavSection[] },
 ];
