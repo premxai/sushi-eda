@@ -64,7 +64,7 @@ export default function NewFilePage() {
             <UploadDropzone onFileAccepted={handleFileAccepted} onSample={async () => router.push("/?sample=1")} />
           )}
           {error && <p role="alert" className="mt-4 rounded-xl border border-danger/25 bg-danger-weak px-4 py-3 text-[13px] text-danger">{error}</p>}
-          <p className="mt-5 flex items-center justify-center gap-2 text-center text-[12px] leading-5 text-ink-tertiary"><ShieldCheck className="h-4 w-4 shrink-0 text-success" />Your file is private and automatically deleted after 7 days.</p>
+          <p className="mt-5 flex items-center justify-center gap-2 text-center text-[12px] leading-5 text-ink-tertiary"><ShieldCheck className="h-4 w-4 shrink-0 text-success" />Your file is private. Unsaved files are automatically deleted after 7 days.</p>
         </section>
       </div>
     </main>

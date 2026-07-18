@@ -34,7 +34,7 @@ const GUIDE_SECTIONS = [
     id: "privacy",
     title: "Seven-day retention by default",
     icon: ShieldCheck,
-    body: "Uploaded files and generated reports are deleted automatically after seven days. Sushi does not use uploaded data to train AI models.",
+    body: "Unsaved uploaded files and generated reports are deleted automatically after seven days. Saved dashboard items remain until you delete them. Sushi does not use uploaded data to train AI models.",
   },
 ];
 

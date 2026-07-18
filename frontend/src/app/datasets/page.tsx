@@ -48,7 +48,7 @@ export default function DatasetsPage() {
     <div className="app-paper-page">
       <SiteHeader />
       <div className="container py-8">
-        <PageHeader title="Datasets" description="Everything you've uploaded in this session. Files and their reports are deleted automatically after 7 days." />
+        <PageHeader title="Datasets" description="Everything you've uploaded in this session. Unsaved files and their reports are deleted automatically after 7 days." />
 
         <div className="mt-5 flex gap-1 border-b border-border">
           {(["active", "archived"] as Tab[]).map((t) => (
