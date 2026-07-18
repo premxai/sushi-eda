@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/landing/SiteHeader";
 import { PageHeader } from "@/components/common/PageHeader";
 
 const PRINCIPLES = [
-  { title: "Deleted after 7 days", body: "Files and generated reports expire automatically. You do not need to remember to clean them up.", icon: Clock3 },
+  { title: "Unsaved items deleted after 7 days", body: "Unsaved files and generated reports expire automatically. Saved dashboard items remain until you delete them.", icon: Clock3 },
   { title: "Never used for training", body: "Uploaded data is not used to train Sushi or third-party AI models.", icon: BotOff },
   { title: "Private unless you share", body: "A report becomes public only when you deliberately create a share link.", icon: LockKeyhole },
 ];

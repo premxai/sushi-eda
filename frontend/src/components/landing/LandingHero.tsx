@@ -61,7 +61,7 @@ function MobileHero({
         <div id="upload" className="mx-auto mt-8 max-w-xl text-left">
           {topError && <div className="mb-4 flex items-start gap-3 rounded-md border border-danger/25 bg-danger-weak px-4 py-3 text-[13px]"><p className="flex-1 text-ink-secondary">{topError}</p><button onClick={onClearTopError} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button></div>}
           {isUploading ? <UploadProgress status={jobStatus} progress={jobProgress} stage={jobStage} error={jobError} onRetry={onRetry} /> : <UploadDropzone onFileAccepted={onFileAccepted} onSample={onSample} uploadRequiresAuthentication={uploadRequiresAuthentication} onAuthenticationRequired={onAuthenticationRequired} />}
-          <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-tertiary"><ShieldCheck className="h-3.5 w-3.5 text-success" />Your file is deleted after 7 days. <Link href="/privacy" className="underline underline-offset-2">Privacy details</Link></p>
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-tertiary"><ShieldCheck className="h-3.5 w-3.5 text-success" />Unsaved files are deleted after 7 days. <Link href="/privacy" className="underline underline-offset-2">Privacy details</Link></p>
         </div>
         <div className="hero-mobile-art" aria-hidden>
           <Image src="/sushi/hero/chef-transparent.png?v=1" alt="" width={1086} height={1448} />

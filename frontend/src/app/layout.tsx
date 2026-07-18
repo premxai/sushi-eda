@@ -57,6 +57,20 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
     siteName: "Sushi",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Sushi — Your RAW Data Served Perfectly",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sushi | Your RAW Data Served Perfectly",
+    description: "Drop in a data file, get a plain-English report you can trust and share. No code required.",
+    images: ["/opengraph-image"],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: SITE_URL },
